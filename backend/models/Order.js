@@ -15,7 +15,12 @@ const orderSchema = new mongoose.Schema({
         baseRate: { type: Number }
     }],
     status: { type: String, default: 'Pending' },
+    total: { type: Number, default: 0 },
     salespersonId: { type: String },
+    remarks: { type: String },
+    partnerType: { type: String },
+    intelligenceInsight: { type: String },
+    podUrl: { type: String },
     statusHistory: [{
         status: { type: String },
         timestamp: { type: Date, default: Date.now }
