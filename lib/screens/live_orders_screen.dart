@@ -6,6 +6,7 @@ import '../utils/theme.dart';
 import '../models/models.dart';
 
 class LiveOrdersScreen extends StatelessWidget {
+  const LiveOrdersScreen({super.key});
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<NexusProvider>(context);

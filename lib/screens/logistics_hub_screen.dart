@@ -93,7 +93,7 @@ class LogisticsHubScreen extends StatelessWidget {
                           const SizedBox(width: 4),
                           Expanded(
                             child: Text(
-                              order.deliveryAddress,
+                              order.deliveryAddress ?? 'Address not provided',
                               style: const TextStyle(
                                 fontSize: 12,
                                 color: NexusTheme.slate500,

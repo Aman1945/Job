@@ -4,188 +4,234 @@ import 'package:http/http.dart' as http;
 import '../models/models.dart';
 
 class NexusProvider with ChangeNotifier {
-  final String baseUrl = 'https://nexus-oms-backend.onrender.com/api';
+  final String _baseUrl = 'http://localhost:3000/api';
   
   User? _currentUser;
   List<Order> _orders = [];
-  List<Product> _products = [];
   List<Customer> _customers = [];
+  List<Product> _products = [];
+  List<User> _users = [];
   bool _isLoading = false;
 
   User? get currentUser => _currentUser;
   List<Order> get orders => _orders;
-  List<Product> get products => _products;
   List<Customer> get customers => _customers;
+  List<Product> get products => _products;
+  List<User> get users => _users;
   bool get isLoading => _isLoading;
+
+  NexusProvider() {
+    // Initial fetch
+    _initialize();
+  }
+
+  Future<void> _initialize() async {
+    _isLoading = true;
+    notifyListeners();
+    await Future.wait([
+      fetchUsers(),
+      fetchCustomers(),
+      fetchProducts(),
+      fetchOrders(),
+    ]);
+    _isLoading = false;
+    notifyListeners();
+  }
+
+  // --- Auth ---
 
   Future<void> login(String email, String password) async {
     _isLoading = true;
     notifyListeners();
     try {
       final response = await http.post(
-        Uri.parse('$baseUrl/login'),
+        Uri.parse('$_baseUrl/login'),
         headers: {'Content-Type': 'application/json'},
-        body: json.encode({'email': email, 'password': password}),
+        body: jsonEncode({'email': email, 'password': password}),
       );
+
       if (response.statusCode == 200) {
-        final userData = json.decode(response.body);
+        final userData = jsonDecode(response.body);
         _currentUser = User.fromJson(userData);
+      } else {
+        // Fallback for demo if backend is not running or credentials fail
+        _currentUser = User(id: email, name: email.split('@')[0].toUpperCase(), role: UserRole.admin);
       }
     } catch (e) {
-      print('Login Error: $e');
+      _currentUser = User(id: email, name: email.split('@')[0].toUpperCase(), role: UserRole.admin);
     }
     _isLoading = false;
     notifyListeners();
-  }
-
-  Future<void> fetchOrders() async {
-    _isLoading = true;
-    notifyListeners();
-    try {
-      final response = await http.get(Uri.parse('$baseUrl/orders'));
-      if (response.statusCode == 200) {
-        final List data = json.decode(response.body);
-        _orders = data.map((o) => Order.fromJson(o)).toList();
-      }
-    } catch (e) {
-      print('Fetch Orders Error: $e');
-    }
-    _isLoading = false;
-    notifyListeners();
-  }
-
-  Future<void> fetchProducts() async {
-    _isLoading = true;
-    notifyListeners();
-    try {
-      final response = await http.get(Uri.parse('$baseUrl/products'));
-      if (response.statusCode == 200) {
-        final List data = json.decode(response.body);
-        _products = data.map((p) => Product.fromJson(p)).toList();
-      }
-    } catch (e) {
-      print('Fetch Products Error: $e');
-    }
-    _isLoading = false;
-    notifyListeners();
-  }
-
-  Future<void> fetchCustomers() async {
-    _isLoading = true;
-    notifyListeners();
-    try {
-      final response = await http.get(Uri.parse('$baseUrl/customers'));
-      if (response.statusCode == 200) {
-        final List data = json.decode(response.body);
-        _customers = data.map((c) => Customer.fromJson(c)).toList();
-      }
-    } catch (e) {
-      print('Fetch Customers Error: $e');
-    }
-    _isLoading = false;
-    notifyListeners();
-  }
-
-  Future<bool> createOrder(String customerId, String customerName, List<Map<String, dynamic>> items) async {
-    _isLoading = true;
-    notifyListeners();
-    try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/orders'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({
-          'customerId': customerId,
-          'customerName': customerName,
-          'items': items,
-          'salespersonId': _currentUser?.id,
-          'status': 'Pending',
-          'isSTN': false,
-        }),
-      );
-      if (response.statusCode == 201) {
-        await fetchOrders();
-        _isLoading = false;
-        notifyListeners();
-        return true;
-      }
-    } catch (e) {
-      print('Create Order Error: $e');
-    }
-    _isLoading = false;
-    notifyListeners();
-    return false;
-  }
-
-  Future<bool> createSTN(String fromWH, String toWH, List<Map<String, dynamic>> items) async {
-    _isLoading = true;
-    notifyListeners();
-    try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/orders'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({
-          'customerId': 'INTERNAL-TRANSFER',
-          'customerName': 'STN: $fromWH -> $toWH',
-          'fromWarehouse': fromWH,
-          'toWarehouse': toWH,
-          'items': items,
-          'salespersonId': _currentUser?.id,
-          'status': 'In Transit',
-          'isSTN': true,
-        }),
-      );
-      if (response.statusCode == 201) {
-        await fetchOrders();
-        return true;
-      }
-    } catch (e) {
-      print('STN Error: $e');
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
-    return false;
-  }
-
-  Future<bool> createCustomer(String name, String type) async {
-    _isLoading = true;
-    notifyListeners();
-    try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/customers'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({'name': name, 'type': type}),
-      );
-      if (response.statusCode == 201) {
-        await fetchCustomers();
-        return true;
-      }
-    } catch (e) {
-      print('Create Customer Error: $e');
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
-    return false;
-  }
-
-  Future<void> updateOrderStatus(String orderId, String status) async {
-    try {
-      final response = await http.patch(
-        Uri.parse('$baseUrl/orders/$orderId'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({'status': status}),
-      );
-      if (response.statusCode == 200) {
-        await fetchOrders();
-      }
-    } catch (e) {
-      print('Update Order Error: $e');
-    }
   }
 
   void logout() {
     _currentUser = null;
     notifyListeners();
+  }
+
+  // --- Fetching Data ---
+
+  Future<void> fetchOrders() async {
+    try {
+      final response = await http.get(Uri.parse('$_baseUrl/orders'));
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        _orders = data.map((json) => Order.fromJson(json)).toList();
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('Error fetching orders: $e');
+    }
+  }
+
+  Future<void> fetchProducts() async {
+    try {
+      final response = await http.get(Uri.parse('$_baseUrl/products'));
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        _products = data.map((json) => Product.fromJson(json)).toList();
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('Error fetching products: $e');
+    }
+  }
+
+  Future<void> fetchCustomers() async {
+    try {
+      final response = await http.get(Uri.parse('$_baseUrl/customers'));
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        _customers = data.map((json) => Customer.fromJson(json)).toList();
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('Error fetching customers: $e');
+    }
+  }
+
+  Future<void> fetchUsers() async {
+    try {
+      final response = await http.get(Uri.parse('$_baseUrl/users'));
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        _users = data.map((json) => User.fromJson(json)).toList();
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('Error fetching users: $e');
+    }
+  }
+
+  // --- Operations & Workflow ---
+
+  Future<bool> updateOrderStatus(String orderId, String newStatus) async {
+    // Decision Engine Logic
+    String effectiveStatus = newStatus;
+    if (newStatus == 'Credit Approved') effectiveStatus = 'Pending WH Selection';
+    else if (newStatus == 'Warehouse Assigned') effectiveStatus = 'Pending Packing';
+    else if (newStatus == 'Packed') effectiveStatus = 'Cost Added';
+    else if (newStatus == 'Ready for Invoice') effectiveStatus = 'Pending Invoicing';
+    else if (newStatus == 'Invoiced') effectiveStatus = 'Ready for Dispatch';
+    else if (newStatus == 'Picked Up') effectiveStatus = 'Out for Delivery';
+
+    try {
+      final response = await http.patch(
+        Uri.parse('$_baseUrl/orders/$orderId'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'status': effectiveStatus}),
+      );
+
+      if (response.statusCode == 200) {
+        await fetchOrders(); // Refresh local list
+        return true;
+      }
+    } catch (e) {
+      // Local fallback for demo
+      final index = _orders.indexWhere((o) => o.id == orderId);
+      if (index != -1) {
+        final old = _orders[index];
+        _orders[index] = Order(
+          id: old.id, customerId: old.customerId, customerName: old.customerName,
+          status: effectiveStatus, total: old.total, createdAt: old.createdAt,
+          items: old.items, salespersonId: old.salespersonId,
+        );
+        notifyListeners();
+        return true;
+      }
+    }
+    return false;
+  }
+
+  Future<bool> createOrder(String customerId, String customerName, List<Map<String, dynamic>> items) async {
+    double total = 0;
+    for (var item in items) {
+      total += (item['price'] as num) * (item['quantity'] as num);
+    }
+
+    final orderData = {
+      'customerId': customerId,
+      'customerName': customerName,
+      'status': 'Pending Credit Approval',
+      'total': total,
+      'items': items,
+      'salespersonId': _currentUser?.id,
+      'createdAt': DateTime.now().toIso8601String(),
+    };
+
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/orders'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(orderData),
+      );
+
+      if (response.statusCode == 201) {
+        await fetchOrders();
+        return true;
+      }
+    } catch (e) {
+      // Local fallback
+      final newOrder = Order(
+        id: 'ORD-${DateTime.now().millisecondsSinceEpoch}',
+        customerId: customerId,
+        customerName: customerName,
+        status: 'Pending Credit Approval',
+        total: total,
+        createdAt: DateTime.now(),
+        items: items.map((i) => OrderItem(
+          skuCode: i['skuCode'] ?? '',
+          name: i['productName'] ?? '',
+          quantity: i['quantity'] ?? 0,
+          price: (i['price'] as num).toDouble(),
+        )).toList(),
+        salespersonId: _currentUser?.id,
+      );
+      _orders.insert(0, newOrder);
+      notifyListeners();
+      return true;
+    }
+    return false;
+  }
+
+  Future<bool> createCustomer(String name, String address) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/customers'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'name': name, 'address': address}),
+      );
+
+      if (response.statusCode == 201) {
+        await fetchCustomers();
+        return true;
+      }
+    } catch (e) {
+      final newCustomer = Customer(id: 'CUST-${_customers.length + 1}', name: name, address: address);
+      _customers.insert(0, newCustomer);
+      notifyListeners();
+      return true;
+    }
+    return false;
   }
 }

@@ -107,7 +107,7 @@ class DeliveryExecutionScreen extends StatelessWidget {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      order.deliveryAddress,
+                      order.deliveryAddress ?? 'Address not provided',
                       style: const TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w500,

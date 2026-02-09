@@ -153,7 +153,7 @@ class WarehouseSelectionScreen extends StatelessWidget {
 
   void _assignWarehouse(BuildContext context, Order order, String warehouse, NexusProvider provider) async {
     // Update order with warehouse and change status
-    final success = await provider.updateOrderStatus(order.id, 'Pending Packing');
+    final success = await provider.updateOrderStatus(order.id, 'Warehouse Assigned');
     
     if (success && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(

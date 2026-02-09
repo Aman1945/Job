@@ -1,375 +1,242 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:fl_chart/fl_chart.dart';
+import '../providers/nexus_provider.dart';
+import '../utils/theme.dart';
 import 'live_orders_screen.dart';
-import 'analytics_screen.dart';
-import 'book_order_screen.dart';
 import 'order_archive_screen.dart';
-import 'new_customer_screen.dart';
-import 'credit_control_screen.dart';
-import 'warehouse_selection_screen.dart';
-import 'logistics_hub_screen.dart';
-import 'delivery_execution_screen.dart';
-import 'invoicing_screen.dart';
+import 'book_order_screen.dart';
 import 'procurement_screen.dart';
 import 'master_data_screen.dart';
-import '../providers/nexus_provider.dart';
-import '../models/models.dart';
-import '../utils/theme.dart';
+import 'warehouse_selection_screen.dart';
+import 'credit_control_screen.dart';
+import 'invoicing_screen.dart';
+import 'logistics_hub_screen.dart';
+import 'delivery_execution_screen.dart';
+import 'new_customer_screen.dart';
+import 'stock_transfer_screen.dart';
+import 'logistics_cost_screen.dart';
+import 'warehouse_inventory_screen.dart';
+import 'analytics_screen.dart';
 
-class DashboardScreen extends StatefulWidget {
+class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
-
-  @override
-  State<DashboardScreen> createState() => _DashboardScreenState();
-}
-
-class _DashboardScreenState extends State<DashboardScreen> {
-  int _selectedIndex = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<NexusProvider>(context, listen: false).fetchOrders();
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<NexusProvider>(context);
+    final user = provider.currentUser;
+
+    // Real-time calculations for Stats
+    final liveMissionsCount = provider.orders.where((o) => o.status != 'Delivered' && o.status != 'Rejected').length;
+    final pendingCount = provider.orders.where((o) => o.status == 'Pending Credit Approval' || o.status == 'Pending WH Selection').length;
+    final deliveredCount = provider.orders.where((o) => o.status == 'Delivered').length;
+    final totalRevenue = provider.orders.fold(0.0, (sum, o) => sum + o.total);
 
     return Scaffold(
-      drawer: _buildDrawer(context, provider),
+      backgroundColor: NexusTheme.slate50,
       appBar: AppBar(
-        title: const Text('NEXUS DASHBOARD'),
+        title: const Row(
+          children: [
+            Icon(Icons.shield_outlined, color: NexusTheme.emerald500),
+            SizedBox(width: 8),
+            Text('NEXUS', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.2)),
+            Text('OMS', style: TextStyle(color: NexusTheme.emerald500, fontWeight: FontWeight.w900, letterSpacing: 1.2)),
+          ],
+        ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.notifications_none),
-            onPressed: () {},
+            onPressed: () => provider.logout(),
+            icon: const Icon(Icons.logout, color: Colors.grey),
           ),
-          const CircleAvatar(
-            backgroundColor: NexusTheme.emerald500,
-            radius: 16,
-            child: Text(
-              'A',
+          const SizedBox(width: 8),
+        ],
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildWelcomeHeader(user?.name ?? 'User'),
+            const SizedBox(height: 32),
+            _buildStatsGrid(liveMissionsCount.toString(), pendingCount.toString(), deliveredCount.toString(), "₹${(totalRevenue/1000).toStringAsFixed(1)}K"),
+            const SizedBox(height: 32),
+            const Text(
+              'SUPPLY CHAIN LIFECYCLE',
               style: TextStyle(
-                color: Colors.white,
                 fontSize: 12,
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.w900,
+                color: NexusTheme.slate400,
+                letterSpacing: 2,
               ),
             ),
-          ),
-          const SizedBox(width: 16),
-        ],
-      ),
-      body: provider.isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildHeaderStats(provider),
-                  const SizedBox(height: 24),
-                  _buildOrderChart(),
-                  const SizedBox(height: 24),
-                  const Text(
-                    'Recent Missions',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 12),
-                  _buildRecentOrders(provider),
-                ],
-              ),
-            ),
-    );
-  }
-
-  Widget _buildDrawer(BuildContext context, NexusProvider provider) {
-    return Drawer(
-      backgroundColor: NexusTheme.emerald950,
-      child: Column(
-        children: [
-          DrawerHeader(
-            decoration: const BoxDecoration(color: NexusTheme.emerald900),
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.shield, color: NexusTheme.emerald400, size: 32),
-                  const SizedBox(height: 8),
-                  Text(
-                    provider.currentUser?.name ?? 'User',
-                    style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                  Text(
-                    provider.currentUser?.role.label ?? '',
-                    style: const TextStyle(color: NexusTheme.emerald400, fontSize: 12),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          ..._buildRoleBasedItems(provider.currentUser?.role),
-          const Spacer(),
-          ListTile(
-            leading: const Icon(Icons.logout, color: Colors.redAccent),
-            title: const Text(
-              'LOGOUT',
+            const SizedBox(height: 16),
+            _buildActionGrid(context),
+            const SizedBox(height: 32),
+            const Text(
+              'ENTERPRISE TERMINALS',
               style: TextStyle(
-                color: Colors.redAccent,
-                fontWeight: FontWeight.bold,
+                fontSize: 12,
+                fontWeight: FontWeight.w900,
+                color: NexusTheme.slate400,
+                letterSpacing: 2,
               ),
             ),
-            onTap: () => provider.logout(),
-          ),
-          const SizedBox(height: 16),
-        ],
-      ),
-    );
-  }
-
-  List<Widget> _buildRoleBasedItems(UserRole? role) {
-    if (role == null) return [];
-    List<Widget> items = [];
-
-    if (role == UserRole.admin) {
-      return [
-        _buildDrawerItem(Icons.dashboard, 'Executive Pulse', 0),
-        _buildDrawerItem(Icons.rocket_launch, 'Live Missions', 1),
-        _buildDrawerItem(Icons.archive, 'Order Archive', 2),
-        const Divider(color: Colors.white12),
-        _buildDrawerItem(Icons.person_add, 'New Customer', 3),
-        _buildDrawerItem(Icons.add_shopping_cart, 'Book Order', 4),
-        _buildDrawerItem(Icons.analytics, 'Analytics', 5),
-        const Divider(color: Colors.white12),
-        _buildDrawerItem(Icons.verified_user, 'Credit Control', 6),
-        _buildDrawerItem(Icons.warehouse, 'WH Assignment', 7),
-        _buildDrawerItem(Icons.local_shipping, 'Logistics Hub', 8),
-        _buildDrawerItem(Icons.delivery_dining, 'Execution', 9),
-        _buildDrawerItem(Icons.receipt_long, 'Invoicing', 10),
-        const Divider(color: Colors.white12),
-        _buildDrawerItem(Icons.inventory, 'Procurement', 11),
-        _buildDrawerItem(Icons.database, 'Master Data', 12),
-      ];
-    }
-
-    if (role == UserRole.sales) {
-      items.add(_buildDrawerItem(Icons.add_shopping_cart, 'Book Order', 4));
-      items.add(_buildDrawerItem(Icons.person_add, 'New Customer', 3));
-      items.add(_buildDrawerItem(Icons.archive, 'Order Archive', 2));
-      items.add(_buildDrawerItem(Icons.analytics, 'Analytics', 5));
-    } else if (role == UserRole.finance || role == UserRole.approver) {
-      items.add(_buildDrawerItem(Icons.verified_user, 'Credit Control', 6));
-      items.add(_buildDrawerItem(Icons.dashboard, 'Executive Approval', 0));
-      items.add(_buildDrawerItem(Icons.archive, 'Order Archive', 2));
-    } else if (role == UserRole.logistics) {
-      items.add(_buildDrawerItem(Icons.local_shipping, 'Logistics Hub', 8));
-      items.add(_buildDrawerItem(Icons.rocket_launch, 'Fleet Tracking', 1));
-      items.add(_buildDrawerItem(Icons.archive, 'Order Archive', 2));
-    } else if (role == UserRole.delivery) {
-      items.add(_buildDrawerItem(Icons.delivery_dining, 'My Deliveries', 9));
-    } else if (role == UserRole.warehouse) {
-      items.add(_buildDrawerItem(Icons.warehouse, 'WH Assignment', 7));
-      items.add(_buildDrawerItem(Icons.rocket_launch, 'Packing Queue', 1));
-      items.add(_buildDrawerItem(Icons.archive, 'Order Archive', 2));
-    } else {
-      items.add(_buildDrawerItem(Icons.dashboard, 'Overview', 0));
-      items.add(_buildDrawerItem(Icons.archive, 'Order Archive', 2));
-    }
-
-    return items;
-  }
-
-  Widget _buildDrawerItem(IconData icon, String label, int index) {
-    bool isSelected = _selectedIndex == index;
-    return ListTile(
-      leading: Icon(
-        icon,
-        color: isSelected
-            ? Colors.white
-            : NexusTheme.emerald400.withValues(alpha: 0.6),
-      ),
-      title: Text(
-        label,
-        style: TextStyle(
-          color: isSelected ? Colors.white : Colors.white60,
-          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            const SizedBox(height: 16),
+            _buildUtilityGrid(context),
+          ],
         ),
       ),
-      tileColor: isSelected ? NexusTheme.emerald500 : Colors.transparent,
-      onTap: () {
-        setState(() => _selectedIndex = index);
-        Navigator.pop(context); // Close drawer
-        if (index == 1) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => LiveOrdersScreen()),
-          );
-        } else if (index == 2) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const OrderArchiveScreen()),
-          );
-        } else if (index == 3) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const NewCustomerScreen()),
-          );
-        } else if (index == 4) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const BookOrderScreen()),
-          );
-        } else if (index == 5) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const AnalyticsScreen()),
-          );
-        } else if (index == 6) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const CreditControlScreen()),
-          );
-        } else if (index == 7) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const WarehouseSelectionScreen()),
-          );
-        } else if (index == 8) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const LogisticsHubScreen()),
-          );
-        } else if (index == 9) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const DeliveryExecutionScreen()),
-          );
-        } else if (index == 10) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const InvoicingScreen()),
-          );
-        } else if (index == 11) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const ProcurementScreen()),
-          );
-        } else if (index == 12) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const MasterDataScreen()),
-          );
-          );
-        }
-      },
     );
   }
 
-  Widget _buildHeaderStats(NexusProvider provider) {
-    final totalOrders = provider.orders.length;
-    final totalValue = provider.orders.fold(0.0, (sum, order) => sum + order.total);
-    
-    return Row(
+  Widget _buildWelcomeHeader(String name) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: _buildStatCard(
-            'TOTAL ORDERS',
-            totalOrders.toString(),
-            Icons.shopping_basket,
-            Colors.blue,
-          ),
+        const Text(
+          'Welcome back,',
+          style: TextStyle(fontSize: 14, color: NexusTheme.slate400, fontWeight: FontWeight.w600),
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _buildStatCard(
-            'VALUE',
-            '₹${(totalValue / 1000).toStringAsFixed(1)}K',
-            Icons.currency_rupee,
-            NexusTheme.emerald500,
+        Text(
+          name.toUpperCase(),
+          style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: NexusTheme.slate900, letterSpacing: -0.5),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          decoration: BoxDecoration(
+            color: NexusTheme.emerald500.withValues(alpha:0.1),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: NexusTheme.emerald500.withValues(alpha: 0.2)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(width: 6, height: 6, decoration: const BoxDecoration(color: NexusTheme.emerald500, shape: BoxShape.circle)),
+              const SizedBox(width: 6),
+              const Text('ACTIVE CLOUD PROTOCOL', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: NexusTheme.emerald700, letterSpacing: 0.5)),
+            ],
           ),
         ),
       ],
     );
   }
 
-  Widget _buildStatCard(
-    String title,
-    String value,
-    IconData icon,
-    Color color,
-  ) {
+  Widget _buildStatsGrid(String live, String pending, String delivered, String revenue) {
+    return GridView.count(
+      crossAxisCount: 2,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      mainAxisSpacing: 16,
+      crossAxisSpacing: 16,
+      childAspectRatio: 1.4,
+      children: [
+        _buildStatCard('LIVE MISSIONS', live, Icons.radar, NexusTheme.emerald500),
+        _buildStatCard('PENDING OPS', pending, Icons.timer_outlined, Colors.orange),
+        _buildStatCard('SCM SCORE', '110.0', Icons.analytics_outlined, Colors.blue),
+        _buildStatCard('MTD REVENUE', revenue, Icons.payments_outlined, Colors.purple),
+      ],
+    );
+  }
+
+  Widget _buildStatCard(String label, String value, IconData icon, Color color) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-          ),
-        ],
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: NexusTheme.slate200),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 4))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Icon(icon, color: color, size: 24),
-          const SizedBox(height: 12),
-          Text(
-            value,
-            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Icon(icon, color: color, size: 20),
+              const Icon(Icons.arrow_outward, color: NexusTheme.slate300, size: 14),
+            ],
           ),
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 10,
-              color: Colors.grey.shade500,
-              fontWeight: FontWeight.bold,
-            ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(value, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, letterSpacing: -1)),
+              Text(label, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: NexusTheme.slate400, letterSpacing: 0.3)),
+            ],
           ),
         ],
       ),
     );
   }
 
-  Widget _buildOrderChart() {
-    return Container(
-      height: 200,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-          ),
-        ],
-      ),
-      child: LineChart(
-        LineChartData(
-          gridData: FlGridData(show: false),
-          titlesData: FlTitlesData(show: false),
-          borderData: FlBorderData(show: false),
-          lineBarsData: [
-            LineChartBarData(
-              spots: [
-                const FlSpot(0, 3),
-                const FlSpot(1, 1),
-                const FlSpot(2, 4),
-                const FlSpot(3, 2),
-                const FlSpot(4, 5),
-              ],
-              isCurved: true,
-              color: NexusTheme.emerald500,
-              barWidth: 4,
-              dotData: FlDotData(show: false),
-              belowBarData: BarAreaData(
-                show: true,
-                color: NexusTheme.emerald500.withValues(alpha: 0.1),
+  Widget _buildActionGrid(BuildContext context) {
+    return GridView.count(
+      crossAxisCount: 2,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      mainAxisSpacing: 12,
+      crossAxisSpacing: 12,
+      childAspectRatio: 1.25,
+      children: [
+        _buildActionCard(context, '0. NEW CUSTOMER', Icons.person_add_outlined, Colors.indigo, const NewCustomerScreen()),
+        _buildActionCard(context, '1. BOOK ORDER', Icons.add_shopping_cart, NexusTheme.emerald700, const BookOrderScreen()),
+        _buildActionCard(context, '1.1 STOCK TRANSFER', Icons.sync_alt, NexusTheme.slate600, const StockTransferScreen()),
+        _buildActionCard(context, '2. CREDIT CONTROL', Icons.bolt, Colors.orange, const CreditControlScreen()),
+        _buildActionCard(context, '2.5 WH ASSIGN', Icons.home_work_outlined, Colors.teal, const WarehouseSelectionScreen()),
+        _buildActionCard(context, '3. WAREHOUSE', Icons.inventory_2_outlined, Colors.blueGrey, const WarehouseInventoryScreen()),
+        _buildActionCard(context, '4. LOGISTICS COST', Icons.currency_rupee, Colors.deepPurple, const LogisticsCostScreen()),
+        _buildActionCard(context, '5. INVOICING', Icons.receipt_long, Colors.blue, const InvoicingScreen()),
+        _buildActionCard(context, '6. LOGISTICS HUB', Icons.explore_outlined, Colors.purple, const LogisticsHubScreen()),
+        _buildActionCard(context, '7. EXECUTION', Icons.local_shipping_outlined, Colors.redAccent, const DeliveryExecutionScreen()),
+      ],
+    );
+  }
+
+  Widget _buildUtilityGrid(BuildContext context) {
+    return GridView.count(
+      crossAxisCount: 2,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      mainAxisSpacing: 12,
+      crossAxisSpacing: 12,
+      childAspectRatio: 1.8,
+      children: [
+        _buildUtilityCard(context, 'Procurement', Icons.shopping_bag_outlined, const ProcurementScreen()),
+        _buildUtilityCard(context, 'Intelligence', Icons.insights, const AnalyticsScreen()),
+        _buildUtilityCard(context, 'Order Archive', Icons.history, const OrderArchiveScreen()),
+        _buildUtilityCard(context, 'Master Data', Icons.terminal, const MasterDataScreen()),
+      ],
+    );
+  }
+
+  Widget _buildActionCard(BuildContext context, String label, IconData icon, Color color, Widget screen) {
+    return InkWell(
+      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => screen)),
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: NexusTheme.slate200),
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10)],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(color: color.withValues(alpha: 0.05), shape: BoxShape.circle),
+              child: Icon(icon, color: color, size: 24),
+            ),
+            const SizedBox(height: 10),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4.0),
+              child: Text(
+                label,
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: NexusTheme.slate800, letterSpacing: -0.2),
               ),
             ),
           ],
@@ -378,59 +245,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildRecentOrders(NexusProvider provider) {
-    return ListView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: provider.orders.length,
-      itemBuilder: (context, index) {
-        final order = provider.orders[index];
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: ListTile(
-            leading: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: NexusTheme.emerald500.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.receipt_long,
-                color: NexusTheme.emerald900,
-              ),
+  Widget _buildUtilityCard(BuildContext context, String label, IconData icon, Widget screen) {
+    return InkWell(
+      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => screen)),
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        decoration: BoxDecoration(
+          color: NexusTheme.slate900,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [BoxShadow(color: NexusTheme.slate900.withValues(alpha: 0.2), blurRadius: 10, offset: const Offset(0, 4))],
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: NexusTheme.emerald400, size: 18),
+            const SizedBox(width: 10),
+            Text(
+              label.toUpperCase(),
+              style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 0.5),
             ),
-            title: Text(
-              order.customerName,
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            subtitle: Text(order.id),
-            trailing: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  '₹${order.total}',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: NexusTheme.emerald900,
-                  ),
-                ),
-                Text(
-                  order.status,
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: Colors.orange.shade800,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
+          ],
+        ),
+      ),
     );
   }
 }

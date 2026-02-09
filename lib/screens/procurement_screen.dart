@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../providers/nexus_provider.dart';
 import '../utils/theme.dart';
 
 class ProcurementScreen extends StatefulWidget {
@@ -11,259 +9,190 @@ class ProcurementScreen extends StatefulWidget {
 }
 
 class _ProcurementScreenState extends State<ProcurementScreen> {
-  final _formKey = GlobalKey<FormState>();
-  final _vendorController = TextEditingController();
-  final _productController = TextEditingController();
-  final _quantityController = TextEditingController();
-  final _priceController = TextEditingController();
-
-  @override
-  void dispose() {
-    _vendorController.dispose();
-    _productController.dispose();
-    _quantityController.dispose();
-    _priceController.dispose();
-    super.dispose();
-  }
-
   @override
   Widget build(BuildContext context) {
-    final provider = Provider.of<NexusProvider>(context);
-
     return Scaffold(
+      backgroundColor: NexusTheme.slate50,
       appBar: AppBar(
-        title: const Text('PROCUREMENT INBOUND'),
-        backgroundColor: NexusTheme.emerald900,
+        title: const Text('PROCUREMENT GATE TERMINAL', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14)),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Card(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Form(
-                  key: _formKey,
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Row(
+              children: [
+                const Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'CREATE PURCHASE ORDER',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w900,
-                          color: NexusTheme.emerald900,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _vendorController,
-                        decoration: InputDecoration(
-                          labelText: 'Vendor Name',
-                          prefixIcon: const Icon(Icons.business),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter vendor name';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _productController,
-                        decoration: InputDecoration(
-                          labelText: 'Product/SKU',
-                          prefixIcon: const Icon(Icons.inventory_2),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter product';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: TextFormField(
-                              controller: _quantityController,
-                              decoration: InputDecoration(
-                                labelText: 'Quantity',
-                                prefixIcon: const Icon(Icons.numbers),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                              keyboardType: TextInputType.number,
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'Required';
-                                }
-                                return null;
-                              },
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: TextFormField(
-                              controller: _priceController,
-                              decoration: InputDecoration(
-                                labelText: 'Price',
-                                prefixIcon: const Icon(Icons.currency_rupee),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                              keyboardType: TextInputType.number,
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'Required';
-                                }
-                                return null;
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 24),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton.icon(
-                          onPressed: _createPO,
-                          icon: const Icon(Icons.add_shopping_cart),
-                          label: const Text('CREATE PURCHASE ORDER'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: NexusTheme.emerald600,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                        ),
-                      ),
+                      Text('Procurement Gate', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: NexusTheme.slate900)),
+                      Text('VERIFY SUPPLIER INBOUND REQUIREMENTS & MULTI-STAGE APPROVAL', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: NexusTheme.slate400, letterSpacing: 0.5)),
                     ],
                   ),
                 ),
-              ),
+                _buildHeaderButton(Icons.add, 'LOG NEW INBOUND', NexusTheme.indigo600, Colors.white),
+              ],
             ),
-            const SizedBox(height: 24),
-            const Text(
-              'RECENT PURCHASE ORDERS',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w900,
-                color: NexusTheme.slate600,
-              ),
+          ),
+          
+          // Search & Filter Bar
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24.0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    decoration: InputDecoration(
+                      hintText: 'Search Supplier, SKU Name or Code...',
+                      hintStyle: const TextStyle(fontSize: 13, color: NexusTheme.slate400),
+                      prefixIcon: const Icon(Icons.search, color: NexusTheme.slate400),
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                _buildFilterButton(),
+              ],
             ),
-            const SizedBox(height: 12),
-            _buildPOList(),
-          ],
-        ),
+          ),
+          
+          const SizedBox(height: 24),
+          
+          // Data Table
+          Expanded(
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(32),
+                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 20)],
+              ),
+              child: _buildProcurementTable(),
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
       ),
     );
   }
 
-  Widget _buildPOList() {
-    // Mock data for demonstration
-    final mockPOs = [
-      {'id': 'PO-001', 'vendor': 'ABC Suppliers', 'status': 'Pending', 'amount': 50000.0},
-      {'id': 'PO-002', 'vendor': 'XYZ Traders', 'status': 'Received', 'amount': 75000.0},
-      {'id': 'PO-003', 'vendor': 'Global Imports', 'status': 'In Transit', 'amount': 120000.0},
-    ];
-
-    return ListView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: mockPOs.length,
-      itemBuilder: (context, index) {
-        final po = mockPOs[index];
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          child: ListTile(
-            contentPadding: const EdgeInsets.all(12),
-            leading: CircleAvatar(
-              backgroundColor: NexusTheme.emerald500,
-              child: const Icon(Icons.shopping_bag, color: Colors.white),
-            ),
-            title: Text(
-              po['id'] as String,
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            subtitle: Text(po['vendor'] as String),
-            trailing: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  '₹${(po['amount'] as double).toStringAsFixed(0)}',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w900,
-                    color: NexusTheme.emerald900,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: _getStatusColor(po['status'] as String),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    po['status'] as String,
-                    style: const TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
+  Widget _buildHeaderButton(IconData icon, String label, Color bgColor, Color textColor) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(16)),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: textColor),
+          const SizedBox(width: 8),
+          Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: textColor, letterSpacing: 0.5)),
+        ],
+      ),
     );
   }
 
-  Color _getStatusColor(String status) {
-    switch (status) {
-      case 'Pending':
-        return NexusTheme.amber600;
-      case 'In Transit':
-        return NexusTheme.blue600;
-      case 'Received':
-        return NexusTheme.emerald600;
-      default:
-        return NexusTheme.slate600;
-    }
+  Widget _buildFilterButton() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
+      child: const Row(
+        children: [
+          Icon(Icons.filter_list, size: 20, color: NexusTheme.slate400),
+          SizedBox(width: 8),
+          Text('FILTER ACTIVE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: NexusTheme.slate400)),
+        ],
+      ),
+    );
   }
 
-  void _createPO() {
-    if (_formKey.currentState!.validate()) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Purchase Order created successfully!'),
-          backgroundColor: NexusTheme.emerald600,
+  Widget _buildProcurementTable() {
+    final mockInbounds = [
+      {
+        'ref': 'PRC-1001',
+        'date': '09/02/2026',
+        'vendor': 'Global Fisheries Ltd',
+        'sku': 'Frozen Salmon Fillets 500G',
+        'code': 'SKU-SM-01',
+        'checks': [true, false, true],
+        'stage': 'PENDING'
+      },
+      {
+        'ref': 'PRC-1002',
+        'date': '09/02/2026',
+        'vendor': 'Ocean Fresh Imports',
+        'sku': 'Tuna Steak Premium 200G',
+        'code': 'SKU-TN-42',
+        'checks': [false, false, false],
+        'stage': 'PENDING'
+      },
+    ];
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: SingleChildScrollView(
+        child: DataTable(
+          headingRowHeight: 60,
+          dataRowHeight: 100,
+          columns: const [
+            DataColumn(label: Text('MISSION REF', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 10, color: NexusTheme.slate400))),
+            DataColumn(label: Text('VENDOR / SUPPLIER', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 10, color: NexusTheme.slate400))),
+            DataColumn(label: Text('MATERIAL SKU', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 10, color: NexusTheme.slate400))),
+            DataColumn(label: Text('CHECKS (SIP/LBL/DOC)', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 10, color: NexusTheme.slate400))),
+            DataColumn(label: Text('DOCS / FILES', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 10, color: NexusTheme.slate400))),
+            DataColumn(label: Text('STAGE', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 10, color: NexusTheme.slate400))),
+          ],
+          rows: mockInbounds.map((item) {
+            return DataRow(cells: [
+              DataCell(Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(item['ref'] as String, style: const TextStyle(fontWeight: FontWeight.w900, color: NexusTheme.indigo600, fontSize: 13)),
+                  Text(item['date'] as String, style: const TextStyle(color: NexusTheme.slate400, fontSize: 10)),
+                ],
+              )),
+              DataCell(Text(item['vendor'] as String, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13))),
+              DataCell(Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(item['sku'] as String, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                  Text('CODE: ${item['code']}', style: const TextStyle(color: NexusTheme.indigo600, fontSize: 10, fontWeight: FontWeight.w900)),
+                ],
+              )),
+              DataCell(Row(
+                children: (item['checks'] as List<bool>).map((checked) {
+                  return Container(
+                    margin: const EdgeInsets.only(right: 6),
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: checked ? NexusTheme.indigo600 : NexusTheme.slate100,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(
+                      checked ? Icons.check : Icons.sell_outlined,
+                      size: 14,
+                      color: checked ? Colors.white : NexusTheme.slate300,
+                    ),
+                  );
+                }).toList(),
+              )),
+              DataCell(IconButton(icon: const Icon(Icons.description_outlined, color: NexusTheme.slate300), onPressed: () {})),
+              DataCell(Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.amber.shade200),
+                ),
+                child: const Text('PENDING', style: TextStyle(color: Colors.orange, fontWeight: FontWeight.w900, fontSize: 10)),
+              )),
+            ]);
+          }).toList(),
         ),
-      );
-      
-      // Clear form
-      _vendorController.clear();
-      _productController.clear();
-      _quantityController.clear();
-      _priceController.clear();
-    }
+      ),
+    );
   }
 }

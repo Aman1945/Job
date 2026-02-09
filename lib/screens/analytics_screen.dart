@@ -4,142 +4,229 @@ import 'package:fl_chart/fl_chart.dart';
 import '../providers/nexus_provider.dart';
 import '../utils/theme.dart';
 
-class AnalyticsScreen extends StatelessWidget {
+class AnalyticsScreen extends StatefulWidget {
   const AnalyticsScreen({super.key});
+
+  @override
+  State<AnalyticsScreen> createState() => _AnalyticsScreenState();
+}
+
+class _AnalyticsScreenState extends State<AnalyticsScreen> {
+  String _selectedTerminal = 'ORDER FLOW';
 
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<NexusProvider>(context);
-    final totalValue = provider.orders.fold(0.0, (sum, order) => sum + order.total);
-    final avgValue = provider.orders.isEmpty ? 0.0 : totalValue / provider.orders.length;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('SYSTEM ANALYTICS')),
+      backgroundColor: NexusTheme.slate50,
+      appBar: AppBar(
+        title: const Text('INTELLIGENCE TERMINAL', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1)),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(60),
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Row(
+              children: [
+                _buildTerminalToggle('ORDER FLOW'),
+                _buildTerminalToggle('CATEGORY SPLIT'),
+                _buildTerminalToggle('FLEET INTELLIGENCE'),
+              ],
+            ),
+          ),
+        ),
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildSectionTitle('Sales Revenue Intelligence'),
-            const SizedBox(height: 12),
-            _buildRevenueChart(provider),
-            const SizedBox(height: 24),
-            Row(
-              children: [
-                Expanded(child: _buildMetricCard('Conversion Rate', '72%', Icons.trending_up, Colors.orange)),
-                const SizedBox(width: 12),
-                Expanded(child: _buildMetricCard('Avg Order Value', '₹${(avgValue / 1000).toStringAsFixed(1)}k', Icons.bolt, Colors.blue)),
-              ],
+             const Text(
+              'HOLISTIC OPERATIONAL & CATEGORY PERFORMANCE ANALYTICS',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10, color: NexusTheme.slate400, letterSpacing: 0.5),
             ),
+            const SizedBox(height: 16),
+            
+            // Intelligence Summary Cards
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  _buildMetricCard('MTD QTY FULFILMENT', '0.0%', 'Ordered: 10 units', Colors.blue, NexusTheme.blue900),
+                  _buildMetricCard('ORDER SUCCESS RATE', '0.0%', 'Total MTD: 1 orders', Colors.green, NexusTheme.emerald900),
+                  _buildMetricCard('STOCK SHORTAGE (LOSS)', '₹225', '5.2% leakage avg', Colors.orange, NexusTheme.amber900),
+                  _buildMetricCard('AVG LEAD TIME', '3.4 Days', '-0.8d vs Q1', Colors.grey, NexusTheme.slate900),
+                ],
+              ),
+            ),
+            
             const SizedBox(height: 24),
-            _buildSectionTitle('Supply Chain Efficiency'),
-            const SizedBox(height: 12),
-            _buildEfficiencySummary(),
+            
+            // Supply Velocity Trend
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(32),
+                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 20, offset: const Offset(0, 10))],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('SUPPLY VELOCITY % (MTD TREND)', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14)),
+                  const SizedBox(height: 32),
+                  SizedBox(
+                    height: 200,
+                    child: LineChart(
+                      LineChartData(
+                        gridData: const FlGridData(show: false),
+                        titlesData: const FlTitlesData(show: false),
+                        borderData: FlBorderData(show: false),
+                        lineBarsData: [
+                          LineChartBarData(
+                            spots: [
+                              const FlSpot(0, 85),
+                              const FlSpot(1, 88),
+                              const FlSpot(2, 86),
+                              const FlSpot(3, 89),
+                              const FlSpot(4, 30),
+                            ],
+                            isCurved: true,
+                            color: NexusTheme.indigo500,
+                            barWidth: 4,
+                            dotData: const FlDotData(show: false),
+                            belowBarData: BarAreaData(
+                              show: true, 
+                              color: NexusTheme.indigo500.withValues(alpha: 0.1)
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            
+            const SizedBox(height: 24),
+            
+            // Incentive Card (Integrated)
+            _buildIncentiveCard(),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildSectionTitle(String title) {
-    return Text(
-      title.toUpperCase(),
-      style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 12, letterSpacing: 1.5, color: NexusTheme.slate400),
-    );
-  }
-
-  Widget _buildRevenueChart(NexusProvider provider) {
-    // Get last 5 orders or fewer
-    final lastOrders = provider.orders.take(5).toList().reversed.toList();
-    
-    return Container(
-      height: 250,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 20)],
-      ),
-      child: lastOrders.isEmpty 
-        ? const Center(child: Text('No Data Available'))
-        : BarChart(
-            BarChartData(
-              alignment: BarChartAlignment.spaceAround,
-              maxY: lastOrders.fold(0.0, (max, o) => o.total > max ? o.total : max) * 1.2,
-              barTouchData: BarTouchData(enabled: true),
-              titlesData: FlTitlesData(show: false),
-              gridData: FlGridData(show: false),
-              borderData: FlBorderData(show: false),
-              barGroups: List.generate(lastOrders.length, (i) {
-                return _makeGroupData(i, lastOrders[i].total, i % 2 == 0 ? NexusTheme.emerald500 : NexusTheme.emerald900);
-              }),
-            ),
-          ),
-    );
-  }
-
-  BarChartGroupData _makeGroupData(int x, double y, Color color) {
-    return BarChartGroupData(
-      x: x,
-      barRods: [
-        BarChartRodData(
-          toY: y,
-          color: color,
-          width: 16,
-          borderRadius: BorderRadius.circular(4),
-          backDrawRodData: BackgroundBarChartRodData(show: true, toY: 20, color: color.withValues(alpha: 0.1)),
+  Widget _buildTerminalToggle(String title) {
+    bool isSelected = _selectedTerminal == title;
+    return GestureDetector(
+      onTap: () => setState(() => _selectedTerminal = title),
+      child: Container(
+        margin: const EdgeInsets.only(right: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.white : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: isSelected ? [BoxShadow(color: Colors.black12, blurRadius: 4)] : null,
         ),
-      ],
+        child: Text(
+          title,
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w900,
+            color: isSelected ? NexusTheme.slate900 : NexusTheme.slate400,
+            letterSpacing: 0.5,
+          ),
+        ),
+      ),
     );
   }
 
-  Widget _buildMetricCard(String title, String value, IconData icon, Color color) {
+  Widget _buildMetricCard(String title, String value, String subtitle, Color color, Color accentColor) {
     return Container(
+      width: 180,
+      margin: const EdgeInsets.only(right: 16),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 20)],
+        border: Border(left: BorderSide(color: color, width: 4)),
+        boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10, offset: const Offset(0, 4))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          CircleAvatar(backgroundColor: color.withValues(alpha: 0.1), child: Icon(icon, color: color, size: 20)),
-          const SizedBox(height: 16),
-          Text(value, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: NexusTheme.emerald950)),
-          Text(title, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: NexusTheme.slate400)),
+          Text(title, style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: NexusTheme.slate400, letterSpacing: 0.5)),
+          const SizedBox(height: 12),
+          Text(value, style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: accentColor, letterSpacing: -1)),
+          const SizedBox(height: 4),
+          Text(subtitle, style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: NexusTheme.slate400)),
         ],
       ),
     );
   }
 
-  Widget _buildEfficiencySummary() {
-    return Column(
-      children: [
-        _buildEfficiencyRow('Dispatch Latency', 0.85, Icons.timer),
-        const SizedBox(height: 12),
-        _buildEfficiencyRow('Logistics Accuracy', 0.94, Icons.gps_fixed),
-        const SizedBox(height: 12),
-        _buildEfficiencyRow('Procurement Cycle', 0.72, Icons.refresh),
-      ],
+  Widget _buildIncentiveCard() {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [NexusTheme.slate900, Color(0xFF1E293B)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(32),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(color: NexusTheme.emerald500, borderRadius: BorderRadius.circular(16)),
+                child: const Icon(Icons.calculate, color: Colors.white, size: 28),
+              ),
+              const SizedBox(width: 16),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Animesh Jamuar', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w900)),
+                    Text('FEB\'26 INCENTIVE TERMINAL', style: TextStyle(color: NexusTheme.emerald400, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _buildIncentiveMetric('GROSS MONTHLY SALARY', '₹131,089'),
+              _buildIncentiveMetric('PAYABLE INCENTIVE', '₹32,772.25', isGreen: true),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildEfficiencyRow(String label, double value, IconData icon) {
+  Widget _buildIncentiveMetric(String label, String value, {bool isGreen = false}) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isGreen ? NexusTheme.emerald500.withValues(alpha: 0.2) : Colors.white10,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: NexusTheme.slate200),
+        border: Border.all(color: isGreen ? NexusTheme.emerald500 : Colors.white24, width: 1),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: NexusTheme.emerald900, size: 18),
-          const SizedBox(width: 12),
-          Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-          const Spacer(),
-          Text('${(value * 100).toInt()}%', style: const TextStyle(fontWeight: FontWeight.w900, color: NexusTheme.emerald500)),
+          Text(label, style: const TextStyle(color: Colors.white70, fontSize: 7, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+          const SizedBox(height: 4),
+          Text(value, style: TextStyle(color: isGreen ? NexusTheme.emerald400 : Colors.white, fontSize: 18, fontWeight: FontWeight.w900)),
         ],
       ),
     );

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/nexus_provider.dart';
 import '../utils/theme.dart';
+import '../models/models.dart';
 
 class MasterDataScreen extends StatefulWidget {
   const MasterDataScreen({super.key});
@@ -10,223 +11,162 @@ class MasterDataScreen extends StatefulWidget {
   State<MasterDataScreen> createState() => _MasterDataScreenState();
 }
 
-class _MasterDataScreenState extends State<MasterDataScreen> with SingleTickerProviderStateMixin {
-  late TabController _tabController;
-
-  @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: 3, vsync: this);
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
-  }
+class _MasterDataScreenState extends State<MasterDataScreen> {
+  String _selectedTab = 'USER MASTER';
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: NexusTheme.slate50,
       appBar: AppBar(
-        title: const Text('MASTER DATA'),
-        backgroundColor: NexusTheme.emerald900,
-        bottom: TabBar(
-          controller: _tabController,
-          indicatorColor: Colors.white,
-          tabs: const [
-            Tab(text: 'CUSTOMERS'),
-            Tab(text: 'PRODUCTS'),
-            Tab(text: 'USERS'),
-          ],
+        title: const Text('ENTERPRISE MASTER TERMINAL', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14)),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(60),
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Row(
+              children: [
+                _buildTab('USER MASTER'),
+                _buildTab('CUSTOMER MASTER'),
+                _buildTab('MATERIAL MASTER'),
+                _buildTab('DELIVERY PERSON'),
+                _buildTab('OD MASTER'),
+              ],
+            ),
+          ),
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
-        children: const [
-          _CustomersTab(),
-          _ProductsTab(),
-          _UsersTab(),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(_selectedTab, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: NexusTheme.slate900)),
+                      const Text('ENTERPRISE MASTER DATA MANAGEMENT', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: NexusTheme.slate400, letterSpacing: 1)),
+                    ],
+                  ),
+                ),
+                _buildHeaderButton(Icons.description_outlined, 'TEMPLATE', Colors.white, NexusTheme.slate900),
+                const SizedBox(width: 12),
+                _buildHeaderButton(Icons.add, 'ADD NEW', NexusTheme.slate900, Colors.white),
+              ],
+            ),
+          ),
+          Expanded(
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(32),
+                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 20)],
+              ),
+              child: _buildDataTable(),
+            ),
+          ),
+          const SizedBox(height: 16),
         ],
       ),
     );
   }
-}
 
-class _CustomersTab extends StatelessWidget {
-  const _CustomersTab();
-
-  @override
-  Widget build(BuildContext context) {
-    final provider = Provider.of<NexusProvider>(context);
-
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: provider.customers.length,
-      itemBuilder: (context, index) {
-        final customer = provider.customers[index];
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          child: ListTile(
-            contentPadding: const EdgeInsets.all(12),
-            leading: CircleAvatar(
-              backgroundColor: NexusTheme.emerald500,
-              child: Text(
-                customer.name[0].toUpperCase(),
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-              ),
-            ),
-            title: Text(
-              customer.name,
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(customer.id),
-                Text(customer.address, maxLines: 1, overflow: TextOverflow.ellipsis),
-              ],
-            ),
-            trailing: IconButton(
-              icon: const Icon(Icons.edit, color: NexusTheme.emerald600),
-              onPressed: () {
-                // Edit customer
-              },
-            ),
+  Widget _buildTab(String title) {
+    bool isSelected = _selectedTab == title;
+    return GestureDetector(
+      onTap: () => setState(() => _selectedTab = title),
+      child: Container(
+        margin: const EdgeInsets.only(right: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        decoration: BoxDecoration(
+          color: isSelected ? NexusTheme.indigo600 : Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: isSelected ? NexusTheme.indigo600 : NexusTheme.slate200),
+        ),
+        child: Text(
+          title,
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w900,
+            color: isSelected ? Colors.white : NexusTheme.slate500,
+            letterSpacing: 0.5,
           ),
-        );
-      },
-    );
-  }
-}
-
-class _ProductsTab extends StatelessWidget {
-  const _ProductsTab();
-
-  @override
-  Widget build(BuildContext context) {
-    final provider = Provider.of<NexusProvider>(context);
-
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: provider.products.length,
-      itemBuilder: (context, index) {
-        final product = provider.products[index];
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          child: ListTile(
-            contentPadding: const EdgeInsets.all(12),
-            leading: Container(
-              width: 50,
-              height: 50,
-              decoration: BoxDecoration(
-                color: NexusTheme.blue100,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(Icons.inventory_2, color: NexusTheme.blue600),
-            ),
-            title: Text(
-              product.name,
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            subtitle: Text('SKU: ${product.skuCode}'),
-            trailing: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  '₹${product.price.toStringAsFixed(2)}',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w900,
-                    color: NexusTheme.emerald900,
-                  ),
-                ),
-                Text(
-                  'Stock: ${product.stock}',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: NexusTheme.slate500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _UsersTab extends StatelessWidget {
-  const _UsersTab();
-
-  @override
-  Widget build(BuildContext context) {
-    final provider = Provider.of<NexusProvider>(context);
-
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: provider.users.length,
-      itemBuilder: (context, index) {
-        final user = provider.users[index];
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          child: ListTile(
-            contentPadding: const EdgeInsets.all(12),
-            leading: CircleAvatar(
-              backgroundColor: _getRoleColor(user.role),
-              child: Text(
-                user.name[0].toUpperCase(),
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-              ),
-            ),
-            title: Text(
-              user.name,
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            subtitle: Text(user.id),
-            trailing: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: _getRoleColor(user.role).withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                user.role.toString().split('.').last.toUpperCase(),
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w900,
-                  color: _getRoleColor(user.role),
-                ),
-              ),
-            ),
-          ),
-        );
-      },
+        ),
+      ),
     );
   }
 
-  Color _getRoleColor(dynamic role) {
-    final roleStr = role.toString().split('.').last;
-    switch (roleStr) {
-      case 'admin':
-        return NexusTheme.rose600;
-      case 'sales':
-        return NexusTheme.emerald600;
-      case 'finance':
-      case 'approver':
-        return NexusTheme.amber600;
-      case 'warehouse':
-        return NexusTheme.blue600;
-      case 'logistics':
-        return NexusTheme.purple600;
-      case 'delivery':
-        return NexusTheme.indigo600;
-      default:
-        return NexusTheme.slate600;
+  Widget _buildHeaderButton(IconData icon, String label, Color bgColor, Color textColor) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: NexusTheme.slate200),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 16, color: textColor),
+          const SizedBox(width: 8),
+          Text(label, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: textColor)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDataTable() {
+    final provider = Provider.of<NexusProvider>(context);
+    
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: SingleChildScrollView(
+        child: DataTable(
+          headingRowHeight: 60,
+          dataRowHeight: 70,
+          columns: const [
+            DataColumn(label: Text('NAME', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 11, color: NexusTheme.slate400))),
+            DataColumn(label: Text('EMAIL', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 11, color: NexusTheme.slate400))),
+            DataColumn(label: Text('ROLE', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 11, color: NexusTheme.slate400))),
+            DataColumn(label: Text('APPROVER', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 11, color: NexusTheme.slate400))),
+            DataColumn(label: Text('ACTIONS', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 11, color: NexusTheme.slate400))),
+          ],
+          rows: provider.users.map((user) {
+            return DataRow(cells: [
+              DataCell(Text(user.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13))),
+              DataCell(Text(user.id.toLowerCase(), style: const TextStyle(color: NexusTheme.slate500, fontSize: 13))),
+              DataCell(_buildRoleBadge(user.role)),
+              DataCell(user.role == UserRole.admin 
+                ? const Icon(Icons.check_box, color: Colors.green, size: 20) 
+                : const Text('-', style: TextStyle(color: NexusTheme.slate400))),
+              DataCell(Row(
+                children: [
+                  IconButton(icon: const Icon(Icons.edit_outlined, size: 18), onPressed: () {}),
+                  IconButton(icon: const Icon(Icons.delete_outline, size: 18, color: Colors.redAccent), onPressed: () {}),
+                ],
+              )),
+            ]);
+          }).toList(),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRoleBadge(UserRole role) {
+    Color color;
+    switch (role) {
+      case UserRole.admin: color = Colors.deepPurple; break;
+      case UserRole.sales: color = Colors.indigo; break;
+      case UserRole.delivery: color = Colors.teal; break;
+      default: color = Colors.grey;
     }
+
+    return Text(
+      role.label,
+      style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 12),
+    );
   }
 }
