@@ -1,0 +1,568 @@
+const express = require('express');
+const cors = require('cors');
+const bodyParser = require('body-parser');
+const fs = require('fs');
+const path = require('path');
+require('dotenv').config();
+const mongoose = require('mongoose');
+const multer = require('multer');
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+app.use(cors());
+app.use(bodyParser.json({ limit: '50mb' }));
+app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
+app.use('/uploads', express.static('uploads'));
+
+// Multer configuration for file uploads
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        const uploadDir = 'uploads/pod';
+        if (!fs.existsSync(uploadDir)) {
+            fs.mkdirSync(uploadDir, { recursive: true });
+        }
+        cb(null, uploadDir);
+    },
+    filename: (req, file, cb) => {
+        cb(null, `POD-${Date.now()}-${file.originalname}`);
+    }
+});
+const upload = multer({ storage });
+
+// MongoDB Connection
+let useMongoDB = false;
+if (process.env.MONGODB_URI && !process.env.MONGODB_URI.includes('your_mongodb')) {
+    mongoose.connect(process.env.MONGODB_URI)
+        .then(() => {
+            console.log('✅ Connected to MongoDB Atlas');
+            useMongoDB = true;
+        })
+        .catch(err => {
+            console.error('❌ MongoDB connection error:', err);
+            console.log('⚠️ Falling back to JSON storage');
+        });
+}
+
+// Models
+const User = require('./models/User');
+const Customer = require('./models/Customer');
+const Product = require('./models/Product');
+const Order = require('./models/Order');
+
+// Helper functions
+const getData = (filename) => {
+    const filePath = path.join(__dirname, 'data', `${filename}.json`);
+    if (!fs.existsSync(filePath)) return [];
+    const data = fs.readFileSync(filePath, 'utf8');
+    return JSON.parse(data);
+};
+
+const saveData = (filename, data) => {
+    const filePath = path.join(__dirname, 'data', `${filename}.json`);
+    fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
+};
+
+// ==================== HOME ROUTE ====================
+app.get('/', (req, res) => {
+    res.send(`
+        <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; padding-top: 100px; background-color: #f0fdf4; height: 100vh;">
+            <div style="background: white; padding: 40px; border-radius: 30px; display: inline-block; border: 1px solid #10b981; box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1);">
+                <h1 style="color: #064e3b; margin-bottom: 10px;">🚀 NexusOMS Enterprise API</h1>
+                <p style="color: #059669; font-weight: bold;">System Terminal is ONLINE</p>
+                <div style="margin-top: 20px; text-align: left; font-size: 14px;">
+                    <strong>API Status:</strong> <span style="color: #10b981;">✅ OPERATIONAL</span><br>
+                    <strong>Database:</strong> ${useMongoDB ? '☁️ MongoDB Cloud' : '📁 Local JSON Enterprise'}<br>
+                    <strong>Port:</strong> ${PORT}<br>
+                    <strong>Version:</strong> v2.0.0
+                </div>
+            </div>
+        </div>
+    `);
+});
+
+// ==================== AUTHENTICATION ====================
+app.post('/api/login', async (req, res) => {
+    const { email, password } = req.body;
+    console.log(`🔐 Login attempt: ${email}`);
+
+    try {
+        if (useMongoDB) {
+            const user = await User.findOne({ id: email, password: password });
+            if (user) {
+                console.log(`✅ Login successful: ${email}`);
+                return res.json(user);
+            }
+        }
+
+        const users = getData('users');
+        const user = users.find(u => u.id === email && u.password === password);
+        if (user) {
+            console.log(`✅ Login successful: ${email}`);
+            const { password, ...rest } = user;
+            return res.json(rest);
+        }
+
+        console.log(`❌ Login failed: ${email}`);
+        res.status(401).json({ message: 'Invalid credentials' });
+    } catch (error) {
+        console.error('Login error:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// ==================== USERS ====================
+app.get('/api/users', async (req, res) => {
+    try {
+        if (useMongoDB) {
+            const users = await User.find().select('-password');
+            return res.json(users);
+        }
+        const users = getData('users').map(u => {
+            const { password, ...rest } = u;
+            return rest;
+        });
+        res.json(users);
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching users' });
+    }
+});
+
+app.post('/api/users', async (req, res) => {
+    try {
+        const userData = { ...req.body, status: 'Active' };
+
+        if (useMongoDB) {
+            const newUser = new User(userData);
+            await newUser.save();
+            return res.status(201).json(newUser);
+        }
+
+        const users = getData('users');
+        users.push(userData);
+        saveData('users', users);
+        res.status(201).json(userData);
+    } catch (error) {
+        res.status(500).json({ message: 'Error creating user' });
+    }
+});
+
+app.patch('/api/users/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        if (useMongoDB) {
+            const user = await User.findOneAndUpdate({ id }, req.body, { new: true });
+            if (user) return res.json(user);
+        }
+
+        const users = getData('users');
+        const index = users.findIndex(u => u.id === id);
+        if (index !== -1) {
+            users[index] = { ...users[index], ...req.body };
+            saveData('users', users);
+            return res.json(users[index]);
+        }
+        res.status(404).json({ message: 'User not found' });
+    } catch (error) {
+        res.status(500).json({ message: 'Error updating user' });
+    }
+});
+
+// ==================== CUSTOMERS ====================
+app.get('/api/customers', async (req, res) => {
+    try {
+        if (useMongoDB) return res.json(await Customer.find());
+        res.json(getData('customers'));
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching customers' });
+    }
+});
+
+app.post('/api/customers', async (req, res) => {
+    try {
+        const customerData = {
+            ...req.body,
+            id: req.body.id || `CUST-${Date.now().toString().slice(-6)}`,
+            status: 'Active',
+            createdAt: new Date().toISOString()
+        };
+
+        if (useMongoDB) {
+            const newCustomer = new Customer(customerData);
+            await newCustomer.save();
+            return res.status(201).json(newCustomer);
+        }
+
+        const customers = getData('customers');
+        customers.push(customerData);
+        saveData('customers', customers);
+        res.status(201).json(customerData);
+    } catch (error) {
+        res.status(500).json({ message: 'Error creating customer' });
+    }
+});
+
+app.patch('/api/customers/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        if (useMongoDB) {
+            const customer = await Customer.findOneAndUpdate({ id }, req.body, { new: true });
+            if (customer) return res.json(customer);
+        }
+
+        const customers = getData('customers');
+        const index = customers.findIndex(c => c.id === id);
+        if (index !== -1) {
+            customers[index] = { ...customers[index], ...req.body };
+            saveData('customers', customers);
+            return res.json(customers[index]);
+        }
+        res.status(404).json({ message: 'Customer not found' });
+    } catch (error) {
+        res.status(500).json({ message: 'Error updating customer' });
+    }
+});
+
+// ==================== PRODUCTS ====================
+app.get('/api/products', async (req, res) => {
+    try {
+        if (useMongoDB) return res.json(await Product.find());
+        res.json(getData('products'));
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching products' });
+    }
+});
+
+app.post('/api/products', async (req, res) => {
+    try {
+        const productData = {
+            ...req.body,
+            id: req.body.id || req.body.skuCode || `PROD-${Date.now().toString().slice(-6)}`,
+            createdAt: new Date().toISOString()
+        };
+
+        if (useMongoDB) {
+            const newProduct = new Product(productData);
+            await newProduct.save();
+            return res.status(201).json(newProduct);
+        }
+
+        const products = getData('products');
+        products.push(productData);
+        saveData('products', products);
+        res.status(201).json(productData);
+    } catch (error) {
+        res.status(500).json({ message: 'Error creating product' });
+    }
+});
+
+app.patch('/api/products/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        if (useMongoDB) {
+            const product = await Product.findOneAndUpdate({ id }, req.body, { new: true });
+            if (product) return res.json(product);
+        }
+
+        const products = getData('products');
+        const index = products.findIndex(p => p.id === id || p.skuCode === id);
+        if (index !== -1) {
+            products[index] = { ...products[index], ...req.body };
+            saveData('products', products);
+            return res.json(products[index]);
+        }
+        res.status(404).json({ message: 'Product not found' });
+    } catch (error) {
+        res.status(500).json({ message: 'Error updating product' });
+    }
+});
+
+// ==================== ORDERS ====================
+app.get('/api/orders', async (req, res) => {
+    try {
+        const { status, salespersonId } = req.query;
+
+        if (useMongoDB) {
+            let query = {};
+            if (status) query.status = status;
+            if (salespersonId) query.salespersonId = salespersonId;
+
+            const orders = await Order.find(query).sort({ createdAt: -1 });
+            return res.json(orders);
+        }
+
+        let orders = getData('orders');
+        if (status) orders = orders.filter(o => o.status === status);
+        if (salespersonId) orders = orders.filter(o => o.salespersonId === salespersonId);
+
+        res.json(orders);
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching orders' });
+    }
+});
+
+app.get('/api/orders/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        if (useMongoDB) {
+            const order = await Order.findOne({ id });
+            if (order) return res.json(order);
+        }
+
+        const orders = getData('orders');
+        const order = orders.find(o => o.id === id);
+        if (order) return res.json(order);
+
+        res.status(404).json({ message: 'Order not found' });
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching order' });
+    }
+});
+
+app.post('/api/orders', async (req, res) => {
+    try {
+        const orderData = {
+            ...req.body,
+            id: req.body.id || (req.body.isSTN ? `STN-${Date.now().toString().slice(-6)}` : `ORD-${Date.now().toString().slice(-6)}`),
+            createdAt: req.body.createdAt || new Date().toISOString(),
+            statusHistory: req.body.statusHistory || [{
+                status: req.body.status || 'Pending',
+                timestamp: new Date().toISOString()
+            }]
+        };
+
+        if (useMongoDB) {
+            const newOrder = new Order(orderData);
+            await newOrder.save();
+            console.log(`✅ Order created: ${newOrder.id}`);
+            return res.status(201).json(newOrder);
+        }
+
+        const orders = getData('orders');
+        orders.unshift(orderData);
+        saveData('orders', orders);
+        console.log(`✅ Order created: ${orderData.id}`);
+        res.status(201).json(orderData);
+    } catch (error) {
+        console.error('Order creation error:', error);
+        res.status(500).json({ message: 'Error creating order' });
+    }
+});
+
+app.patch('/api/orders/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const updateData = { ...req.body };
+
+        // Add status history if status is being updated
+        if (updateData.status) {
+            const timestamp = new Date().toISOString();
+            if (!updateData.statusHistory) {
+                updateData.statusHistory = [];
+            }
+            updateData.statusHistory.push({ status: updateData.status, timestamp });
+        }
+
+        if (useMongoDB) {
+            const order = await Order.findOneAndUpdate({ id }, updateData, { new: true });
+            if (order) {
+                console.log(`✅ Order updated: ${id}`);
+                return res.json(order);
+            }
+        }
+
+        const orders = getData('orders');
+        const index = orders.findIndex(o => o.id === id);
+        if (index !== -1) {
+            orders[index] = { ...orders[index], ...updateData };
+            saveData('orders', orders);
+            console.log(`✅ Order updated: ${id}`);
+            return res.json(orders[index]);
+        }
+
+        res.status(404).json({ message: 'Order not found' });
+    } catch (error) {
+        console.error('Order update error:', error);
+        res.status(500).json({ message: 'Error updating order' });
+    }
+});
+
+app.delete('/api/orders/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        if (useMongoDB) {
+            const order = await Order.findOneAndDelete({ id });
+            if (order) return res.json({ message: 'Order deleted' });
+        }
+
+        const orders = getData('orders');
+        const filtered = orders.filter(o => o.id !== id);
+        if (filtered.length < orders.length) {
+            saveData('orders', filtered);
+            return res.json({ message: 'Order deleted' });
+        }
+
+        res.status(404).json({ message: 'Order not found' });
+    } catch (error) {
+        res.status(500).json({ message: 'Error deleting order' });
+    }
+});
+
+// ==================== BULK OPERATIONS ====================
+app.post('/api/orders/bulk-update', async (req, res) => {
+    try {
+        const { orderIds, updates } = req.body;
+
+        if (useMongoDB) {
+            await Order.updateMany({ id: { $in: orderIds } }, updates);
+            const updatedOrders = await Order.find({ id: { $in: orderIds } });
+            return res.json(updatedOrders);
+        }
+
+        const orders = getData('orders');
+        const updatedOrders = orders.map(o => {
+            if (orderIds.includes(o.id)) {
+                return { ...o, ...updates };
+            }
+            return o;
+        });
+        saveData('orders', updatedOrders);
+        res.json(updatedOrders.filter(o => orderIds.includes(o.id)));
+    } catch (error) {
+        res.status(500).json({ message: 'Error in bulk update' });
+    }
+});
+
+// ==================== FILE UPLOAD (POD) ====================
+app.post('/api/upload/pod', upload.single('pod'), (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ message: 'No file uploaded' });
+        }
+        const fileUrl = `/uploads/pod/${req.file.filename}`;
+        res.json({ url: fileUrl, filename: req.file.filename });
+    } catch (error) {
+        res.status(500).json({ message: 'Error uploading file' });
+    }
+});
+
+// ==================== ANALYTICS ====================
+app.get('/api/analytics/dashboard', async (req, res) => {
+    try {
+        const orders = useMongoDB ? await Order.find() : getData('orders');
+
+        const totalOrders = orders.length;
+        const totalValue = orders.reduce((sum, o) => sum + (o.total || 0), 0);
+        const pendingOrders = orders.filter(o => o.status === 'Pending').length;
+        const deliveredOrders = orders.filter(o => o.status === 'Delivered').length;
+
+        res.json({
+            totalOrders,
+            totalValue,
+            pendingOrders,
+            deliveredOrders,
+            averageOrderValue: totalOrders > 0 ? totalValue / totalOrders : 0
+        });
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching analytics' });
+    }
+});
+
+app.get('/api/analytics/sales', async (req, res) => {
+    try {
+        const { salespersonId } = req.query;
+        const orders = useMongoDB ? await Order.find({ salespersonId }) : getData('orders').filter(o => o.salespersonId === salespersonId);
+
+        const totalSales = orders.reduce((sum, o) => sum + (o.total || 0), 0);
+        const totalOrders = orders.length;
+
+        res.json({
+            salespersonId,
+            totalSales,
+            totalOrders,
+            averageOrderValue: totalOrders > 0 ? totalSales / totalOrders : 0
+        });
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching sales analytics' });
+    }
+});
+
+// ==================== TALLY EXPORT ====================
+app.get('/api/tally/export/:orderId', async (req, res) => {
+    try {
+        const { orderId } = req.params;
+        const order = useMongoDB ? await Order.findOne({ id: orderId }) : getData('orders').find(o => o.id === orderId);
+
+        if (!order) {
+            return res.status(404).json({ message: 'Order not found' });
+        }
+
+        const tallyXml = `<ENVELOPE>
+ <HEADER>
+  <TALLYREQUEST>Import Data</TALLYREQUEST>
+ </HEADER>
+ <BODY>
+  <IMPORTDATA>
+   <REQUESTDESC>
+    <REPORTNAME>Vouchers</REPORTNAME>
+   </REQUESTDESC>
+   <REQUESTDATA>
+    <TALLYMESSAGE xmlns:UDF="TallyUDF">
+     <VOUCHER VCHTYPE="Sales" ACTION="Create">
+      <DATE>${order.createdAt.split('T')[0].replace(/-/g, '')}</DATE>
+      <VOUCHERNUMBER>${order.id}</VOUCHERNUMBER>
+      <PARTYLEDGERNAME>${order.customerName}</PARTYLEDGERNAME>
+      <EFFECTIVEDATE>${order.createdAt.split('T')[0].replace(/-/g, '')}</EFFECTIVEDATE>
+      <ALLLEDGERENTRIES.LIST>
+       <LEDGERNAME>${order.customerName}</LEDGERNAME>
+       <ISDEEMEDPOSITIVE>Yes</ISDEEMEDPOSITIVE>
+       <AMOUNT>-${order.total}</AMOUNT>
+      </ALLLEDGERENTRIES.LIST>
+      <ALLLEDGERENTRIES.LIST>
+       <LEDGERNAME>Sales Account</LEDGERNAME>
+       <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
+       <AMOUNT>${order.total}</AMOUNT>
+      </ALLLEDGERENTRIES.LIST>
+     </VOUCHER>
+    </TALLYMESSAGE>
+   </REQUESTDATA>
+  </IMPORTDATA>
+ </BODY>
+</ENVELOPE>`;
+
+        res.set('Content-Type', 'application/xml');
+        res.send(tallyXml);
+    } catch (error) {
+        res.status(500).json({ message: 'Error generating Tally XML' });
+    }
+});
+
+// ==================== ERROR HANDLING ====================
+app.use((req, res) => {
+    res.status(404).json({ message: 'Endpoint not found' });
+});
+
+app.use((err, req, res, next) => {
+    console.error(err.stack);
+    res.status(500).json({ message: 'Internal server error' });
+});
+
+// ==================== START SERVER ====================
+app.listen(PORT, () => {
+    console.log(`
+╔════════════════════════════════════════════════════════╗
+║                                                        ║
+║          🚀 NexusOMS Enterprise API v2.0.0            ║
+║                                                        ║
+║  Status: ✅ ONLINE                                     ║
+║  Port: ${PORT}                                         ║
+║  Database: ${useMongoDB ? '☁️  MongoDB Atlas' : '📁 JSON Storage'}                          ║
+║                                                        ║
+╚════════════════════════════════════════════════════════╝
+    `);
+});

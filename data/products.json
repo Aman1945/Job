@@ -1,0 +1,42 @@
+[
+    {
+        "id": "2004643",
+        "skuCode": "2004643",
+        "name": "BREADED FISH FINGERS 200G",
+        "productShortName": "BREADED FISH FINGERS 200G",
+        "distributionChannel": "RETAIL/HD",
+        "specie": "BREADED",
+        "productWeight": "0.2",
+        "productPacking": "PKTS",
+        "mrp": 220,
+        "price": 220,
+        "baseRate": 180,
+        "gst": 5,
+        "hsnCode": "16042000",
+        "countryOfOrigin": "INDIA",
+        "category": "Frozen Foods",
+        "unit": "PCS",
+        "stock": 1500,
+        "barcode": "890002004643"
+    },
+    {
+        "id": "2006332",
+        "skuCode": "2006332",
+        "name": "ORANGE TOBIKO JAPAN 30 GM",
+        "productShortName": "ORANGE TOBIKO JAPAN 30 GM",
+        "distributionChannel": "RETAIL/HD",
+        "specie": "FISH EGG",
+        "productWeight": "0.03",
+        "productPacking": "PKTS",
+        "mrp": 550,
+        "price": 550,
+        "baseRate": 480,
+        "gst": 5,
+        "hsnCode": "16043200",
+        "countryOfOrigin": "JAPAN",
+        "category": "Seafood Specialties",
+        "unit": "PCS",
+        "stock": 300,
+        "barcode": "890002006332"
+    }
+]
