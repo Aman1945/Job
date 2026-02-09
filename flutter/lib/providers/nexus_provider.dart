@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/models.dart';
 
 class NexusProvider with ChangeNotifier {
@@ -28,6 +29,14 @@ class NexusProvider with ChangeNotifier {
   Future<void> _initialize() async {
     _isLoading = true;
     notifyListeners();
+
+    // Check for saved user session
+    final prefs = await SharedPreferences.getInstance();
+    final String? savedUser = prefs.getString('user_session');
+    if (savedUser != null) {
+      _currentUser = User.fromJson(jsonDecode(savedUser));
+    }
+
     await Future.wait([
       fetchUsers(),
       fetchCustomers(),
@@ -53,6 +62,10 @@ class NexusProvider with ChangeNotifier {
       if (response.statusCode == 200) {
         final userData = jsonDecode(response.body);
         _currentUser = User.fromJson(userData);
+        
+        // Save session
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('user_session', jsonEncode(userData));
       } else {
         // Fallback for demo if backend is not running or credentials fail
         _currentUser = User(id: email, name: email.split('@')[0].toUpperCase(), role: UserRole.admin);
@@ -64,8 +77,10 @@ class NexusProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  void logout() {
+  void logout() async {
     _currentUser = null;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('user_session');
     notifyListeners();
   }
 
