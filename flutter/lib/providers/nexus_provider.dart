@@ -221,12 +221,12 @@ class NexusProvider with ChangeNotifier {
     return false;
   }
 
-  Future<bool> createCustomer(String name, String address) async {
+  Future<bool> createCustomer(Map<String, dynamic> customerData) async {
     try {
       final response = await http.post(
         Uri.parse('$_baseUrl/customers'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'name': name, 'address': address}),
+        body: jsonEncode(customerData),
       );
 
       if (response.statusCode == 201) {
@@ -234,7 +234,10 @@ class NexusProvider with ChangeNotifier {
         return true;
       }
     } catch (e) {
-      final newCustomer = Customer(id: 'CUST-${_customers.length + 1}', name: name, address: address);
+      final newCustomer = Customer.fromJson({
+        ...customerData,
+        'id': customerData['id'] ?? 'CUST-${_customers.length + 1}',
+      });
       _customers.insert(0, newCustomer);
       notifyListeners();
       return true;
