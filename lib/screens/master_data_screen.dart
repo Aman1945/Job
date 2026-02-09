@@ -126,7 +126,8 @@ class _MasterDataScreenState extends State<MasterDataScreen> {
       child: SingleChildScrollView(
         child: DataTable(
           headingRowHeight: 60,
-          dataRowHeight: 70,
+          dataRowMinHeight: 70,
+          dataRowMaxHeight: 70,
           columns: const [
             DataColumn(label: Text('NAME', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 11, color: NexusTheme.slate400))),
             DataColumn(label: Text('EMAIL', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 11, color: NexusTheme.slate400))),

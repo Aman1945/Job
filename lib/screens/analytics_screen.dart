@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
-import '../providers/nexus_provider.dart';
 import '../utils/theme.dart';
 
 class AnalyticsScreen extends StatefulWidget {
@@ -16,7 +14,6 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final provider = Provider.of<NexusProvider>(context);
 
     return Scaffold(
       backgroundColor: NexusTheme.slate50,

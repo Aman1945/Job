@@ -134,7 +134,8 @@ class _ProcurementScreenState extends State<ProcurementScreen> {
       child: SingleChildScrollView(
         child: DataTable(
           headingRowHeight: 60,
-          dataRowHeight: 100,
+          dataRowMinHeight: 100,
+          dataRowMaxHeight: 100,
           columns: const [
             DataColumn(label: Text('MISSION REF', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 10, color: NexusTheme.slate400))),
             DataColumn(label: Text('VENDOR / SUPPLIER', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 10, color: NexusTheme.slate400))),

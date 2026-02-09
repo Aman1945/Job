@@ -128,12 +128,19 @@ class NexusProvider with ChangeNotifier {
   Future<bool> updateOrderStatus(String orderId, String newStatus) async {
     // Decision Engine Logic
     String effectiveStatus = newStatus;
-    if (newStatus == 'Credit Approved') effectiveStatus = 'Pending WH Selection';
-    else if (newStatus == 'Warehouse Assigned') effectiveStatus = 'Pending Packing';
-    else if (newStatus == 'Packed') effectiveStatus = 'Cost Added';
-    else if (newStatus == 'Ready for Invoice') effectiveStatus = 'Pending Invoicing';
-    else if (newStatus == 'Invoiced') effectiveStatus = 'Ready for Dispatch';
-    else if (newStatus == 'Picked Up') effectiveStatus = 'Out for Delivery';
+    if (newStatus == 'Credit Approved') {
+      effectiveStatus = 'Pending WH Selection';
+    } else if (newStatus == 'Warehouse Assigned') {
+      effectiveStatus = 'Pending Packing';
+    } else if (newStatus == 'Packed') {
+      effectiveStatus = 'Cost Added';
+    } else if (newStatus == 'Ready for Invoice') {
+      effectiveStatus = 'Pending Invoicing';
+    } else if (newStatus == 'Invoiced') {
+      effectiveStatus = 'Ready for Dispatch';
+    } else if (newStatus == 'Picked Up') {
+      effectiveStatus = 'Out for Delivery';
+    }
 
     try {
       final response = await http.patch(

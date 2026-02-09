@@ -17,9 +17,8 @@ class _LoginScreenState extends State<LoginScreen> {
   void _handleLogin() async {
     final provider = Provider.of<NexusProvider>(context, listen: false);
     await provider.login(_emailController.text, _passwordController.text);
-    if (provider.currentUser != null) {
-      // Navigation is handled in main.dart check
-    } else {
+    if (provider.currentUser == null) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Invalid Email or Password')),
       );

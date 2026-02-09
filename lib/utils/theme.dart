@@ -54,11 +54,6 @@ class NexusTheme {
   static const Color amber600 = Color(0xFFD97706);
   static const Color amber900 = Color(0xFF78350F);
 
-  // Indigo Palette
-  static const Color indigo500 = Color(0xFF6366F1);
-  static const Color indigo600 = Color(0xFF4F46E5);
-  static const Color indigo900 = Color(0xFF312E81);
-
   static ThemeData get lightTheme {
     return ThemeData(
       useMaterial3: true,
