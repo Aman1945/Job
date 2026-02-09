@@ -1,0 +1,129 @@
+[
+    {
+        "id": "ORD-1001",
+        "customerId": "190190",
+        "customerName": "AQUAMARINE SPECIALITY SEAFOOD",
+        "items": [
+            {
+                "productId": "2004643",
+                "productName": "BREADED FISH FINGERS 200G",
+                "skuCode": "2004643",
+                "quantity": 10,
+                "price": 220
+            }
+        ],
+        "status": "Pending Credit Approval",
+        "total": 2200,
+        "salespersonId": "sandeep.chavan@bigsams.in",
+        "createdAt": "2026-02-09T10:00:00Z"
+    },
+    {
+        "id": "ORD-1002",
+        "customerId": "190068",
+        "customerName": "Harbour Exports",
+        "items": [
+            {
+                "productId": "2006332",
+                "productName": "ORANGE TOBIKO JAPAN 30 GM",
+                "skuCode": "2006332",
+                "quantity": 5,
+                "price": 550
+            }
+        ],
+        "status": "Pending WH Selection",
+        "total": 2750,
+        "salespersonId": "sandeep.chavan@bigsams.in",
+        "createdAt": "2026-02-09T11:30:00Z"
+    },
+    {
+        "id": "ORD-1003",
+        "customerId": "190081",
+        "customerName": "Cash Sales-Institution",
+        "items": [
+            {
+                "productId": "2004643",
+                "productName": "BREADED FISH FINGERS 200G",
+                "skuCode": "2004643",
+                "quantity": 20,
+                "price": 220
+            }
+        ],
+        "status": "Pending Packing",
+        "total": 4400,
+        "salespersonId": "rakesh.khare@bigsams.in",
+        "createdAt": "2026-02-09T14:00:00Z"
+    },
+    {
+        "id": "ORD-1004",
+        "customerId": "190190",
+        "customerName": "AQUAMARINE SPECIALITY SEAFOOD",
+        "items": [
+            {
+                "productId": "2006332",
+                "productName": "ORANGE TOBIKO JAPAN 30 GM",
+                "skuCode": "2006332",
+                "quantity": 2,
+                "price": 550
+            }
+        ],
+        "status": "Cost Added",
+        "total": 1100,
+        "salespersonId": "mithun.muddappa@bigsams.in",
+        "createdAt": "2026-02-09T16:00:00Z"
+    },
+    {
+        "id": "ORD-1005",
+        "customerId": "190068",
+        "customerName": "Harbour Exports",
+        "items": [
+            {
+                "productId": "2004643",
+                "productName": "BREADED FISH FINGERS 200G",
+                "skuCode": "2004643",
+                "quantity": 50,
+                "price": 220
+            }
+        ],
+        "status": "Invoiced",
+        "total": 11000,
+        "salespersonId": "sandeep.chavan@bigsams.in",
+        "createdAt": "2026-02-09T17:00:00Z"
+    },
+    {
+        "id": "ORD-1006",
+        "customerId": "190081",
+        "customerName": "Cash Sales-Institution",
+        "items": [
+            {
+                "productId": "2006332",
+                "productName": "ORANGE TOBIKO JAPAN 30 GM",
+                "skuCode": "2006332",
+                "quantity": 10,
+                "price": 550
+            }
+        ],
+        "status": "Out for Delivery",
+        "total": 5500,
+        "salespersonId": "rakesh.khare@bigsams.in",
+        "createdAt": "2026-02-10T08:00:00Z"
+    },
+    {
+        "id": "STN-2001",
+        "customerId": "WH-DELHI",
+        "customerName": "Delhi Hub Depot",
+        "items": [
+            {
+                "productId": "2004643",
+                "productName": "BREADED FISH FINGERS 200G",
+                "skuCode": "2004643",
+                "quantity": 100,
+                "price": 180
+            }
+        ],
+        "status": "In Transit",
+        "total": 18000,
+        "isSTN": true,
+        "salespersonId": "logistics@bigsams.in",
+        "createdAt": "2026-02-10T09:00:00Z"
+    }
+]
