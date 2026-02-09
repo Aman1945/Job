@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/nexus_provider.dart';
 import '../utils/theme.dart';
 import '../models/models.dart';
+import '../widgets/nexus_components.dart';
 
 class MasterDataScreen extends StatefulWidget {
   const MasterDataScreen({super.key});
@@ -19,7 +20,7 @@ class _MasterDataScreenState extends State<MasterDataScreen> {
     return Scaffold(
       backgroundColor: NexusTheme.slate50,
       appBar: AppBar(
-        title: const Text('ENTERPRISE MASTER TERMINAL', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14)),
+        title: const Text('ENTERPRISE MASTER TERMINAL', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13)),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(60),
           child: SingleChildScrollView(
@@ -48,24 +49,20 @@ class _MasterDataScreenState extends State<MasterDataScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(_selectedTab, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: NexusTheme.slate900)),
-                      const Text('ENTERPRISE MASTER DATA MANAGEMENT', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: NexusTheme.slate400, letterSpacing: 1)),
+                      const Text('MASTER DATA MANAGEMENT', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: NexusTheme.slate400, letterSpacing: 1)),
                     ],
                   ),
                 ),
-                _buildHeaderButton(Icons.description_outlined, 'TEMPLATE', Colors.white, NexusTheme.slate900),
+                NexusComponents.headerButton(icon: Icons.description_outlined, label: 'TEMPLATE', onTap: () {}),
                 const SizedBox(width: 12),
-                _buildHeaderButton(Icons.add, 'ADD NEW', NexusTheme.slate900, Colors.white),
+                NexusComponents.headerButton(icon: Icons.add, label: 'ADD NEW', onTap: () {}, bgColor: NexusTheme.slate900, textColor: Colors.white),
               ],
             ),
           ),
           Expanded(
             child: Container(
               margin: const EdgeInsets.symmetric(horizontal: 16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(32),
-                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 20)],
-              ),
+              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(32), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 20)]),
               child: _buildDataTable(),
             ),
           ),
@@ -89,31 +86,8 @@ class _MasterDataScreenState extends State<MasterDataScreen> {
         ),
         child: Text(
           title,
-          style: TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.w900,
-            color: isSelected ? Colors.white : NexusTheme.slate500,
-            letterSpacing: 0.5,
-          ),
+          style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: isSelected ? Colors.white : NexusTheme.slate500, letterSpacing: 0.5),
         ),
-      ),
-    );
-  }
-
-  Widget _buildHeaderButton(IconData icon, String label, Color bgColor, Color textColor) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: NexusTheme.slate200),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, size: 16, color: textColor),
-          const SizedBox(width: 8),
-          Text(label, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: textColor)),
-        ],
       ),
     );
   }
@@ -139,7 +113,7 @@ class _MasterDataScreenState extends State<MasterDataScreen> {
             return DataRow(cells: [
               DataCell(Text(user.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13))),
               DataCell(Text(user.id.toLowerCase(), style: const TextStyle(color: NexusTheme.slate500, fontSize: 13))),
-              DataCell(_buildRoleBadge(user.role)),
+              DataCell(Text(user.role.label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
               DataCell(user.role == UserRole.admin 
                 ? const Icon(Icons.check_box, color: Colors.green, size: 20) 
                 : const Text('-', style: TextStyle(color: NexusTheme.slate400))),
@@ -153,21 +127,6 @@ class _MasterDataScreenState extends State<MasterDataScreen> {
           }).toList(),
         ),
       ),
-    );
-  }
-
-  Widget _buildRoleBadge(UserRole role) {
-    Color color;
-    switch (role) {
-      case UserRole.admin: color = Colors.deepPurple; break;
-      case UserRole.sales: color = Colors.indigo; break;
-      case UserRole.delivery: color = Colors.teal; break;
-      default: color = Colors.grey;
-    }
-
-    return Text(
-      role.label,
-      style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 12),
     );
   }
 }
