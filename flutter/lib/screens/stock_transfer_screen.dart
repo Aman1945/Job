@@ -218,7 +218,14 @@ class _StockTransferScreenState extends State<StockTransferScreen> {
                onChanged: onChanged,
                buttonStyleData: ButtonStyleData(height: 64, padding: const EdgeInsets.symmetric(horizontal: 20)),
                iconStyleData: IconStyleData(icon: Icon(icon, color: NexusTheme.slate300, size: 24)),
-               dropdownStyleData: DropdownStyleData(borderRadius: BorderRadius.circular(20)),
+            dropdownStyleData: DropdownStyleData(
+              maxHeight: 300,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(20),
+                color: Colors.white,
+              ),
+              offset: const Offset(0, -4),
+            ),
              ),
            ),
          ),
