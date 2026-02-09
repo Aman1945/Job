@@ -2,187 +2,152 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/nexus_provider.dart';
 import '../utils/theme.dart';
-import '../models/models.dart';
+import '../widgets/nexus_components.dart';
+import 'order_details_screen.dart';
+import 'package:intl/intl.dart';
 
-class OrderArchiveScreen extends StatelessWidget {
+class OrderArchiveScreen extends StatefulWidget {
   const OrderArchiveScreen({super.key});
 
-  void _showTallyPreview(BuildContext context, Order order) {
-    // This is the "Trust-Builder" logic. 
-    // It generates real Tally XML structure.
-    final String tallyXml = '''
-<ENVELOPE>
- <HEADER>
-  <TALLYREQUEST>Import Data</TALLYREQUEST>
- </HEADER>
- <BODY>
-  <IMPORTDATA>
-   <REQUESTDESC>
-    <REPORTNAME>Vouchers</REPORTNAME>
-   </REQUESTDESC>
-   <REQUESTDATA>
-    <TALLYMESSAGE xmlns:UDF="TallyUDF">
-     <VOUCHER VCHTYPE="Sales" ACTION="Create">
-      <DATE>${order.createdAt.toString().split(' ')[0].replaceAll('-', '')}</DATE>
-      <VOUCHERNUMBER>${order.id}</VOUCHERNUMBER>
-      <PARTYLEDGERNAME>${order.customerName}</PARTYLEDGERNAME>
-      <EFFECTIVEDATE>${order.createdAt.toString().split(' ')[0].replaceAll('-', '')}</EFFECTIVEDATE>
-      <ALLLEDGERENTRIES.LIST>
-       <LEDGERNAME>${order.customerName}</LEDGERNAME>
-       <ISDEEMEDPOSITIVE>Yes</ISDEEMEDPOSITIVE>
-       <AMOUNT>-${order.total}</AMOUNT>
-      </ALLLEDGERENTRIES.LIST>
-      <ALLLEDGERENTRIES.LIST>
-       <LEDGERNAME>Sales Account</LEDGERNAME>
-       <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
-       <AMOUNT>${order.total}</AMOUNT>
-      </ALLLEDGERENTRIES.LIST>
-     </VOUCHER>
-    </TALLYMESSAGE>
-   </REQUESTDATA>
-  </IMPORTDATA>
- </BODY>
-</ENVELOPE>''';
+  @override
+  State<OrderArchiveScreen> createState() => _OrderArchiveScreenState();
+}
 
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: NexusTheme.emerald950,
-        title: const Text('TALLY XML GENERATED', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        content: SingleChildScrollView(
-          child: Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(color: Colors.black38, borderRadius: BorderRadius.circular(8)),
-            child: Text(
-              tallyXml,
-              style: const TextStyle(color: NexusTheme.emerald400, fontSize: 10, fontFamily: 'monospace'),
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('CLOSE', style: TextStyle(color: Colors.white60)),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Sent to Tally Bridge successfully!')));
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: NexusTheme.emerald500),
-            child: const Text('SYNC NOW'),
-          ),
-        ],
-      ),
-    );
-  }
+class _OrderArchiveScreenState extends State<OrderArchiveScreen> {
+  String searchQuery = '';
 
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<NexusProvider>(context);
+    final filteredOrders = provider.orders.where((o) {
+      final query = searchQuery.toLowerCase();
+      return o.id.toLowerCase().contains(query) || 
+             o.customerName.toLowerCase().contains(query);
+    }).toList();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('ORDER ARCHIVE')),
-      body: provider.orders.isEmpty
-          ? const Center(child: Text('No orders found in archive.'))
-          : ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: provider.orders.length,
-              itemBuilder: (context, index) {
-                final order = provider.orders[index];
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        title: const Text('ORDERS MASTER ARCHIVE', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13)),
+        backgroundColor: Colors.white,
+        elevation: 0,
+      ),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header Section
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Orders Master Archive', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: Color(0xFF1E293B))),
+                    Text('Trace statuses, invoices, and delivery proof snapshots', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: NexusTheme.slate400)),
+                  ],
+                ),
+                // Search Bar
+                Container(
+                  width: 300,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: NexusTheme.slate200),
+                  ),
+                  child: TextField(
+                    onChanged: (val) => setState(() => searchQuery = val),
+                    decoration: const InputDecoration(
+                      hintText: 'Search Reference, Client, or Invoice...',
+                      hintStyle: TextStyle(fontSize: 12, color: NexusTheme.slate400),
+                      prefixIcon: Icon(Icons.search, size: 18, color: NexusTheme.slate400),
+                      border: InputBorder.none,
+                      contentPadding: EdgeInsets.symmetric(vertical: 14),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Data Table Section
+          Expanded(
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 24),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(32),
+                border: Border.all(color: NexusTheme.slate200),
+                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 20)],
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: SingleChildScrollView(
+                  child: DataTable(
+                    headingRowHeight: 60,
+                    dataRowMinHeight: 80,
+                    dataRowMaxHeight: 80,
+                    horizontalMargin: 24,
+                    columnSpacing: 40,
+                    columns: const [
+                      DataColumn(label: Text('MISSION REF', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 10, color: NexusTheme.slate400))),
+                      DataColumn(label: Text('CUSTOMER', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 10, color: NexusTheme.slate400))),
+                      DataColumn(label: Text('STATUS', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 10, color: NexusTheme.slate400))),
+                      DataColumn(label: Text('INVOICE COPY', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 10, color: NexusTheme.slate400))),
+                      DataColumn(label: Text('ACK. COPY (POD)', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 10, color: NexusTheme.slate400))),
+                      DataColumn(label: Text('VALUE', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 10, color: NexusTheme.slate400))),
+                    ],
+                    rows: filteredOrders.map((order) {
+                      return DataRow(
+                        cells: [
+                          DataCell(
+                            InkWell(
+                              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => OrderDetailsScreen(order: order))),
                               child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(
-                                    order.id, 
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w900, 
-                                      fontSize: 12, 
-                                      color: NexusTheme.slate400
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    order.customerName, 
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold, 
-                                      fontSize: 16
-                                    ),
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
+                                  Text(order.id, style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF059669), fontSize: 12)),
+                                  Text(DateFormat('dd/MM/yyyy').format(order.createdAt), style: const TextStyle(color: NexusTheme.slate400, fontSize: 10)),
                                 ],
                               ),
                             ),
-                            const SizedBox(width: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: NexusTheme.emerald500.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Text(
-                                order.status.toUpperCase(),
-                                style: const TextStyle(
-                                  color: NexusTheme.emerald900, 
-                                  fontWeight: FontWeight.w900, 
-                                  fontSize: 10
-                                ),
-                              ),
+                          ),
+                          DataCell(Text(order.customerName, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 12))),
+                          DataCell(NexusComponents.statusBadge(order.status)),
+                          DataCell(Text(
+                            order.status == 'Invoiced' || order.status == 'Delivered' ? 'VIEW INVOICE' : 'PENDING',
+                            style: TextStyle(
+                              fontSize: 10, 
+                              fontWeight: FontWeight.w900, 
+                              fontStyle: FontStyle.italic,
+                              color: order.status == 'Invoiced' || order.status == 'Delivered' ? NexusTheme.indigo600 : NexusTheme.slate200
                             ),
-                          ],
-                        ),
-                        const Divider(height: 24),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Expanded(
-                              child: Text(
-                                'TOTAL: ₹${order.total.toStringAsFixed(2)}',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w900, 
-                                  fontSize: 18, 
-                                  color: NexusTheme.emerald900
-                                ),
-                              ),
+                          )),
+                          DataCell(Text(
+                            order.status == 'Delivered' ? 'VIEW PROOF' : 'NO PROOF',
+                            style: TextStyle(
+                              fontSize: 10, 
+                              fontWeight: FontWeight.w900, 
+                              fontStyle: FontStyle.italic,
+                              color: order.status == 'Delivered' ? NexusTheme.indigo600 : NexusTheme.slate200
                             ),
-                            const SizedBox(width: 8),
-                            ElevatedButton.icon(
-                              onPressed: () => _showTallyPreview(context, order),
-                              icon: const Icon(Icons.sync, size: 16),
-                              label: const Text('TALLY'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: NexusTheme.emerald900,
-                                foregroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12)
-                                ),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12, 
-                                  vertical: 8
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
+                          )),
+                          DataCell(Text('₹${NumberFormat('#,##,###').format(order.total)}', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13))),
+                        ],
+                      );
+                    }).toList(),
                   ),
-                );
-              },
+                ),
+              ),
             ),
+          ),
+          const SizedBox(height: 24),
+        ],
+      ),
     );
   }
 }

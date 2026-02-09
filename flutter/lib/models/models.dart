@@ -131,6 +131,9 @@ class Order {
   final String? salespersonId;
   final String? deliveryAddress;
   final bool? isSTN;
+  final String? partnerType;
+  final String? intelligenceInsight;
+  final List<Map<String, dynamic>>? statusHistory;
 
   Order({
     required this.id,
@@ -143,6 +146,9 @@ class Order {
     this.salespersonId,
     this.deliveryAddress,
     this.isSTN,
+    this.partnerType,
+    this.intelligenceInsight,
+    this.statusHistory,
   });
 
   factory Order.fromJson(Map<String, dynamic> json) {
@@ -168,6 +174,9 @@ class Order {
       salespersonId: json['salespersonId'],
       deliveryAddress: json['deliveryAddress'] ?? json['customerAddress'] ?? 'Address not provided',
       isSTN: json['isSTN'] ?? false,
+      partnerType: json['partnerType'] ?? 'Distributor',
+      intelligenceInsight: json['intelligenceInsight'],
+      statusHistory: (json['statusHistory'] as List?)?.map((e) => Map<String, dynamic>.from(e)).toList(),
     );
   }
 
@@ -183,6 +192,9 @@ class Order {
       if (salespersonId != null) 'salespersonId': salespersonId,
       if (deliveryAddress != null) 'deliveryAddress': deliveryAddress,
       if (isSTN != null) 'isSTN': isSTN,
+      if (partnerType != null) 'partnerType': partnerType,
+      if (intelligenceInsight != null) 'intelligenceInsight': intelligenceInsight,
+      if (statusHistory != null) 'statusHistory': statusHistory,
     };
   }
 }
@@ -194,6 +206,11 @@ class Customer {
   final String? phone;
   final String? email;
   final String? gst;
+  final double limit;
+  final double osBalance;
+  final double overdue;
+  final int exposureDays;
+  final Map<String, dynamic>? agingData;
 
   Customer({
     required this.id,
@@ -202,6 +219,11 @@ class Customer {
     this.phone,
     this.email,
     this.gst,
+    this.limit = 1500000,
+    this.osBalance = 890000,
+    this.overdue = 0,
+    this.exposureDays = 15,
+    this.agingData,
   });
 
   factory Customer.fromJson(Map<String, dynamic> json) {
@@ -212,6 +234,11 @@ class Customer {
       phone: json['phone'],
       email: json['email'],
       gst: json['gst'] ?? json['gstNumber'],
+      limit: (json['limit'] ?? 1500000).toDouble(),
+      osBalance: (json['osBalance'] ?? 890000).toDouble(),
+      overdue: (json['overdue'] ?? 0).toDouble(),
+      exposureDays: json['exposureDays'] ?? 15,
+      agingData: json['agingData'],
     );
   }
 
@@ -223,6 +250,11 @@ class Customer {
       if (phone != null) 'phone': phone,
       if (email != null) 'email': email,
       if (gst != null) 'gst': gst,
+      'limit': limit,
+      'osBalance': osBalance,
+      'overdue': overdue,
+      'exposureDays': exposureDays,
+      if (agingData != null) 'agingData': agingData,
     };
   }
 }

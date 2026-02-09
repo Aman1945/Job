@@ -15,7 +15,15 @@
         "status": "Pending Credit Approval",
         "total": 2200,
         "salespersonId": "sandeep.chavan@bigsams.in",
-        "createdAt": "2026-02-09T10:00:00Z"
+        "createdAt": "2026-02-09T10:00:00Z",
+        "partnerType": "Distributor",
+        "intelligenceInsight": "The customer has a clean payment history with zero overdue amounts, and the current order value is negligible (0.25%) compared to the total outstanding balance. **Recommendation:** Approve",
+        "statusHistory": [
+            {
+                "status": "Pending Credit Approval",
+                "timestamp": "2026-02-09T10:00:00Z"
+            }
+        ]
     },
     {
         "id": "ORD-1002",
