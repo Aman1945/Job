@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 import '../models/models.dart';
 
 class NexusProvider with ChangeNotifier {
-  final String _baseUrl = 'http://localhost:3000/api';
+  final String _baseUrl = 'https://nexus-oms-backend.onrender.com/api';
   
   User? _currentUser;
   List<Order> _orders = [];
