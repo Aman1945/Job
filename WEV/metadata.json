@@ -1,7 +1,0 @@
-{
-  "name": "NexusOMS - Enterprise Order Management System",
-  "description": "A comprehensive end-to-end order management solution featuring multi-role workflows, Swiggy-style order tracking, real-time analytics, and delivery agent execution with photo proof.",
-  "requestFramePermissions": [
-    "camera"
-  ]
-}
