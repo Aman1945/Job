@@ -18,6 +18,8 @@ const orderSchema = new mongoose.Schema({
     total: { type: Number, default: 0 },
     salespersonId: { type: String },
     remarks: { type: String },
+    sourceWarehouse: { type: String },
+    destinationWarehouse: { type: String },
     partnerType: { type: String },
     intelligenceInsight: { type: String },
     podUrl: { type: String },

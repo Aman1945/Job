@@ -134,6 +134,9 @@ class Order {
   final String? partnerType;
   final String? intelligenceInsight;
   final List<Map<String, dynamic>>? statusHistory;
+  final String? sourceWarehouse;
+  final String? destinationWarehouse;
+  final String? remarks;
 
   Order({
     required this.id,
@@ -149,6 +152,9 @@ class Order {
     this.partnerType,
     this.intelligenceInsight,
     this.statusHistory,
+    this.sourceWarehouse,
+    this.destinationWarehouse,
+    this.remarks,
   });
 
   factory Order.fromJson(Map<String, dynamic> json) {
@@ -177,6 +183,9 @@ class Order {
       partnerType: json['partnerType'] ?? 'Distributor',
       intelligenceInsight: json['intelligenceInsight'],
       statusHistory: (json['statusHistory'] as List?)?.map((e) => Map<String, dynamic>.from(e)).toList(),
+      sourceWarehouse: json['sourceWarehouse'],
+      destinationWarehouse: json['destinationWarehouse'],
+      remarks: json['remarks'],
     );
   }
 
@@ -195,6 +204,9 @@ class Order {
       if (partnerType != null) 'partnerType': partnerType,
       if (intelligenceInsight != null) 'intelligenceInsight': intelligenceInsight,
       if (statusHistory != null) 'statusHistory': statusHistory,
+      if (sourceWarehouse != null) 'sourceWarehouse': sourceWarehouse,
+      if (destinationWarehouse != null) 'destinationWarehouse': destinationWarehouse,
+      if (remarks != null) 'remarks': remarks,
     };
   }
 }

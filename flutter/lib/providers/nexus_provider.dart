@@ -236,6 +236,53 @@ class NexusProvider with ChangeNotifier {
     return false;
   }
 
+  Future<bool> createSTN(Map<String, dynamic> stnData) async {
+    final payload = {
+      ...stnData,
+      'isSTN': true,
+      'status': 'In Transit',
+      'createdAt': DateTime.now().toIso8601String(),
+      'salespersonId': _currentUser?.id,
+    };
+
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/orders'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(payload),
+      );
+
+      if (response.statusCode == 201) {
+        await fetchOrders();
+        return true;
+      }
+    } catch (e) {
+      // Local fallback
+      final newSTN = Order(
+        id: 'STN-${DateTime.now().millisecondsSinceEpoch}',
+        customerId: stnData['destinationWarehouse'] ?? 'WH-O',
+        customerName: stnData['destinationWarehouse'] ?? 'Warehouse',
+        status: 'In Transit',
+        total: 0,
+        createdAt: DateTime.now(),
+        items: (stnData['items'] as List).map((i) => OrderItem(
+          skuCode: i['skuCode'] ?? '',
+          name: i['productName'] ?? '',
+          quantity: i['quantity'] ?? 0,
+          price: 0,
+        )).toList(),
+        isSTN: true,
+        sourceWarehouse: stnData['sourceWarehouse'],
+        destinationWarehouse: stnData['destinationWarehouse'],
+        remarks: stnData['remarks'],
+      );
+      _orders.insert(0, newSTN);
+      notifyListeners();
+      return true;
+    }
+    return false;
+  }
+
   Future<bool> createCustomer(Map<String, dynamic> customerData) async {
     try {
       final response = await http.post(
