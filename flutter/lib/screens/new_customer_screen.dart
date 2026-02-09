@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/nexus_provider.dart';
 import '../utils/theme.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:dropdown_button2/dropdown_button2.dart';
 
 class NewCustomerScreen extends StatefulWidget {
   const NewCustomerScreen({super.key});
@@ -28,6 +29,7 @@ class _NewCustomerScreenState extends State<NewCustomerScreen> {
 
   String _selectedConstitution = 'Proprietorship';
   String? _selectedManager;
+  String? _selectedEmployee;
   String? _selectedState;
 
   final List<String> _constitutions = ['Proprietorship', 'Partnership', 'Company'];
@@ -38,6 +40,10 @@ class _NewCustomerScreenState extends State<NewCustomerScreen> {
     final provider = Provider.of<NexusProvider>(context);
     final width = MediaQuery.of(context).size.width;
     final bool isMobile = width < 768;
+
+    // Unified list for Managers and Employees
+    final List<String> staffList = provider.users.map((u) => u.name).toList();
+    if (staffList.isEmpty) staffList.add('Animesh Jamuar'); // Demo fallback
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
@@ -67,7 +73,7 @@ class _NewCustomerScreenState extends State<NewCustomerScreen> {
               ]),
 
               _buildResponsiveLayout(isMobile, [
-                _buildDropdown('3. CONSTITUTION', _selectedConstitution, _constitutions, (val) => setState(() => _selectedConstitution = val!)),
+                _buildPremiumDropdown('3. CONSTITUTION', _selectedConstitution, _constitutions, (val) => setState(() => _selectedConstitution = val!)),
                 _buildTextField('4. PARTNERS/DIRECTORS NAMES', _partnersController),
               ]),
 
@@ -83,12 +89,12 @@ class _NewCustomerScreenState extends State<NewCustomerScreen> {
 
               _buildResponsiveLayout(isMobile, [
                 _buildTextField('9. PAN CARD *', _panController, required: true),
-                _buildDropdown('10. REGION (STATE)', _selectedState ?? 'Select State...', _states, (val) => setState(() => _selectedState = val)),
+                _buildPremiumDropdown('10. REGION (STATE)', _selectedState ?? 'Select State...', _states, (val) => setState(() => _selectedState = val)),
               ]),
 
               _buildResponsiveLayout(isMobile, [
-                _buildDropdown('12. SALES MANAGER', _selectedManager ?? 'Assign Manager...', provider.users.where((u) => u.role.label == 'Sales').map((u) => u.name).toList(), (val) => setState(() => _selectedManager = val)),
-                _buildReadOnlyField('13. EMPLOYEE RESPONSIBLE', provider.currentUser?.name ?? ''),
+                _buildPremiumDropdown('12. SALES MANAGER', _selectedManager ?? 'Assign Manager...', staffList, (val) => setState(() => _selectedManager = val)),
+                _buildPremiumDropdown('13. EMPLOYEE RESPONSIBLE', _selectedEmployee ?? 'Select Employee...', staffList, (val) => setState(() => _selectedEmployee = val)),
               ]),
 
               _buildResponsiveLayout(isMobile, [
@@ -132,7 +138,7 @@ class _NewCustomerScreenState extends State<NewCustomerScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('New Customer Onboarding', style: TextStyle(fontSize: isMobile ? 24 : 36, fontWeight: FontWeight.w900, letterSpacing: -1)),
+                const Text('New Customer Onboarding', style: TextStyle(fontSize: 36, fontWeight: FontWeight.w900, letterSpacing: -1)),
                 Text('Enterprise Client Registry Setup', style: TextStyle(color: NexusTheme.slate400, fontWeight: FontWeight.bold, fontSize: isMobile ? 12 : 14)),
               ],
             ),
@@ -195,26 +201,52 @@ class _NewCustomerScreenState extends State<NewCustomerScreen> {
     );
   }
 
-  Widget _buildDropdown(String label, String value, List<String> items, Function(String?) onChanged) {
+  Widget _buildPremiumDropdown(String label, String value, List<String> items, Function(String?) onChanged) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(label.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 10, color: NexusTheme.slate400, letterSpacing: 0.5)),
         const SizedBox(height: 8),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: NexusTheme.slate200),
-          ),
-          child: DropdownButtonHideUnderline(
-            child: DropdownButton<String>(
-              isExpanded: true,
-              value: items.contains(value) ? value : null,
-              hint: Text(value, style: const TextStyle(fontSize: 14)),
-              items: items.map((i) => DropdownMenuItem(value: i, child: Text(i))).toList(),
-              onChanged: onChanged,
+        DropdownButtonHideUnderline(
+          child: DropdownButton2<String>(
+            isExpanded: true,
+            hint: Text(value, style: const TextStyle(fontSize: 14, color: NexusTheme.slate800, fontWeight: FontWeight.bold)),
+            items: items.map((String item) => DropdownMenuItem<String>(
+              value: item,
+              child: Text(item, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+            )).toList(),
+            value: items.contains(value) ? value : null,
+            onChanged: onChanged,
+            buttonStyleData: ButtonStyleData(
+              height: 54,
+              padding: const EdgeInsets.only(left: 14, right: 14),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: NexusTheme.slate200),
+                color: Colors.white,
+              ),
+            ),
+            iconStyleData: const IconStyleData(
+              icon: Icon(Icons.keyboard_arrow_down_rounded),
+              iconSize: 24,
+              iconEnabledColor: NexusTheme.slate400,
+            ),
+            dropdownStyleData: DropdownStyleData(
+              maxHeight: 250,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                color: Colors.white,
+              ),
+              offset: const Offset(0, -4),
+              scrollbarTheme: ScrollbarThemeData(
+                radius: const Radius.circular(40),
+                thickness: WidgetStateProperty.all(6),
+                thumbVisibility: WidgetStateProperty.all(true),
+              ),
+            ),
+            menuItemStyleData: const MenuItemStyleData(
+              height: 48,
+              padding: EdgeInsets.only(left: 14, right: 14),
             ),
           ),
         ),
@@ -230,6 +262,7 @@ class _NewCustomerScreenState extends State<NewCustomerScreen> {
         const SizedBox(height: 8),
         Container(
           width: double.infinity,
+          height: 54,
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(16)),
           child: Text(value, style: const TextStyle(fontWeight: FontWeight.bold, color: NexusTheme.slate400)),
@@ -309,6 +342,7 @@ class _NewCustomerScreenState extends State<NewCustomerScreen> {
       'pan': _panController.text,
       'region': _selectedState,
       'salesManager': _selectedManager,
+      'employeeResponsible': _selectedEmployee,
       'limit': double.tryParse(_creditLimitController.text) ?? 0,
       'creditDays': _creditDaysController.text,
       'type': 'Distributor',
