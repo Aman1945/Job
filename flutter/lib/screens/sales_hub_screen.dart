@@ -102,8 +102,10 @@ class _SalesHubScreenState extends State<SalesHubScreen> {
               onChanged: (value) {
                 if (value != null) {
                   setState(() => _selectedPeriod = value);
-                  // In a real app, you would fetch new data here
-                  // provider.fetchSalesHubData(period: value.toLowerCase().replaceAll(' ', '-'));
+                  String periodKey = value.toLowerCase().contains('6') ? 'six-months' : 
+                                     value.toLowerCase().contains('quarter') ? 'quarter' :
+                                     value.toLowerCase().contains('year') ? 'year' : 'month';
+                  // provider.fetchSalesHubData(period: periodKey);
                 }
               },
             ),

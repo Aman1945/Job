@@ -18,15 +18,15 @@ class _PMSScreenState extends State<PMSScreen> {
   @override
   void initState() {
     super.initState();
-    _loadData();
+    _loadData('month');
   }
 
-  Future<void> _loadData() async {
+  Future<void> _loadData([String period = 'month']) async {
     setState(() => _isLoading = true);
     final provider = Provider.of<NexusProvider>(context, listen: false);
     final data = await provider.fetchPMSData(
       userId: provider.currentUser?.id,
-      period: _selectedPeriod.toLowerCase().replaceAll(' ', '-'),
+      period: period,
     );
     if (mounted) {
       setState(() {
@@ -251,7 +251,10 @@ class _PMSScreenState extends State<PMSScreen> {
               onChanged: (value) {
                 if (value != null) {
                   setState(() => _selectedPeriod = value);
-                  _loadData();
+                  String periodKey = value.toLowerCase().contains('6') ? 'six-months' : 
+                                     value.toLowerCase().contains('quarter') ? 'quarter' :
+                                     value.toLowerCase().contains('year') ? 'year' : 'month';
+                  _loadData(periodKey);
                 }
               },
             ),
