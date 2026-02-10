@@ -335,6 +335,24 @@ class NexusProvider with ChangeNotifier {
     return false;
   }
 
+  Future<bool> createProduct(Map<String, dynamic> productData) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/products'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(productData),
+      );
+
+      if (response.statusCode == 201) {
+        await fetchProducts();
+        return true;
+      }
+    } catch (e) {
+      debugPrint('Error creating product: $e');
+    }
+    return false;
+  }
+
   // --- Analytics ---
 
   Future<Map<String, dynamic>?> fetchSalesHubData({String period = 'month'}) async {

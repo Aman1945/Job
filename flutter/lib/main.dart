@@ -3,6 +3,9 @@ import 'package:provider/provider.dart';
 import 'providers/nexus_provider.dart';
 import 'screens/login_screen.dart';
 import 'screens/dashboard_screen.dart';
+import 'screens/add_product_screen.dart';
+import 'screens/new_customer_screen.dart';
+import 'screens/book_order_screen.dart';
 import 'utils/theme.dart';
 
 import 'package:hive_flutter/hive_flutter.dart';
@@ -42,6 +45,11 @@ class NexusApp extends StatelessWidget {
       theme: NexusTheme.lightTheme,
       darkTheme: NexusTheme.darkTheme,
       themeMode: ThemeMode.light,
+      routes: {
+        '/add-product': (context) => const AddProductScreen(),
+        '/new-customer': (context) => const NewCustomerScreen(),
+        '/book-order': (context) => const BookOrderScreen(),
+      },
       home: Consumer<NexusProvider>(
         builder: (context, provider, child) {
           if (provider.currentUser == null) {
