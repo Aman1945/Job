@@ -19,6 +19,9 @@ import 'logistics_cost_screen.dart';
 import 'warehouse_inventory_screen.dart';
 import 'analytics_screen.dart';
 import 'live_orders_screen.dart';
+import 'sales_hub_screen.dart';
+import 'reporting_screen.dart';
+import 'pms_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
@@ -171,6 +174,9 @@ class DashboardScreen extends StatelessWidget {
       {'l': 'Intelligence', 'i': Icons.insights, 's': const AnalyticsScreen()},
       {'l': 'Order Archive', 'i': Icons.history, 's': const OrderArchiveScreen()},
       {'l': 'Master Data', 'i': Icons.terminal, 's': const MasterDataScreen()},
+      {'l': 'Sales Hub', 'i': Icons.storefront, 's': const SalesHubScreen()},
+      {'l': 'Reporting', 'i': Icons.assessment, 's': const ReportingScreen()},
+      {'l': 'PMS', 'i': Icons.emoji_events, 's': const PMSScreen()},
     ];
 
     return GridView.builder(
