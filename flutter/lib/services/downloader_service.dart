@@ -4,7 +4,6 @@ import 'dart:ui';
 import 'package:flutter_downloader/flutter_downloader.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'notification_service.dart';
 
 class DownloaderService {
   static final DownloaderService _instance = DownloaderService._internal();
@@ -41,18 +40,18 @@ class DownloaderService {
     
     switch (status) {
       case DownloadTaskStatus.running:
-        NotificationService().updateDownloadProgress(fileName, progress);
+        print('Downloading: $fileName - $progress%');
         break;
       case DownloadTaskStatus.complete:
-        NotificationService().showDownloadComplete(fileName, 'Download/$fileName');
+        print('Download Complete: $fileName');
         _downloadTasks.remove(id);
         break;
       case DownloadTaskStatus.failed:
-        NotificationService().showDownloadFailed(fileName, 'Download failed');
+        print('Download Failed: $fileName');
         _downloadTasks.remove(id);
         break;
       case DownloadTaskStatus.canceled:
-        NotificationService().showDownloadFailed(fileName, 'Download canceled');
+        print('Download Canceled: $fileName');
         _downloadTasks.remove(id);
         break;
       default:
@@ -95,19 +94,18 @@ class DownloaderService {
       }
 
       if (savedDir == null) {
-        NotificationService().showDownloadFailed(fileName, 'Storage not available');
+        print('Storage not available');
         return null;
       }
 
-      // Show initial notification
-      await NotificationService().showDownloadStarted(fileName);
+      print('Starting download: $fileName to $savedDir');
 
       final taskId = await FlutterDownloader.enqueue(
         url: url,
         savedDir: savedDir,
         fileName: fileName,
-        showNotification: false, // We handle notifications ourselves
-        openFileFromNotification: false,
+        showNotification: true, // Use flutter_downloader's built-in notifications
+        openFileFromNotification: true,
         saveInPublicStorage: true,
       );
 
@@ -116,12 +114,11 @@ class DownloaderService {
         print('Download started: $fileName (Task ID: $taskId)');
         return taskId;
       } else {
-        NotificationService().showDownloadFailed(fileName, 'Failed to start download');
+        print('Failed to start download');
         return null;
       }
     } catch (e) {
       print('Download error: $e');
-      NotificationService().showDownloadFailed(fileName, e.toString());
       return null;
     }
   }

@@ -9,7 +9,6 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'controllers/testdrive/drive_state_manager.dart';
 
 import 'services/downloader_service.dart';
-import 'services/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -17,9 +16,6 @@ void main() async {
   // Initialize Storage
   await Hive.initFlutter();
   await DriveStateManager.init();
-  
-  // Initialize Notification Service
-  await NotificationService().initialize();
   
   // Initialize Downloader
   await DownloaderService().initialize();
