@@ -14,7 +14,6 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
 
   @override
   Widget build(BuildContext context) {
-
     return Scaffold(
       backgroundColor: NexusTheme.slate50,
       appBar: AppBar(
@@ -39,82 +38,189 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-             const Text(
-              'HOLISTIC OPERATIONAL & CATEGORY PERFORMANCE ANALYTICS',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10, color: NexusTheme.slate400, letterSpacing: 0.5),
-            ),
-            const SizedBox(height: 16),
-            
-            // Intelligence Summary Cards (2x2 Grid)
-            GridView.count(
-              crossAxisCount: 2,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              mainAxisSpacing: 12,
-              crossAxisSpacing: 12,
-              childAspectRatio: 1.4,
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildMetricCard('MTD QTY FULFILMENT', '0.0%', 'Ordered: 10 units', Colors.blue, NexusTheme.blue900),
-                _buildMetricCard('ORDER SUCCESS RATE', '0.0%', 'Total MTD: 1 orders', Colors.green, NexusTheme.emerald900),
-                _buildMetricCard('STOCK SHORTAGE (LOSS)', '₹225', '5.2% leakage avg', Colors.orange, NexusTheme.amber900),
-                _buildMetricCard('AVG LEAD TIME', '3.4 Days', '-0.8d vs Q1', Colors.grey, NexusTheme.slate900),
+                const Text(
+                  'INTELLIGENCE TERMINAL',
+                  style: TextStyle(fontWeight: FontWeight.w900, fontSize: 28, color: NexusTheme.slate900),
+                ),
+                const Text(
+                  'HOLISTIC OPERATIONAL & CATEGORY PERFORMANCE ANALYTICS',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10, color: NexusTheme.slate400, letterSpacing: 0.5),
+                ),
               ],
             ),
-            
             const SizedBox(height: 24),
             
-            // Supply Velocity Trend
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(32),
-                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 20, offset: const Offset(0, 10))],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('SUPPLY VELOCITY % (MTD TREND)', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14)),
-                  const SizedBox(height: 32),
-                  SizedBox(
-                    height: 200,
-                    child: LineChart(
-                      LineChartData(
-                        gridData: const FlGridData(show: false),
-                        titlesData: const FlTitlesData(show: false),
-                        borderData: FlBorderData(show: false),
-                        lineBarsData: [
-                          LineChartBarData(
-                            spots: [
-                              const FlSpot(0, 85),
-                              const FlSpot(1, 88),
-                              const FlSpot(2, 86),
-                              const FlSpot(3, 89),
-                              const FlSpot(4, 30),
-                            ],
-                            isCurved: true,
-                            color: NexusTheme.indigo500,
-                            barWidth: 4,
-                            dotData: const FlDotData(show: false),
-                            belowBarData: BarAreaData(
-                              show: true, 
-                              color: NexusTheme.indigo500.withOpacity(0.1)
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            _buildSelectedTerminalView(),
             
             const SizedBox(height: 24),
-            
-            // Incentive Card (Integrated)
             _buildIncentiveCard(),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildSelectedTerminalView() {
+    switch (_selectedTerminal) {
+      case 'CATEGORY SPLIT':
+        return _buildCategorySplitView();
+      case 'FLEET INTELLIGENCE':
+        return _buildFleetIntelligenceView();
+      case 'ORDER FLOW':
+      default:
+        return _buildOrderFlowView();
+    }
+  }
+
+  Widget _buildOrderFlowView() {
+    return Column(
+      children: [
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              _buildMetricCard('MTD QTY FULFILMENT', '0.0%', 'Ordered: 10 units', Colors.indigo, NexusTheme.blue900, icon: Icons.shopping_basket),
+              _buildMetricCard('ORDER SUCCESS RATE', '0.0%', 'Total MTD: 1 orders', Colors.emerald, NexusTheme.emerald900, icon: Icons.check_circle),
+              _buildMetricCard('STOCK SHORTAGE (LOSS)', '₹225', '5.2% leakage avg', Colors.orange, NexusTheme.amber900, icon: Icons.trending_down),
+              _buildMetricCard('AVG LEAD TIME', '3.4 Days', '-0.8d vs Q1', Colors.slate, NexusTheme.slate900, icon: Icons.timer),
+            ],
+          ),
+        ),
+        const SizedBox(height: 24),
+        _buildChartContainer(
+          'Supply Velocity % (MTD Trend)',
+          LineChart(
+            LineChartData(
+              gridData: const FlGridData(show: false),
+              titlesData: const FlTitlesData(show: false),
+              borderData: FlBorderData(show: false),
+              lineBarsData: [
+                LineChartBarData(
+                  spots: [
+                    const FlSpot(0, 85),
+                    const FlSpot(1, 88),
+                    const FlSpot(2, 86),
+                    const FlSpot(3, 89),
+                    const FlSpot(4, 90),
+                    const FlSpot(5, 50),
+                    const FlSpot(6, 10),
+                  ],
+                  isCurved: true,
+                  color: NexusTheme.indigo500,
+                  barWidth: 4,
+                  dotData: const FlDotData(show: false),
+                  belowBarData: BarAreaData(show: true, color: NexusTheme.indigo500.withOpacity(0.1)),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCategorySplitView() {
+    return Row(
+      children: [
+        Expanded(
+          child: _buildChartContainer(
+            'Value by Category Split',
+            Stack(
+              alignment: Alignment.center,
+              children: [
+                PieChart(
+                  PieChartData(
+                    sections: [
+                      PieChartSectionData(color: NexusTheme.indigo500, value: 100, radius: 40, showTitle: false),
+                    ],
+                    centerSpaceRadius: 60,
+                  ),
+                ),
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(width: 8, height: 8, color: NexusTheme.indigo500),
+                    const SizedBox(height: 4),
+                    const Text('BREADED', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+                  ],
+                ),
+              ],
+            ),
+            icon: Icons.pie_chart_outline,
+          ),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: _buildChartContainer(
+            'Qty Concentration',
+            BarChart(
+              BarChartData(
+                gridData: const FlGridData(show: false),
+                titlesData: const FlTitlesData(show: false),
+                borderData: FlBorderData(show: false),
+                barGroups: [
+                  BarChartGroupData(x: 0, barRods: [BarChartRodData(toY: 8, color: NexusTheme.emerald500, width: 22, borderRadius: BorderRadius.circular(4))]),
+                ],
+              ),
+            ),
+            icon: Icons.bar_chart,
+            footerLabel: 'BREADED',
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFleetIntelligenceView() {
+    return Column(
+      children: [
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              _buildMetricCard('FLEET COVERAGE', '0 KM', 'Trip distance MTD', Colors.indigo, NexusTheme.blue900, icon: Icons.route),
+              _buildMetricCard('ACTIVE ASSETS', '0', 'Unique Reg Numbers', Colors.orange, NexusTheme.amber900, icon: Icons.local_shipping),
+              _buildMetricCard('SUCCESSFUL DROPS', '0', 'Confirmed PODs', Colors.emerald, NexusTheme.emerald900, icon: Icons.verified_user),
+              _buildMetricCard('FLEET PERSONNEL', '0', 'On-field force', Colors.slate, NexusTheme.slate900, icon: Icons.person_pin_circle),
+            ],
+          ),
+        ),
+        const SizedBox(height: 24),
+        _buildChartContainer(
+          'Fleet Assignment Velocity',
+          const Center(child: Text('No Data Available', style: TextStyle(color: NexusTheme.slate400, fontSize: 12))),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildChartContainer(String title, Widget chart, {IconData? icon, String? footerLabel}) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(32),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 20)],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              if (icon != null) ...[Icon(icon, size: 18, color: NexusTheme.indigo500), const SizedBox(width: 8)],
+              Text(title, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14)),
+            ],
+          ),
+          const SizedBox(height: 32),
+          SizedBox(height: 200, child: chart),
+          if (footerLabel != null) ...[
+            const SizedBox(height: 16),
+            Center(child: Text(footerLabel, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: NexusTheme.slate400))),
+          ],
+        ],
       ),
     );
   }
@@ -127,16 +233,16 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
         margin: const EdgeInsets.only(right: 8),
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
         decoration: BoxDecoration(
-          color: isSelected ? Colors.white : Colors.transparent,
+          color: isSelected ? NexusTheme.indigo500.withOpacity(0.1) : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
-          boxShadow: isSelected ? [BoxShadow(color: Colors.black12, blurRadius: 4)] : null,
+          border: Border.all(color: isSelected ? NexusTheme.indigo500.withOpacity(0.2) : Colors.transparent),
         ),
         child: Text(
           title,
           style: TextStyle(
             fontSize: 10,
             fontWeight: FontWeight.w900,
-            color: isSelected ? NexusTheme.slate900 : NexusTheme.slate400,
+            color: isSelected ? NexusTheme.indigo600 : NexusTheme.slate400,
             letterSpacing: 0.5,
           ),
         ),
@@ -144,9 +250,11 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     );
   }
 
-  Widget _buildMetricCard(String title, String value, String subtitle, Color color, Color accentColor) {
+  Widget _buildMetricCard(String title, String value, String subtitle, Color color, Color accentColor, {IconData? icon}) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      width: 180,
+      margin: const EdgeInsets.only(right: 16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
@@ -155,16 +263,18 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(title, style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: NexusTheme.slate400, letterSpacing: 0.5)),
-          const SizedBox(height: 8),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(value, style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: accentColor, letterSpacing: -0.5)),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(title, style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: NexusTheme.slate400, letterSpacing: 0.5)),
+              if (icon != null) Icon(icon, size: 14, color: NexusTheme.slate200),
+            ],
           ),
+          const SizedBox(height: 12),
+          Text(value, style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: NexusTheme.slate900, letterSpacing: -1)),
           const SizedBox(height: 4),
-          Text(subtitle, style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: NexusTheme.slate400)),
+          Text(subtitle, style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: NexusTheme.slate400)),
         ],
       ),
     );
