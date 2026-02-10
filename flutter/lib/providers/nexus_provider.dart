@@ -4,10 +4,17 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/models.dart';
 
+import '../services/downloader_service.dart';
+
 class NexusProvider with ChangeNotifier {
-  final String _baseUrl = 'https://nexus-oms-backend.onrender.com/api';
+  final String _baseUrl = 'https://api.smartassistapp.in';
+  final String _socketUrl = 'https://api.smartassistapp.in';
   
   User? _currentUser;
+
+
+
+
   List<Order> _orders = [];
   List<Customer> _customers = [];
   List<Product> _products = [];
@@ -365,4 +372,19 @@ class NexusProvider with ChangeNotifier {
     }
     return null;
   }
+
+  Future<void> downloadReport({required String type, required String format}) async {
+    final queryParams = 'type=${type.toLowerCase().replaceAll(' ', '_')}&format=${format.toLowerCase()}';
+    final url = '$_baseUrl/analytics/export?$queryParams';
+    
+    // In a real app, you might need to pass the auth token in headers
+    // FlutterDownloader supports headers as well
+    final token = await SharedPreferences.getInstance().then((p) => p.getString('auth_token'));
+
+    await DownloaderService().downloadFile(
+      url: url,
+      fileName: "${type.replaceAll(' ', '_')}_Report.${format.toLowerCase()}",
+    );
+  }
 }
+

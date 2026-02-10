@@ -1,7 +1,15 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:percent_indicator/linear_percent_indicator.dart';
 import '../utils/theme.dart';
 import '../models/models.dart';
+import '../controllers/testdrive/background_location_service.dart';
+import '../controllers/testdrive/drive_state_manager.dart';
+import '../controllers/testdrive/route_calculator.dart';
+import '../services/location_database_service.dart';
 
 class TrackingScreen extends StatefulWidget {
   final Order order;
@@ -11,73 +19,128 @@ class TrackingScreen extends StatefulWidget {
   State<TrackingScreen> createState() => _TrackingScreenState();
 }
 
-class _TrackingScreenState extends State<TrackingScreen> with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _animation;
+class _TrackingScreenState extends State<TrackingScreen> {
   GoogleMapController? _mapController;
+  Marker? _truckMarker;
+  Marker? _destinationMarker;
+  List<LatLng> _routePoints = [];
+  Polyline? _routePolyline;
   
-  // Dense Realistic Route (Mumbai Western Express Highway)
-  final List<LatLng> _route = [
-    const LatLng(19.0760, 72.8777), // Kalanagar
-    const LatLng(19.0741, 72.8712), // BKC link
-    const LatLng(19.0718, 72.8615), // Vakola
-    const LatLng(19.0750, 72.8585), // Santacruz
-    const LatLng(19.0815, 72.8525), // Vile Parle
-    const LatLng(19.0905, 72.8512), // Airport Junction
-    const LatLng(19.0985, 72.8518), // WEH Metro
-    const LatLng(19.1065, 72.8570), // Gundavali
-    const LatLng(19.1136, 72.8697), // Andheri
-  ];
+  bool _isLoading = true;
+  double _totalDistance = 0.0;
+  String _estimatedTime = "Calculating...";
+  LatLng? _currentPosition;
+  
+  final BackgroundLocationService _bgService = BackgroundLocationService();
+  final LocationDatabase _db = LocationDatabase();
+  final RouteCalculator _routeCalc = RouteCalculator();
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(duration: const Duration(seconds: 40), vsync: this)..repeat();
-    _animation = Tween<double>(begin: 0, end: 1).animate(_controller);
+    _initializeTracking();
+  }
+
+  Future<void> _initializeTracking() async {
+    setState(() => _isLoading = true);
+
+    // 1. Check if we have an active drive state to resume
+    if (DriveStateManager.hasActiveDrive && DriveStateManager.eventId == widget.order.id) {
+      _totalDistance = DriveStateManager.totalDistance;
+      _routePoints = await _db.getRoutePoints(widget.order.id);
+      _currentPosition = DriveStateManager.lastLocation;
+    } else {
+      // Start fresh
+      Position pos = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+      _currentPosition = LatLng(pos.latitude, pos.longitude);
+      _routePoints = [_currentPosition!];
+      
+      await DriveStateManager.startDrive(
+        eventId: widget.order.id,
+        leadId: widget.order.customerId,
+        startLocation: _currentPosition!,
+      );
+    }
+
+    _updateMarkers();
+    _updatePolyline();
+
+    // 2. Start Background Service
+    await _bgService.initialize();
+    await _bgService.startTracking();
+    _bgService.sendDriveId(widget.order.id);
     
-    _controller.addListener(() {
+    // 3. Listen for updates
+    _bgService.listenToUpdates((data) {
       if (mounted) {
-        final truckData = _getTruckData(_animation.value);
-        final truckPos = truckData['pos'] as LatLng;
-        _mapController?.animateCamera(CameraUpdate.newLatLng(truckPos));
+        _handleLocationUpdate(data);
       }
     });
+
+    setState(() => _isLoading = false);
+  }
+
+  void _handleLocationUpdate(Map<String, dynamic> data) async {
+    final newPos = LatLng(data['latitude'], data['longitude']);
+    
+    if (_currentPosition != null) {
+      double distance = Geolocator.distanceBetween(
+        _currentPosition!.latitude, _currentPosition!.longitude,
+        newPos.latitude, newPos.longitude
+      );
+
+      if (distance > 5) { // Only update if moved significantly
+        setState(() {
+          _totalDistance += distance / 1000;
+          _currentPosition = newPos;
+          _routePoints.add(newPos);
+          _updateMarkers();
+          _updatePolyline();
+        });
+
+        await DriveStateManager.updateDriveState(
+          totalDistance: _totalDistance,
+          lastLocation: newPos,
+        );
+        
+        _mapController?.animateCamera(CameraUpdate.newLatLng(newPos));
+      }
+    }
+  }
+
+  void _updateMarkers() {
+    if (_currentPosition == null) return;
+
+    _truckMarker = Marker(
+      markerId: const MarkerId('truck'),
+      position: _currentPosition!,
+      icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueCyan),
+      infoWindow: const InfoWindow(title: "Truck Location"),
+    );
+
+    // Using a sample destination (Andheri if current is Mumbai)
+    _destinationMarker = Marker(
+      markerId: const MarkerId('destination'),
+      position: const LatLng(19.1136, 72.8697), 
+      icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+      infoWindow: const InfoWindow(title: "Destination"),
+    );
+  }
+
+  void _updatePolyline() {
+    _routePolyline = Polyline(
+      polylineId: const PolylineId('route'),
+      points: _routePoints,
+      color: NexusTheme.emerald600,
+      width: 5,
+      geodesic: true,
+    );
   }
 
   @override
   void dispose() {
-    _controller.dispose();
-    _mapController?.dispose();
+    _bgService.stopTracking();
     super.dispose();
-  }
-
-  Map<String, dynamic> _getTruckData(double val) {
-    if (val >= 1.0) return {'pos': _route.last, 'rotation': 0.0};
-    
-    int totalSegments = _route.length - 1;
-    double segmentProgress = val * totalSegments;
-    int index = segmentProgress.floor();
-    double fraction = segmentProgress - index;
-
-    LatLng p1 = _route[index];
-    LatLng p2 = _route[index + 1];
-
-    double lat = p1.latitude + (p2.latitude - p1.latitude) * fraction;
-    double lng = p1.longitude + (p2.longitude - p1.longitude) * fraction;
-    
-    double dy = p2.latitude - p1.latitude;
-    double dx = p2.longitude - p1.longitude;
-    
-    double finalAngle = 0.0;
-    if (dx != 0 || dy != 0) {
-      finalAngle = ( ( (dy / dx).clamp(-100, 100) ) );
-      if (dx < 0) finalAngle += 3.14159;
-    }
-
-    return {
-      'pos': LatLng(lat, lng),
-      'rotation': finalAngle * 180 / 3.14159 // Google Maps uses degrees
-    };
   }
 
   @override
@@ -87,119 +150,150 @@ class _TrackingScreenState extends State<TrackingScreen> with SingleTickerProvid
       appBar: AppBar(
         title: Text('LIVE TRACKING: ${widget.order.id}'),
         surfaceTintColor: Colors.transparent,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () => _initializeTracking(),
+          )
+        ],
       ),
-      body: Column(
-        children: [
-          Expanded(
-            child: Container(
-              margin: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(24),
-                boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 15, offset: Offset(0, 5))],
-                border: Border.all(color: NexusTheme.slate200, width: 2),
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(22),
-                child: AnimatedBuilder(
-                  animation: _animation,
-                  builder: (context, child) {
-                    final truckData = _getTruckData(_animation.value);
-                    final truckPos = truckData['pos'] as LatLng;
-                    final rotation = truckData['rotation'] as double;
-                    
-                    return GoogleMap(
+      body: _isLoading 
+        ? const Center(child: CircularProgressIndicator())
+        : Column(
+            children: [
+              Expanded(
+                child: Container(
+                  margin: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(28),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.08),
+                        blurRadius: 20,
+                        offset: const Offset(0, 10),
+                      )
+                    ],
+                    border: Border.all(color: NexusTheme.slate200, width: 2),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(26),
+                    child: GoogleMap(
                       onMapCreated: (controller) => _mapController = controller,
                       initialCameraPosition: CameraPosition(
-                        target: _route[0],
+                        target: _currentPosition ?? const LatLng(19.0760, 72.8777),
                         zoom: 15,
                       ),
-                      polylines: {
-                        Polyline(
-                          polylineId: const PolylineId('route'),
-                          points: _route,
-                          color: NexusTheme.emerald600.withOpacity(0.6),
-                          width: 5,
-                        ),
-                      },
                       markers: {
-                        Marker(
-                          markerId: const MarkerId('truck'),
-                          position: truckPos,
-                          rotation: rotation,
-                          anchor: const Offset(0.5, 0.5),
-                          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueCyan),
-                        ),
-                        Marker(
-                          markerId: const MarkerId('destination'),
-                          position: _route.last,
-                          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
-                        ),
+                        if (_truckMarker != null) _truckMarker!,
+                        if (_destinationMarker != null) _destinationMarker!,
                       },
-                    );
-                  },
+                      polylines: {
+                        if (_routePolyline != null) _routePolyline!,
+                      },
+                      myLocationButtonEnabled: false,
+                      mapToolbarEnabled: false,
+                    ),
+                  ),
                 ),
               ),
-            ),
+              _buildBottomPanel(),
+            ],
           ),
-          // Info Panel (Same as before)
-          Container(
-            padding: const EdgeInsets.all(24),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-              boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 20)],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    );
+  }
+
+  Widget _buildBottomPanel() {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 30,
+            offset: const Offset(0, -5),
+          )
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _buildStatItem("DISTANCE", "${_totalDistance.toStringAsFixed(2)} KM", FontAwesomeIcons.route),
+              _buildStatItem("EST. TIME", _estimatedTime, FontAwesomeIcons.clock),
+            ],
+          ),
+          const SizedBox(height: 24),
+          LinearPercentIndicator(
+            lineHeight: 8,
+            percent: 0.6, // Sample progress
+            backgroundColor: NexusTheme.slate100,
+            progressColor: NexusTheme.emerald500,
+            barRadius: const Radius.circular(10),
+            padding: EdgeInsets.zero,
+          ),
+          const SizedBox(height: 24),
+          Row(
+            children: [
+              const CircleAvatar(
+                radius: 28,
+                backgroundColor: NexusTheme.slate100,
+                child: Icon(Icons.person, color: NexusTheme.slate400, size: 32),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('ESTIMATED ARRIVAL', style: TextStyle(color: NexusTheme.slate400, fontWeight: FontWeight.bold, fontSize: 12)),
-                    Text('14 MINS', style: TextStyle(color: NexusTheme.emerald600, fontWeight: FontWeight.w900, fontSize: 13)),
+                    Text(
+                      widget.order.customerName.toUpperCase(),
+                      style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: NexusTheme.slate900),
+                    ),
+                    const Text('Vehicle: MH-01-AX-4521', style: TextStyle(color: NexusTheme.slate500, fontSize: 13, fontWeight: FontWeight.bold)),
                   ],
                 ),
-                const SizedBox(height: 12),
-                Text(
-                  widget.order.customerName.toUpperCase(), 
-                  style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 22, color: NexusTheme.emerald950, letterSpacing: -0.5)
+              ),
+              Container(
+                decoration: BoxDecoration(
+                  color: NexusTheme.emerald600,
+                  borderRadius: BorderRadius.circular(16),
                 ),
-                const Text('45, Bandra Kurla Complex, Mumbai', style: TextStyle(color: NexusTheme.slate500, fontWeight: FontWeight.w500)),
-                const Divider(height: 32, thickness: 1),
-                Row(
-                  children: [
-                    const CircleAvatar(
-                      radius: 24,
-                      backgroundColor: NexusTheme.slate100, 
-                      child: Icon(Icons.person, color: NexusTheme.slate400, size: 30)
-                    ),
-                    const SizedBox(width: 12),
-                    const Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('SURESH KUMAR', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
-                        Text('Vehicle: MH-01-AX-4521', style: TextStyle(fontSize: 12, color: NexusTheme.slate500, fontWeight: FontWeight.bold)),
-                      ],
-                    ),
-                    const Spacer(),
-                    Container(
-                      decoration: BoxDecoration(
-                        color: NexusTheme.emerald900,
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: IconButton(
-                        onPressed: () {},
-                        icon: const Icon(Icons.phone, color: Colors.white),
-                      ),
-                    ),
-                  ],
+                child: IconButton(
+                  onPressed: () {},
+                  icon: const Icon(Icons.phone, color: Colors.white),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildStatItem(String label, String value, IconData icon) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: NexusTheme.emerald50,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(icon, color: NexusTheme.emerald600, size: 18),
+        ),
+        const SizedBox(width: 12),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label, style: const TextStyle(color: NexusTheme.slate400, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1)),
+            Text(value, style: const TextStyle(color: NexusTheme.slate900, fontSize: 16, fontWeight: FontWeight.w900)),
+          ],
+        ),
+      ],
     );
   }
 }

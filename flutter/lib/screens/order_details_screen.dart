@@ -20,7 +20,20 @@ class OrderDetailsScreen extends StatelessWidget {
         title: const Text('LIVE MISSION TRACKER', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13)),
         backgroundColor: Colors.white,
         elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.download, color: NexusTheme.indigo600),
+            onPressed: () {
+              provider.downloadReport(type: 'Invoice ${order.id}', format: 'pdf');
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Downloading Invoice PDF...')),
+              );
+            },
+            tooltip: 'Download Invoice PDF',
+          )
+        ],
       ),
+
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(

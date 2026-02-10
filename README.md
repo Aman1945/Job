@@ -57,6 +57,10 @@
   - Bulk Operations (`/api/orders/bulk-update`)
   - File Uploads (`/api/upload/pod`)
   - Analytics (`/api/analytics/dashboard`, `/api/analytics/sales`)
+  - Sales Hub (`/api/analytics/sales-hub`)
+  - Reports (`/api/analytics/reports`)
+  - PMS (`/api/analytics/pms`)
+  - **Export/Download** (`/api/analytics/export`) - PDF, Excel, CSV
   - Tally Export (`/api/tally/export/:orderId`)
 
 - ✅ **Features**
@@ -64,6 +68,8 @@
   - Status history tracking
   - Query filtering (status, salesperson)
   - File upload with Multer
+  - **Download notifications with progress tracking**
+  - **Custom notification service**
   - CORS enabled
   - Error handling middleware
 
@@ -278,6 +284,10 @@ NEW JOB/
 ### **Analytics**
 - `GET /api/analytics/dashboard` - Dashboard stats
 - `GET /api/analytics/sales` - Sales analytics
+- `GET /api/analytics/sales-hub` - Sales hub data
+- `GET /api/analytics/reports` - Report data
+- `GET /api/analytics/pms` - Performance management
+- `GET /api/analytics/export` - Export reports (PDF/Excel/CSV)
 
 ### **Tally Integration**
 - `GET /api/tally/export/:orderId` - Export to Tally XML

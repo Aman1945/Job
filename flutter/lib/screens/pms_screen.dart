@@ -56,9 +56,20 @@ class _PMSScreenState extends State<PMSScreen> {
         title: const Text('PERFORMANCE MANAGEMENT', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1)),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadData,
+            icon: const Icon(Icons.download),
+            onPressed: () {
+              provider.downloadReport(type: 'Performance Report', format: 'pdf');
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Downloading Performance Report...')),
+              );
+            },
+            tooltip: 'Download PDF Report',
           ),
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () => _loadData(_selectedPeriod.toLowerCase().contains('month') ? 'month' : 'week'),
+          ),
+
         ],
       ),
       body: LayoutBuilder(

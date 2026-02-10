@@ -577,12 +577,17 @@ class _ReportingScreenState extends State<ReportingScreen> {
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
+              provider.downloadReport(
+                type: _selectedReportType,
+                format: format,
+              );
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('File saved to downloads in $format format!')),
+                SnackBar(content: Text('Starting download for $format report...')),
               );
             },
             child: const Text('DOWNLOAD'),
           ),
+
         ],
       ),
     );
