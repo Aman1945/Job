@@ -566,6 +566,101 @@ app.get('/api/analytics/reports', async (req, res) => {
     }
 });
 
+// ==================== PROCUREMENT GATE API ====================
+app.get('/api/procurement', async (req, res) => {
+    try {
+        const inbounds = useMongoDB ? await mongoose.connection.collection('procurement').find().toArray() : getData('procurement');
+        res.json(inbounds.length > 0 ? inbounds : [
+            {
+                ref: 'PRC-1001',
+                date: new Date().toLocaleDateString(),
+                vendor: 'Global Fisheries Ltd',
+                sku: 'Frozen Salmon Fillets 500G',
+                code: 'SKU-SM-01',
+                checks: [true, true, true],
+                stage: 'PENDING'
+            },
+            {
+                ref: 'PRC-1002',
+                date: new Date().toLocaleDateString(),
+                vendor: 'Ocean Fresh Imports',
+                sku: 'Tuna Steak Premium 200G',
+                code: 'SKU-TN-42',
+                checks: [true, true, true],
+                stage: 'PENDING'
+            }
+        ]);
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching procurement data' });
+    }
+});
+
+app.post('/api/procurement', async (req, res) => {
+    try {
+        const inboundData = {
+            ...req.body,
+            ref: `PRC-${Date.now().toString().slice(-4)}`,
+            date: new Date().toLocaleDateString(),
+            stage: 'PENDING',
+            checks: [false, false, false]
+        };
+
+        if (useMongoDB) {
+            await mongoose.connection.collection('procurement').insertOne(inboundData);
+        } else {
+            const inbounds = getData('procurement');
+            inbounds.push(inboundData);
+            saveData('procurement', inbounds);
+        }
+        res.status(201).json(inboundData);
+    } catch (error) {
+        res.status(500).json({ message: 'Error creating procurement entry' });
+    }
+});
+
+// ==================== INTELLIGENCE TERMINAL (EXTENDED) ====================
+app.get('/api/analytics/category-split', async (req, res) => {
+    try {
+        // Mocking sophisticated category split logic
+        res.json({
+            split: [
+                { category: 'BREADED', value: 65, color: '#6366F1' },
+                { category: 'MARINATED', value: 20, color: '#10B981' },
+                { category: 'RAW CANNED', value: 15, color: '#F59E0B' }
+            ],
+            concentration: [
+                { label: 'BREADED', qty: 450 },
+                { label: 'MARINATED', qty: 120 },
+                { label: 'RAW CANNED', qty: 90 }
+            ]
+        });
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching category split data' });
+    }
+});
+
+app.get('/api/analytics/fleet', async (req, res) => {
+    try {
+        res.json({
+            metrics: {
+                coverage: '4.2 KM',
+                activeAssets: '12',
+                successfulDrops: '89',
+                personnel: '15'
+            },
+            velocity: [
+                { time: '08:00', drops: 5 },
+                { time: '10:00', drops: 12 },
+                { time: '12:00', drops: 8 },
+                { time: '14:00', drops: 15 },
+                { time: '16:00', drops: 3 }
+            ]
+        });
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching fleet intelligence data' });
+    }
+});
+
 // ==================== PMS API ====================
 app.get('/api/analytics/pms', async (req, res) => {
     try {
