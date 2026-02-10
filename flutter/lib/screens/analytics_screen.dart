@@ -45,17 +45,20 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
             ),
             const SizedBox(height: 16),
             
-            // Intelligence Summary Cards
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  _buildMetricCard('MTD QTY FULFILMENT', '0.0%', 'Ordered: 10 units', Colors.blue, NexusTheme.blue900),
-                  _buildMetricCard('ORDER SUCCESS RATE', '0.0%', 'Total MTD: 1 orders', Colors.green, NexusTheme.emerald900),
-                  _buildMetricCard('STOCK SHORTAGE (LOSS)', '₹225', '5.2% leakage avg', Colors.orange, NexusTheme.amber900),
-                  _buildMetricCard('AVG LEAD TIME', '3.4 Days', '-0.8d vs Q1', Colors.grey, NexusTheme.slate900),
-                ],
-              ),
+            // Intelligence Summary Cards (2x2 Grid)
+            GridView.count(
+              crossAxisCount: 2,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              mainAxisSpacing: 12,
+              crossAxisSpacing: 12,
+              childAspectRatio: 1.4,
+              children: [
+                _buildMetricCard('MTD QTY FULFILMENT', '0.0%', 'Ordered: 10 units', Colors.blue, NexusTheme.blue900),
+                _buildMetricCard('ORDER SUCCESS RATE', '0.0%', 'Total MTD: 1 orders', Colors.green, NexusTheme.emerald900),
+                _buildMetricCard('STOCK SHORTAGE (LOSS)', '₹225', '5.2% leakage avg', Colors.orange, NexusTheme.amber900),
+                _buildMetricCard('AVG LEAD TIME', '3.4 Days', '-0.8d vs Q1', Colors.grey, NexusTheme.slate900),
+              ],
             ),
             
             const SizedBox(height: 24),
@@ -143,23 +146,25 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
 
   Widget _buildMetricCard(String title, String value, String subtitle, Color color, Color accentColor) {
     return Container(
-      width: 180,
-      margin: const EdgeInsets.only(right: 16),
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
         border: Border(left: BorderSide(color: color, width: 4)),
-        boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10, offset: const Offset(0, 4))],
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 4))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(title, style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: NexusTheme.slate400, letterSpacing: 0.5)),
-          const SizedBox(height: 12),
-          Text(value, style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: accentColor, letterSpacing: -1)),
+          const SizedBox(height: 8),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(value, style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: accentColor, letterSpacing: -0.5)),
+          ),
           const SizedBox(height: 4),
-          Text(subtitle, style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: NexusTheme.slate400)),
+          Text(subtitle, style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: NexusTheme.slate400)),
         ],
       ),
     );
