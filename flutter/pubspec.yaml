@@ -44,6 +44,7 @@ dependencies:
   latlong2: ^0.9.1
   shared_preferences: ^2.5.2
   dropdown_button2: ^2.3.9
+  google_maps_flutter: ^2.14.0
 
 dev_dependencies:
   flutter_test:

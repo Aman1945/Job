@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../utils/theme.dart';
 import '../models/models.dart';
 
@@ -15,8 +14,7 @@ class TrackingScreen extends StatefulWidget {
 class _TrackingScreenState extends State<TrackingScreen> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _animation;
-  
-  final MapController _mapController = MapController();
+  GoogleMapController? _mapController;
   
   // Dense Realistic Route (Mumbai Western Express Highway)
   final List<LatLng> _route = [
@@ -37,17 +35,11 @@ class _TrackingScreenState extends State<TrackingScreen> with SingleTickerProvid
     _controller = AnimationController(duration: const Duration(seconds: 40), vsync: this)..repeat();
     _animation = Tween<double>(begin: 0, end: 1).animate(_controller);
     
-    // Add listener to follow truck without crashing build
     _controller.addListener(() {
       if (mounted) {
         final truckData = _getTruckData(_animation.value);
         final truckPos = truckData['pos'] as LatLng;
-        // Check if map is ready to avoid "not rendered" exception
-        try {
-          _mapController.move(truckPos, _mapController.camera.zoom);
-        } catch (_) {
-          // Map not ready yet, skip this frame
-        }
+        _mapController?.animateCamera(CameraUpdate.newLatLng(truckPos));
       }
     });
   }
@@ -55,7 +47,7 @@ class _TrackingScreenState extends State<TrackingScreen> with SingleTickerProvid
   @override
   void dispose() {
     _controller.dispose();
-    _mapController.dispose();
+    _mapController?.dispose();
     super.dispose();
   }
 
@@ -73,16 +65,18 @@ class _TrackingScreenState extends State<TrackingScreen> with SingleTickerProvid
     double lat = p1.latitude + (p2.latitude - p1.latitude) * fraction;
     double lng = p1.longitude + (p2.longitude - p1.longitude) * fraction;
     
-    // Accurate rotation calculation
     double dy = p2.latitude - p1.latitude;
     double dx = p2.longitude - p1.longitude;
     
-    double finalAngle = -1.0 * ( (dx.abs() < 0.00001 && dy.abs() < 0.00001) ? 0.0 : ( ( (dy / dx).clamp(-100, 100) ) ) );
-    if (dx < 0) finalAngle += 3.14159; 
+    double finalAngle = 0.0;
+    if (dx != 0 || dy != 0) {
+      finalAngle = ( ( (dy / dx).clamp(-100, 100) ) );
+      if (dx < 0) finalAngle += 3.14159;
+    }
 
     return {
       'pos': LatLng(lat, lng),
-      'rotation': finalAngle
+      'rotation': finalAngle * 180 / 3.14159 // Google Maps uses degrees
     };
   }
 
@@ -96,7 +90,6 @@ class _TrackingScreenState extends State<TrackingScreen> with SingleTickerProvid
       ),
       body: Column(
         children: [
-          // Proper Interactive Map
           Expanded(
             child: Container(
               margin: const EdgeInsets.all(16),
@@ -113,73 +106,43 @@ class _TrackingScreenState extends State<TrackingScreen> with SingleTickerProvid
                   builder: (context, child) {
                     final truckData = _getTruckData(_animation.value);
                     final truckPos = truckData['pos'] as LatLng;
+                    final rotation = truckData['rotation'] as double;
                     
-                    return FlutterMap(
-                      mapController: _mapController,
-                      options: MapOptions(
-                        initialCenter: _route[0],
-                        initialZoom: 14,
+                    return GoogleMap(
+                      onMapCreated: (controller) => _mapController = controller,
+                      initialCameraPosition: CameraPosition(
+                        target: _route[0],
+                        zoom: 15,
                       ),
-                      children: [
-                        TileLayer(
-                          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                          userAgentPackageName: 'com.nexus.oms',
+                      polylines: {
+                        Polyline(
+                          polylineId: const PolylineId('route'),
+                          points: _route,
+                          color: NexusTheme.emerald600.withOpacity(0.6),
+                          width: 5,
                         ),
-                        PolylineLayer(
-                          polylines: <Polyline<Object>>[
-                            Polyline(
-                              points: _route,
-                              color: NexusTheme.emerald600.withOpacity(0.5),
-                              strokeWidth: 5,
-                            ),
-                          ],
+                      },
+                      markers: {
+                        Marker(
+                          markerId: const MarkerId('truck'),
+                          position: truckPos,
+                          rotation: rotation,
+                          anchor: const Offset(0.5, 0.5),
+                          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueCyan),
                         ),
-                        MarkerLayer(
-                          markers: [
-                            // Current Truck Position
-                            Marker(
-                              point: truckPos,
-                              width: 60,
-                              height: 60,
-                              child: Stack(
-                                alignment: Alignment.center,
-                                children: [
-                                  Container(
-                                    width: 40,
-                                    height: 40,
-                                    decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      shape: BoxShape.circle,
-                                      boxShadow: [
-                                        BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 8, offset: const Offset(0, 3))
-                                      ],
-                                      border: Border.all(color: NexusTheme.emerald600, width: 2),
-                                    ),
-                                  ),
-                                  Transform.rotate(
-                                    angle: truckData['rotation'] ?? 0.0,
-                                    child: const Icon(Icons.local_shipping, color: NexusTheme.emerald600, size: 28),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            // Destination
-                            Marker(
-                              point: _route.last,
-                              width: 40,
-                              height: 40,
-                              child: const Icon(Icons.location_on, color: Colors.redAccent, size: 36),
-                            ),
-                          ],
+                        Marker(
+                          markerId: const MarkerId('destination'),
+                          position: _route.last,
+                          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
                         ),
-                      ],
+                      },
                     );
                   },
                 ),
               ),
             ),
           ),
-          // Info Panel
+          // Info Panel (Same as before)
           Container(
             padding: const EdgeInsets.all(24),
             decoration: const BoxDecoration(
