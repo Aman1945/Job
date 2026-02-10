@@ -73,13 +73,13 @@ app.post('/api/login', async (req, res) => {
 
         if (!user) {
             console.log(`❌ Login failed: ${email} (Email not registered)`);
-            return res.status(404).json({ message: 'Email not registered' });
+            return res.status(404).json({ message: 'EMAIL_NOT_FOUND' });
         }
 
         // Check password
         if (user.password !== password) {
             console.log(`❌ Login failed: ${email} (Incorrect password)`);
-            return res.status(401).json({ message: 'Incorrect password' });
+            return res.status(401).json({ message: 'WRONG_PASSWORD' });
         }
 
         console.log(`✅ Login successful: ${email}`);
