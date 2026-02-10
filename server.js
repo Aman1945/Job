@@ -610,6 +610,135 @@ app.get('/api/analytics/pms', async (req, res) => {
 });
 
 
+// ==================== EXPORT/DOWNLOAD REPORTS ====================
+app.get('/api/analytics/export', async (req, res) => {
+    try {
+        const { type = 'sales_report', format = 'pdf' } = req.query;
+        const orders = useMongoDB ? await Order.find() : getData('orders');
+        const products = useMongoDB ? await Product.find() : getData('products');
+        const customers = useMongoDB ? await Customer.find() : getData('customers');
+
+        const reportName = type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+        const fileName = `${type}_${Date.now()}.${format}`;
+
+        if (format === 'pdf') {
+            // Generate PDF content (simplified - in production use a PDF library)
+            const pdfContent = generatePDFContent(reportName, orders, products, customers);
+
+            res.setHeader('Content-Type', 'application/pdf');
+            res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+            res.setHeader('Content-Length', Buffer.byteLength(pdfContent));
+            res.send(pdfContent);
+        } else if (format === 'excel' || format === 'xlsx') {
+            // Generate Excel content (simplified - in production use xlsx library)
+            const excelContent = generateExcelContent(reportName, orders, products, customers);
+
+            res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+            res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+            res.send(excelContent);
+        } else if (format === 'csv') {
+            // Generate CSV content
+            const csvContent = generateCSVContent(orders);
+
+            res.setHeader('Content-Type', 'text/csv');
+            res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+            res.send(csvContent);
+        } else {
+            res.status(400).json({ message: 'Unsupported format' });
+        }
+    } catch (error) {
+        console.error('Export error:', error);
+        res.status(500).json({ message: 'Error generating export' });
+    }
+});
+
+// Helper functions for report generation
+function generatePDFContent(reportName, orders, products, customers) {
+    // Simplified PDF generation - in production, use pdfkit or similar
+    const totalSales = orders.reduce((sum, o) => sum + (o.total || 0), 0);
+    const totalOrders = orders.length;
+
+    return `%PDF-1.4
+1 0 obj
+<<
+/Type /Catalog
+/Pages 2 0 R
+>>
+endobj
+2 0 obj
+<<
+/Type /Pages
+/Kids [3 0 R]
+/Count 1
+>>
+endobj
+3 0 obj
+<<
+/Type /Page
+/Parent 2 0 R
+/Resources <<
+/Font <<
+/F1 <<
+/Type /Font
+/Subtype /Type1
+/BaseFont /Helvetica
+>>
+>>
+>>
+/MediaBox [0 0 612 792]
+/Contents 4 0 R
+>>
+endobj
+4 0 obj
+<<
+/Length 200
+>>
+stream
+BT
+/F1 24 Tf
+50 750 Td
+(${reportName}) Tj
+0 -30 Td
+/F1 12 Tf
+(Total Orders: ${totalOrders}) Tj
+0 -20 Td
+(Total Sales: Rs. ${totalSales.toFixed(2)}) Tj
+0 -20 Td
+(Generated: ${new Date().toLocaleDateString()}) Tj
+ET
+endstream
+endobj
+xref
+0 5
+0000000000 65535 f
+0000000009 00000 n
+0000000058 00000 n
+0000000115 00000 n
+0000000317 00000 n
+trailer
+<<
+/Size 5
+/Root 1 0 R
+>>
+startxref
+565
+%%EOF`;
+}
+
+function generateExcelContent(reportName, orders, products, customers) {
+    // Simplified Excel generation - in production, use exceljs or xlsx
+    const csvData = generateCSVContent(orders);
+    return Buffer.from(csvData);
+}
+
+function generateCSVContent(orders) {
+    let csv = 'Order ID,Customer Name,Status,Total,Created At\n';
+    orders.forEach(order => {
+        csv += `${order.id},${order.customerName},${order.status},${order.total},${order.createdAt}\n`;
+    });
+    return csv;
+}
+
 // ==================== TALLY EXPORT ====================
 app.get('/api/tally/export/:orderId', async (req, res) => {
     try {
