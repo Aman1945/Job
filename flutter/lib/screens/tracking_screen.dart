@@ -36,6 +36,20 @@ class _TrackingScreenState extends State<TrackingScreen> with SingleTickerProvid
     super.initState();
     _controller = AnimationController(duration: const Duration(seconds: 40), vsync: this)..repeat();
     _animation = Tween<double>(begin: 0, end: 1).animate(_controller);
+    
+    // Add listener to follow truck without crashing build
+    _controller.addListener(() {
+      if (mounted) {
+        final truckData = _getTruckData(_animation.value);
+        final truckPos = truckData['pos'] as LatLng;
+        // Check if map is ready to avoid "not rendered" exception
+        try {
+          _mapController.move(truckPos, _mapController.camera.zoom);
+        } catch (_) {
+          // Map not ready yet, skip this frame
+        }
+      }
+    });
   }
 
   @override
@@ -62,25 +76,9 @@ class _TrackingScreenState extends State<TrackingScreen> with SingleTickerProvid
     // Accurate rotation calculation
     double dy = p2.latitude - p1.latitude;
     double dx = p2.longitude - p1.longitude;
-    // Map bearing to Flutter rotation (Icon faces right at 0)
-    // -atan2 because Flutter rotation is clockwise, Map Lat increases upwards
-    double angle = -3.14159/2 - (3.14159/2 - (3.14159/2 - ( (dx == 0 && dy == 0) ? 0 : (3.14159/2 - (3.14159/2 - ( (3.6) ))))));
-    // Simpler: atan2(dy, dx) is standard math. In Flutter, y is down. 
-    // Let's use standard bearing:
-    angle = -1 * ( ( (dx == 0 && dy == 0) ? 0 : (3.14159/2 - (3.14159/2 - ( (3.6) )))) ); 
-    // Precision bearing:
-    angle = -1 * ( (p2.longitude - p1.longitude) == 0 ? (p2.latitude > p1.latitude ? 1.57 : -1.57) : ( ( (p2.latitude - p1.latitude) / (p2.longitude - p1.longitude) ).clamp(-10, 10) ) );
     
-    // Re-calculating properly:
-    // math.atan2(dy, dx) where dy = lat2-lat1, dx = lng2-lng1
-    // Lat increases UP, Lng increases RIGHT.
-    // Flutter rotation 0 is RIGHT. Positive is CW.
-    // If moving UP (North): dy > 0, dx = 0. atan2(1, 0) = pi/2. We need to rotate -pi/2 to go from Right to Up.
-    double actualAngle = -1 * ( ( (dx.abs() < 0.0001 && dy.abs() < 0.0001) ? 0.0 : ( (dy == 0) ? (dx > 0 ? 0 : 3.14159) : (dx == 0 ? (dy > 0 ? -1.57 : 1.57) : ( -1 * ( (dy/dx).clamp(-100, 100) ) ) ) ) ) );
-    
-    // Final simplest/best for Icons.local_shipping (faces right):
     double finalAngle = -1.0 * ( (dx.abs() < 0.00001 && dy.abs() < 0.00001) ? 0.0 : ( ( (dy / dx).clamp(-100, 100) ) ) );
-    if (dx < 0) finalAngle += 3.14159; // Adjust for leftward movement
+    if (dx < 0) finalAngle += 3.14159; 
 
     return {
       'pos': LatLng(lat, lng),
@@ -116,9 +114,6 @@ class _TrackingScreenState extends State<TrackingScreen> with SingleTickerProvid
                     final truckData = _getTruckData(_animation.value);
                     final truckPos = truckData['pos'] as LatLng;
                     
-                    // Auto-pan the map to follow the truck
-                    _mapController.move(truckPos, _mapController.camera.zoom);
-
                     return FlutterMap(
                       mapController: _mapController,
                       options: MapOptions(
