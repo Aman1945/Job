@@ -7,8 +7,10 @@ import '../models/models.dart';
 import '../services/downloader_service.dart';
 
 class NexusProvider with ChangeNotifier {
-  final String _baseUrl = 'https://api.smartassistapp.in';
-  final String _socketUrl = 'https://api.smartassistapp.in';
+  // Use 10.0.2.2 for Android emulator (maps to host machine's localhost)
+  // Use your computer's IP address for physical device
+  final String _baseUrl = 'http://10.0.2.2:3000/api';
+  final String _socketUrl = 'http://10.0.2.2:3000';
   
   User? _currentUser;
 
