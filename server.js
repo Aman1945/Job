@@ -492,6 +492,124 @@ app.get('/api/analytics/sales', async (req, res) => {
     }
 });
 
+// ==================== SALES HUB API ====================
+app.get('/api/analytics/sales-hub', async (req, res) => {
+    try {
+        const { period = 'month' } = req.query;
+        const orders = useMongoDB ? await Order.find() : getData('orders');
+
+        const now = new Date();
+        let startDate;
+        switch (period) {
+            case 'today': startDate = new Date(now.setHours(0, 0, 0, 0)); break;
+            case 'week': startDate = new Date(now.setDate(now.getDate() - 7)); break;
+            case 'six-months': startDate = new Date(now.setMonth(now.getMonth() - 6)); break;
+            case 'quarter': startDate = new Date(now.setMonth(now.getMonth() - 3)); break;
+            case 'year': startDate = new Date(now.setFullYear(now.getFullYear() - 1)); break;
+            default: startDate = new Date(now.setMonth(now.getMonth() - 1));
+        }
+
+        const filteredOrders = orders.filter(o => new Date(o.createdAt) >= startDate);
+        const totalSales = filteredOrders.reduce((sum, o) => sum + (o.total || 0), 0);
+        const completedOrders = filteredOrders.filter(o => o.status === 'Delivered').length;
+        const pendingOrders = filteredOrders.filter(o => o.status.includes('Pending')).length;
+
+        const customerSales = {};
+        filteredOrders.forEach(order => {
+            if (!customerSales[order.customerName]) customerSales[order.customerName] = { name: order.customerName, sales: 0, orders: 0 };
+            customerSales[order.customerName].sales += order.total;
+            customerSales[order.customerName].orders += 1;
+        });
+
+        res.json({
+            metrics: { totalSales, completedOrders, pendingOrders, avgOrderValue: filteredOrders.length > 0 ? totalSales / filteredOrders.length : 0 },
+            pipeline: {
+                newLeads: filteredOrders.filter(o => o.status === 'Pending').length,
+                inProgress: filteredOrders.filter(o => o.status.includes('Approved')).length,
+                negotiation: filteredOrders.filter(o => o.status.includes('Credit')).length,
+                closedWon: filteredOrders.filter(o => o.status === 'Delivered').length
+            },
+            topCustomers: Object.values(customerSales).sort((a, b) => b.sales - a.sales).slice(0, 5),
+            recentActivity: filteredOrders.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 10)
+        });
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching sales hub data' });
+    }
+});
+
+// ==================== REPORTING API ====================
+app.get('/api/analytics/reports', async (req, res) => {
+    try {
+        const { type = 'sales', startDate, endDate } = req.query;
+        const orders = useMongoDB ? await Order.find() : getData('orders');
+        const products = useMongoDB ? await Product.find() : getData('products');
+        const customers = useMongoDB ? await Customer.find() : getData('customers');
+
+        let filteredOrders = orders;
+        if (startDate && endDate) {
+            filteredOrders = orders.filter(o => {
+                const d = new Date(o.createdAt);
+                return d >= new Date(startDate) && d <= new Date(endDate);
+            });
+        }
+
+        if (type === 'sales') {
+            const totalSales = filteredOrders.reduce((sum, o) => sum + (o.total || 0), 0);
+            res.json({ summary: { totalSales, totalOrders: filteredOrders.length, avgOrderValue: filteredOrders.length > 0 ? totalSales / filteredOrders.length : 0 } });
+        } else if (type === 'inventory') {
+            res.json({ summary: { totalProducts: products.length, totalValue: products.reduce((sum, p) => sum + (p.price * (p.stock || 0)), 0), lowStockCount: products.filter(p => (p.stock || 0) < 10).length } });
+        } else {
+            res.json({ message: 'Report data generated' });
+        }
+    } catch (error) {
+        res.status(500).json({ message: 'Error generating report' });
+    }
+});
+
+// ==================== PMS API ====================
+app.get('/api/analytics/pms', async (req, res) => {
+    try {
+        const { userId } = req.query;
+        const orders = useMongoDB ? await Order.find() : getData('orders');
+
+        // Calculate performance for EVERY user to build a leaderboard
+        const userPerformanceMap = {};
+        orders.forEach(o => {
+            const sid = o.salespersonId || 'Unknown';
+            if (!userPerformanceMap[sid]) {
+                userPerformanceMap[sid] = { name: sid, sales: 0, orders: 0, completed: 0 };
+            }
+            userPerformanceMap[sid].sales += (o.total || 0);
+            userPerformanceMap[sid].orders += 1;
+            if (o.status === 'Delivered') userPerformanceMap[sid].completed += 1;
+        });
+
+        const leaderboard = Object.values(userPerformanceMap)
+            .map(u => ({
+                ...u,
+                score: Math.min(100, Math.round((u.sales / 10000) + (u.completed * 5))),
+                completionRate: u.orders > 0 ? (u.completed / u.orders * 100).toFixed(1) : 0
+            }))
+            .sort((a, b) => b.score - a.score);
+
+        const targetUser = userId ? leaderboard.find(u => u.name === userId) : leaderboard[0];
+
+        res.json({
+            userPerformance: targetUser || { score: 0, rank: 'N/A', growth: '0%', totalSales: 0, totalOrders: 0 },
+            kpis: {
+                ordersCompleted: targetUser ? targetUser.completed : 0,
+                responseTime: 2.5,
+                customerSatisfaction: 4.8,
+                targetAchievement: targetUser ? Math.min(100, (targetUser.sales / 500000 * 100)).toFixed(1) : 0
+            },
+            leaderboard: leaderboard.slice(0, 10)
+        });
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching PMS data' });
+    }
+});
+
+
 // ==================== TALLY EXPORT ====================
 app.get('/api/tally/export/:orderId', async (req, res) => {
     try {
