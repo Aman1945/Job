@@ -800,7 +800,18 @@ app.use((err, req, res, next) => {
 });
 
 // ==================== START SERVER ====================
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
+    const { networkInterfaces } = require('os');
+    const nets = networkInterfaces();
+    const ips = [];
+    for (const name of Object.keys(nets)) {
+        for (const net of nets[name]) {
+            if (net.family === 'IPv4' && !net.internal) {
+                ips.push(net.address);
+            }
+        }
+    }
+
     console.log(`
 ╔════════════════════════════════════════════════════════╗
 ║                                                        ║
@@ -809,6 +820,9 @@ app.listen(PORT, () => {
 ║  Status: ✅ ONLINE                                     ║
 ║  Port: ${PORT}                                         ║
 ║  Database: ${useMongoDB ? '☁️  MongoDB Atlas' : '📁 JSON Storage'}                          ║
+║                                                        ║
+║  Local IPs for Mobile Connection:                      ║
+${ips.map(ip => `║  🔗 http://${ip}:${PORT}                         `).join('\n')}
 ║                                                        ║
 ╚════════════════════════════════════════════════════════╝
     `);
