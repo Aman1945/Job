@@ -72,17 +72,18 @@ class _NexusAppState extends State<NexusApp> {
         '/new-customer': (context) => const NewCustomerScreen(),
         '/book-order': (context) => const BookOrderScreen(),
       },
-      home: _isInitializing
-          ? const SplashScreen()
-          : Consumer<NexusProvider>(
-              builder: (context, provider, child) {
-                if (provider.currentUser == null) {
-                  return LoginScreen();
-                } else {
-                  return DashboardScreen();
-                }
-              },
-            ),
+      home: Consumer<NexusProvider>(
+        builder: (context, provider, child) {
+          if (_isInitializing || provider.isLoading) {
+            return const SplashScreen();
+          }
+          if (provider.currentUser == null) {
+            return LoginScreen();
+          } else {
+            return DashboardScreen();
+          }
+        },
+      ),
     );
   }
 }

@@ -7,10 +7,10 @@ import '../models/models.dart';
 import '../services/downloader_service.dart';
 
 class NexusProvider with ChangeNotifier {
-  // Use 10.0.2.2 for Android emulator (maps to host machine's localhost)
-  // Use your computer's IP address for physical device
-  final String _baseUrl = 'http://10.0.2.2:3000/api';
-  final String _socketUrl = 'http://10.0.2.2:3000';
+  // Machine IP: 192.168.0.241 (Works on both Real Phone & Emulator)
+  static const String serverAddress = '192.168.0.241:3000';
+  final String _baseUrl = 'http://$serverAddress/api';
+  final String _socketUrl = 'http://$serverAddress';
   
   User? _currentUser;
 
@@ -380,9 +380,9 @@ class NexusProvider with ChangeNotifier {
     return null;
   }
 
-  Future<Map<String, dynamic>?> fetchPMSData({String? userId, String period = 'month'}) async {
+  Future<Map<String, dynamic>> fetchPMSData({String? userId, String period = 'month'}) async {
     try {
-      final queryParams = 'period=$period${userId != null ? "&userId=$userId" : ""}';
+      final queryParams = 'period=$period' + (userId != null && userId.isNotEmpty ? '&userId=$userId' : '');
       final response = await http.get(Uri.parse('$_baseUrl/analytics/pms?$queryParams'));
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
@@ -390,7 +390,7 @@ class NexusProvider with ChangeNotifier {
     } catch (e) {
       debugPrint('Error fetching PMS data: $e');
     }
-    return null;
+    return {};
   }
 
   Future<void> downloadReport({required String type, required String format}) async {

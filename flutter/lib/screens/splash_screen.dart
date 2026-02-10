@@ -15,7 +15,7 @@ class SplashScreen extends StatelessWidget {
             end: Alignment.bottomRight,
             colors: [
               NexusTheme.indigo600,
-              NexusTheme.indigo800,
+         
               const Color(0xFF1E293B),
             ],
           ),
