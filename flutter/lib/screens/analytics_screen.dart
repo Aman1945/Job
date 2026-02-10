@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:provider/provider.dart';
+import '../providers/nexus_provider.dart';
 import '../utils/theme.dart';
 
 class AnalyticsScreen extends StatefulWidget {
@@ -11,9 +13,37 @@ class AnalyticsScreen extends StatefulWidget {
 
 class _AnalyticsScreenState extends State<AnalyticsScreen> {
   String _selectedTerminal = 'ORDER FLOW';
+  bool _isLoading = true;
+  Map<String, dynamic> _categoryData = {};
+  Map<String, dynamic> _fleetData = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    setState(() => _isLoading = true);
+    final provider = Provider.of<NexusProvider>(context, listen: false);
+    
+    final results = await Future.wait([
+      provider.fetchCategorySplitData(),
+      provider.fetchFleetIntelligenceData(),
+    ]);
+
+    setState(() {
+      _categoryData = results[0];
+      _fleetData = results[1];
+      _isLoading = false;
+    });
+  }
+
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) return const Scaffold(body: Center(child: CircularProgressIndicator(color: NexusTheme.indigo600)));
+
     return Scaffold(
       backgroundColor: NexusTheme.slate50,
       appBar: AppBar(
@@ -123,6 +153,9 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   }
 
   Widget _buildCategorySplitView() {
+    final splitList = _categoryData['split'] as List? ?? [];
+    final concentrationList = _categoryData['concentration'] as List? ?? [];
+
     return Row(
       children: [
         Expanded(
@@ -133,9 +166,12 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
               children: [
                 PieChart(
                   PieChartData(
-                    sections: [
-                      PieChartSectionData(color: NexusTheme.indigo500, value: 100, radius: 40, showTitle: false),
-                    ],
+                    sections: splitList.map((s) => PieChartSectionData(
+                      color: Color(int.parse(s['color'].toString().replaceFirst('#', '0xFF'))), 
+                      value: s['value'].toDouble(), 
+                      radius: 40, 
+                      showTitle: false
+                    )).toList(),
                     centerSpaceRadius: 60,
                   ),
                 ),
@@ -144,7 +180,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                   children: [
                     Container(width: 8, height: 8, color: NexusTheme.indigo500),
                     const SizedBox(height: 4),
-                    const Text('BREADED', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+                    Text(splitList.isNotEmpty ? splitList[0]['category'] : 'N/A', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
                   ],
                 ),
               ],
@@ -161,13 +197,13 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                 gridData: const FlGridData(show: false),
                 titlesData: const FlTitlesData(show: false),
                 borderData: FlBorderData(show: false),
-                barGroups: [
-                  BarChartGroupData(x: 0, barRods: [BarChartRodData(toY: 8, color: NexusTheme.emerald500, width: 22, borderRadius: BorderRadius.circular(4))]),
-                ],
+                barGroups: concentrationList.asMap().entries.map((e) => BarChartGroupData(x: e.key, barRods: [
+                  BarChartRodData(toY: e.value['qty'].toDouble() / 50, color: NexusTheme.emerald500, width: 22, borderRadius: BorderRadius.circular(4))
+                ])).toList(),
               ),
             ),
             icon: Icons.bar_chart,
-            footerLabel: 'BREADED',
+            footerLabel: concentrationList.isNotEmpty ? concentrationList[0]['label'] : 'N/A',
           ),
         ),
       ],
@@ -175,16 +211,17 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   }
 
   Widget _buildFleetIntelligenceView() {
+    final metrics = _fleetData['metrics'] ?? {};
     return Column(
       children: [
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: Row(
             children: [
-              _buildMetricCard('FLEET COVERAGE', '0 KM', 'Trip distance MTD', Colors.indigo, NexusTheme.blue900, icon: Icons.route),
-              _buildMetricCard('ACTIVE ASSETS', '0', 'Unique Reg Numbers', Colors.orange, NexusTheme.amber900, icon: Icons.local_shipping),
-              _buildMetricCard('SUCCESSFUL DROPS', '0', 'Confirmed PODs', Colors.emerald, NexusTheme.emerald900, icon: Icons.verified_user),
-              _buildMetricCard('FLEET PERSONNEL', '0', 'On-field force', Colors.slate, NexusTheme.slate900, icon: Icons.person_pin_circle),
+              _buildMetricCard('FLEET COVERAGE', metrics['coverage'] ?? '0 KM', 'Trip distance MTD', Colors.indigo, NexusTheme.blue900, icon: Icons.route),
+              _buildMetricCard('ACTIVE ASSETS', metrics['activeAssets'] ?? '0', 'Unique Reg Numbers', Colors.orange, NexusTheme.amber900, icon: Icons.local_shipping),
+              _buildMetricCard('SUCCESSFUL DROPS', metrics['successfulDrops'] ?? '0', 'Confirmed PODs', Colors.emerald, NexusTheme.emerald900, icon: Icons.verified_user),
+              _buildMetricCard('FLEET PERSONNEL', metrics['personnel'] ?? '0', 'On-field force', Colors.slate, NexusTheme.slate900, icon: Icons.person_pin_circle),
             ],
           ),
         ),

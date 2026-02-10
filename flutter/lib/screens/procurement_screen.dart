@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/nexus_provider.dart';
 import '../utils/theme.dart';
 
 class ProcurementScreen extends StatefulWidget {
@@ -10,8 +12,25 @@ class ProcurementScreen extends StatefulWidget {
 
 class _ProcurementScreenState extends State<ProcurementScreen> {
   bool _showInboundForm = false;
+  bool _isLoading = true;
+  List<dynamic> _inbounds = [];
   final TextEditingController _supplierController = TextEditingController();
   String? _selectedSku;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    setState(() => _isLoading = true);
+    final data = await Provider.of<NexusProvider>(context, listen: false).fetchProcurementData();
+    setState(() {
+      _inbounds = data;
+      _isLoading = false;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -148,9 +167,20 @@ class _ProcurementScreenState extends State<ProcurementScreen> {
                 width: 250,
                 height: 54,
                 child: ElevatedButton(
-                  onPressed: () {
-                    // Logic to save
-                    setState(() => _showInboundForm = false);
+                  onPressed: () async {
+                    if (_supplierController.text.isEmpty) return;
+                    
+                    final success = await Provider.of<NexusProvider>(context, listen: false).createProcurementEntry({
+                      'vendor': _supplierController.text,
+                      'sku': _selectedSku ?? 'General Material SKU',
+                      'code': 'SKU-AUTO-${DateTime.now().millisecondsSinceEpoch.toString().substring(DateTime.now().millisecondsSinceEpoch.toString().length - 4)}',
+                    });
+
+                    if (success) {
+                      _supplierController.clear();
+                      setState(() => _showInboundForm = false);
+                      _loadData(); // Refresh table
+                    }
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: NexusTheme.indigo600,
@@ -256,26 +286,8 @@ class _ProcurementScreenState extends State<ProcurementScreen> {
   }
 
   Widget _buildProcurementTable() {
-    final mockInbounds = [
-      {
-        'ref': 'PRC-1001',
-        'date': '10/02/2026',
-        'vendor': 'Global Fisheries Ltd',
-        'sku': 'Frozen Salmon Fillets 500G',
-        'code': 'SKU-SM-01',
-        'checks': [true, true, true],
-        'stage': 'PENDING'
-      },
-      {
-        'ref': 'PRC-1002',
-        'date': '10/02/2026',
-        'vendor': 'Ocean Fresh Imports',
-        'sku': 'Tuna Steak Premium 200G',
-        'code': 'SKU-TN-42',
-        'checks': [true, true, true],
-        'stage': 'PENDING'
-      },
-    ];
+    if (_isLoading) return const Center(child: CircularProgressIndicator(color: NexusTheme.indigo600));
+    if (_inbounds.isEmpty) return const Center(child: Text('No Inbound Missions Found', style: TextStyle(color: NexusTheme.slate400)));
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -294,25 +306,25 @@ class _ProcurementScreenState extends State<ProcurementScreen> {
           DataColumn(label: Text('DOCS / FILES')),
           DataColumn(label: Text('STAGE')),
         ],
-        rows: mockInbounds.map((item) {
+        rows: _inbounds.map((item) {
           return DataRow(cells: [
             DataCell(Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(item['ref'] as String, style: const TextStyle(fontWeight: FontWeight.w900, color: NexusTheme.indigo600, fontSize: 14)),
+                Text(item['ref']?.toString() ?? 'N/A', style: const TextStyle(fontWeight: FontWeight.w900, color: NexusTheme.indigo600, fontSize: 14)),
                 const SizedBox(height: 4),
-                Text(item['date'] as String, style: const TextStyle(color: NexusTheme.slate400, fontSize: 11, fontWeight: FontWeight.bold)),
+                Text(item['date']?.toString() ?? '', style: const TextStyle(color: NexusTheme.slate400, fontSize: 11, fontWeight: FontWeight.bold)),
               ],
             )),
-            DataCell(Text(item['vendor'] as String, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: NexusTheme.slate800))),
+            DataCell(Text(item['vendor']?.toString() ?? 'Unknown', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: NexusTheme.slate800))),
             DataCell(Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(item['sku'] as String, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: NexusTheme.slate800)),
+                Text(item['sku']?.toString() ?? 'Unknown SKU', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: NexusTheme.slate800)),
                 const SizedBox(height: 4),
-                Text('CODE: ${item['code']}', style: const TextStyle(color: NexusTheme.indigo600, fontSize: 11, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
+                Text('CODE: ${item['code'] ?? 'N/A'}', style: const TextStyle(color: NexusTheme.indigo600, fontSize: 11, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
               ],
             )),
             DataCell(Row(
@@ -325,7 +337,7 @@ class _ProcurementScreenState extends State<ProcurementScreen> {
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(color: NexusTheme.slate100),
                   ),
-                  child: Icon(iconData, size: 20, color: NexusTheme.slate200),
+                  child: Icon(iconData, size: 20, color: (item['checks'] != null && item['checks'].contains(true)) ? NexusTheme.indigo500 : NexusTheme.slate200),
                 );
               }).toList(),
             )),
@@ -344,7 +356,7 @@ class _ProcurementScreenState extends State<ProcurementScreen> {
                 color: const Color(0xFFFFF7ED),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Text('PENDING', style: TextStyle(color: Color(0xFFEA580C), fontWeight: FontWeight.w900, fontSize: 11, letterSpacing: 1)),
+              child: Text(item['stage']?.toString() ?? 'PENDING', style: const TextStyle(color: Color(0xFFEA580C), fontWeight: FontWeight.w900, fontSize: 11, letterSpacing: 1)),
             )),
           ]);
         }).toList(),

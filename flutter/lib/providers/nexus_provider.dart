@@ -378,14 +378,61 @@ class NexusProvider with ChangeNotifier {
     final queryParams = 'type=${type.toLowerCase().replaceAll(' ', '_')}&format=${format.toLowerCase()}';
     final url = '$_baseUrl/analytics/export?$queryParams';
     
-    // In a real app, you might need to pass the auth token in headers
-    // FlutterDownloader supports headers as well
-    final token = await SharedPreferences.getInstance().then((p) => p.getString('auth_token'));
-
     await DownloaderService().downloadFile(
       url: url,
       fileName: "${type.replaceAll(' ', '_')}_Report.${format.toLowerCase()}",
     );
+  }
+
+
+  Future<List<dynamic>> fetchProcurementData() async {
+    try {
+      final response = await http.get(Uri.parse('$_baseUrl/procurement'));
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      }
+    } catch (e) {
+      debugPrint('Error fetching procurement data: $e');
+    }
+    return [];
+  }
+
+  Future<bool> createProcurementEntry(Map<String, dynamic> data) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/procurement'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(data),
+      );
+      return response.statusCode == 201;
+    } catch (e) {
+      debugPrint('Error creating procurement entry: $e');
+      return false;
+    }
+  }
+
+  Future<Map<String, dynamic>> fetchCategorySplitData() async {
+    try {
+      final response = await http.get(Uri.parse('$_baseUrl/analytics/category-split'));
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      }
+    } catch (e) {
+      debugPrint('Error fetching category split data: $e');
+    }
+    return {};
+  }
+
+  Future<Map<String, dynamic>> fetchFleetIntelligenceData() async {
+    try {
+      final response = await http.get(Uri.parse('$_baseUrl/analytics/fleet'));
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      }
+    } catch (e) {
+      debugPrint('Error fetching fleet data: $e');
+    }
+    return {};
   }
 }
 
