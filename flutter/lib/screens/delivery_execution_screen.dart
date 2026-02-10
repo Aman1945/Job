@@ -186,12 +186,12 @@ class DeliveryExecutionScreen extends StatelessWidget {
 
     switch (status) {
       case 'Picked Up':
-        bgColor = NexusTheme.blue500.withValues(alpha: 0.1);
+        bgColor = NexusTheme.blue500.withOpacity(0.1);
         textColor = NexusTheme.blue900;
         break;
       case 'Out for Delivery':
       case 'In Transit':
-        bgColor = NexusTheme.purple500.withValues(alpha: 0.1);
+        bgColor = NexusTheme.purple500.withOpacity(0.1);
         textColor = NexusTheme.purple900;
         break;
       default:

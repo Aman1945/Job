@@ -125,7 +125,7 @@ class DashboardScreen extends StatelessWidget {
         const SizedBox(height: 8),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-          decoration: BoxDecoration(color: NexusTheme.emerald500.withValues(alpha:0.1), borderRadius: BorderRadius.circular(20), border: Border.all(color: NexusTheme.emerald500.withValues(alpha: 0.2))),
+          decoration: BoxDecoration(color: NexusTheme.emerald500.withOpacity(0.1), borderRadius: BorderRadius.circular(20), border: Border.all(color: NexusTheme.emerald500.withOpacity(0.2))),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -194,7 +194,7 @@ class DashboardScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         child: Container(
           padding: EdgeInsets.symmetric(horizontal: isMobile ? 12 : 16),
-          decoration: BoxDecoration(color: NexusTheme.slate900, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: NexusTheme.slate900.withValues(alpha: 0.2), blurRadius: 10, offset: const Offset(0, 4))]),
+          decoration: BoxDecoration(color: NexusTheme.slate900, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: NexusTheme.slate900.withOpacity(0.2), blurRadius: 10, offset: const Offset(0, 4))]),
           child: Row(
             children: [
               Icon(utilities[i]['i'] as IconData, color: NexusTheme.emerald400, size: isMobile ? 16 : 18),
@@ -234,13 +234,13 @@ class _ActionCard extends StatelessWidget {
           color: Colors.white, 
           borderRadius: BorderRadius.circular(20), 
           border: Border.all(color: NexusTheme.slate200), 
-          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10)]
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10)]
         ),
         child: Row(
           children: [
             Container(
               padding: EdgeInsets.all(isMobile ? 8 : 10), 
-              decoration: BoxDecoration(color: color.withValues(alpha: 0.05), shape: BoxShape.circle), 
+              decoration: BoxDecoration(color: color.withOpacity(0.05), shape: BoxShape.circle), 
               child: Icon(icon, color: color, size: isMobile ? 20 : 24)
             ),
             SizedBox(width: isMobile ? 12 : 16),

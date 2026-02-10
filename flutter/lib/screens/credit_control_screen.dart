@@ -102,7 +102,7 @@ class CreditControlScreen extends StatelessWidget {
                 Container(
                   padding: EdgeInsets.symmetric(horizontal: isMobile ? 8 : 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: NexusTheme.amber500.withValues(alpha: 0.1),
+                    color: NexusTheme.amber500.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(

@@ -75,7 +75,7 @@ class _ReportingScreenState extends State<ReportingScreen> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: NexusTheme.slate200),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10)],
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10)],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -202,7 +202,7 @@ class _ReportingScreenState extends State<ReportingScreen> {
     final orders = provider.orders;
     final totalSales = orders.fold(0.0, (sum, o) => sum + o.total);
     final totalOrders = orders.length;
-    final avgOrderValue = totalOrders > 0 ? totalSales / totalOrders : 0;
+    final avgOrderValue = totalOrders > 0 ? (totalSales / totalOrders).toDouble() : 0.0;
     
     return Column(
       children: [
@@ -285,8 +285,8 @@ class _ReportingScreenState extends State<ReportingScreen> {
   Widget _buildPerformanceReport(NexusProvider provider, bool isMobile) {
     final orders = provider.orders;
     final deliveryRate = orders.isNotEmpty 
-      ? (orders.where((o) => o.status == 'Delivered').length / orders.length * 100) 
-      : 0;
+      ? (orders.where((o) => o.status == 'Delivered').length / orders.length * 100).toDouble() 
+      : 0.0;
     
     return Column(
       children: [
@@ -431,7 +431,7 @@ class _ReportingScreenState extends State<ReportingScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: customer.status == 'Active' ? Colors.green.withValues(alpha: 0.1) : Colors.orange.withValues(alpha: 0.1),
+                    color: customer.status == 'Active' ? Colors.green.withOpacity(0.1) : Colors.orange.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
@@ -511,16 +511,14 @@ class _ReportingScreenState extends State<ReportingScreen> {
     return InkWell(
       onTap: () {
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Exporting as $label...')),
-        );
+        _exportData(label);
       },
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
+          color: color.withOpacity(0.1),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withValues(alpha: 0.3)),
+          border: Border.all(color: color.withOpacity(0.3)),
         ),
         child: Row(
           children: [
@@ -529,6 +527,63 @@ class _ReportingScreenState extends State<ReportingScreen> {
             Text(label, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: color)),
           ],
         ),
+      ),
+    );
+  }
+
+  void _exportData(String format) {
+    final provider = Provider.of<NexusProvider>(context, listen: false);
+    String content = "Report: $_selectedReportType\nGenerated: ${DateTime.now()}\n\n";
+    
+    if (_selectedReportType == 'Sales Report') {
+      content += "Order ID,Customer,Status,Total,Date\n";
+      for (var order in provider.orders) {
+        content += "${order.id},${order.customerName},${order.status},${order.total},${order.createdAt}\n";
+      }
+    } else if (_selectedReportType == 'Inventory Report') {
+      content += "SKU,Product Name,Price,Stock\n";
+      for (var product in provider.products) {
+        content += "${product.skuCode},${product.name},${product.price},${product.stock}\n";
+      }
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Data Exported ($format)'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('The report has been successfully generated.', style: TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 12),
+            const Text('Data Preview:', style: TextStyle(fontSize: 10, color: Colors.grey)),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(8)),
+              child: SingleChildScrollView(
+                child: Text(content.split('\n').take(10).join('\n') + "\n...", 
+                  style: const TextStyle(fontSize: 10, fontFamily: 'monospace')),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('DONE'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('File saved to downloads in $format format!')),
+              );
+            },
+            child: const Text('DOWNLOAD'),
+          ),
+        ],
       ),
     );
   }

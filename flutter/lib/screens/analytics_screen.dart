@@ -66,7 +66,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(32),
-                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 20, offset: const Offset(0, 10))],
+                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 20, offset: const Offset(0, 10))],
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -95,7 +95,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                             dotData: const FlDotData(show: false),
                             belowBarData: BarAreaData(
                               show: true, 
-                              color: NexusTheme.indigo500.withValues(alpha: 0.1)
+                              color: NexusTheme.indigo500.withOpacity(0.1)
                             ),
                           ),
                         ],
@@ -214,7 +214,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: isGreen ? NexusTheme.emerald500.withValues(alpha: 0.2) : Colors.white10,
+        color: isGreen ? NexusTheme.emerald500.withOpacity(0.2) : Colors.white10,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: isGreen ? NexusTheme.emerald500 : Colors.white24, width: 1),
       ),

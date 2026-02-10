@@ -12,7 +12,7 @@ class OrderDetailsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<NexusProvider>(context);
-    final customer = provider.customers.firstWhere((c) => c.id == order.customerId, orElse: () => Customer(id: '', name: 'Unknown', address: ''));
+    final customer = provider.customers.firstWhere((c) => c.id == order.customerId, orElse: () => Customer(id: '', name: 'Unknown', address: '', city: 'NA', status: 'Inactive'));
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
@@ -64,7 +64,7 @@ class OrderDetailsScreen extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(32),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 20, offset: const Offset(0, 10))],
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 20, offset: const Offset(0, 10))],
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -123,9 +123,9 @@ class OrderDetailsScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
+        color: color.withOpacity(0.1),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withValues(alpha: 0.2)),
+        border: Border.all(color: color.withOpacity(0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -225,7 +225,7 @@ class OrderDetailsScreen extends StatelessWidget {
         decoration: BoxDecoration(
           color: isOutline ? Colors.white : color,
           borderRadius: BorderRadius.circular(24),
-          border: isOutline ? Border.all(color: color.withValues(alpha: 0.2)) : null,
+          border: isOutline ? Border.all(color: color.withOpacity(0.2)) : null,
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -294,7 +294,7 @@ class OrderDetailsScreen extends StatelessWidget {
                       width: 24,
                       height: 24,
                       decoration: BoxDecoration(
-                        color: isActive ? const Color(0xFF059669).withValues(alpha: 0.1) : const Color(0xFFF1F5F9),
+                        color: isActive ? const Color(0xFF059669).withOpacity(0.1) : const Color(0xFFF1F5F9),
                         shape: BoxShape.circle,
                         border: isActive ? Border.all(color: const Color(0xFF059669)) : null,
                       ),

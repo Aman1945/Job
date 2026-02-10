@@ -23,7 +23,7 @@ class _SalesHubScreenState extends State<SalesHubScreen> {
     final totalSales = orders.fold(0.0, (sum, o) => sum + o.total);
     final completedOrders = orders.where((o) => o.status == 'Delivered').length;
     final pendingOrders = orders.where((o) => o.status.contains('Pending')).length;
-    final avgOrderValue = orders.isNotEmpty ? totalSales / orders.length : 0;
+    final avgOrderValue = orders.isNotEmpty ? (totalSales / orders.length).toDouble() : 0.0;
     
     return Scaffold(
       backgroundColor: NexusTheme.slate50,
@@ -78,7 +78,7 @@ class _SalesHubScreenState extends State<SalesHubScreen> {
   }
   
   Widget _buildPeriodSelector(bool isMobile) {
-    final periods = ['Today', 'This Week', 'This Month', 'This Quarter', 'This Year'];
+    final periods = ['This Month', 'Last 6 Months', 'This Quarter', 'This Year'];
     
     return Container(
       padding: EdgeInsets.all(isMobile ? 12 : 16),
@@ -99,7 +99,13 @@ class _SalesHubScreenState extends State<SalesHubScreen> {
               isExpanded: true,
               underline: const SizedBox(),
               items: periods.map((p) => DropdownMenuItem(value: p, child: Text(p))).toList(),
-              onChanged: (value) => setState(() => _selectedPeriod = value!),
+              onChanged: (value) {
+                if (value != null) {
+                  setState(() => _selectedPeriod = value);
+                  // In a real app, you would fetch new data here
+                  // provider.fetchSalesHubData(period: value.toLowerCase().replaceAll(' ', '-'));
+                }
+              },
             ),
           ),
         ],
@@ -131,7 +137,7 @@ class _SalesHubScreenState extends State<SalesHubScreen> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: NexusTheme.slate200),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10)],
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10)],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -167,7 +173,7 @@ class _SalesHubScreenState extends State<SalesHubScreen> {
       ),
       child: Column(
         children: stages.entries.map((entry) {
-          final percentage = orders.isNotEmpty ? (entry.value / orders.length * 100) : 0;
+          final percentage = orders.isNotEmpty ? (entry.value / orders.length * 100).toDouble() : 0.0;
           return Padding(
             padding: const EdgeInsets.only(bottom: 16),
             child: Column(
@@ -185,10 +191,10 @@ class _SalesHubScreenState extends State<SalesHubScreen> {
                 ClipRRect(
                   borderRadius: BorderRadius.circular(8),
                   child: LinearProgressIndicator(
-                    value: percentage / 100,
+                    value: percentage / 100.0,
                     minHeight: 8,
                     backgroundColor: NexusTheme.slate100,
-                    valueColor: const AlwaysStoppedAnimation(NexusTheme.emerald500),
+                    valueColor: const AlwaysStoppedAnimation<Color>(NexusTheme.emerald500),
                   ),
                 ),
               ],

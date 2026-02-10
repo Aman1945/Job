@@ -215,6 +215,8 @@ class Customer {
   final String id;
   final String name;
   final String address;
+  final String city;
+  final String status;
   final String? phone;
   final String? email;
   final String? gst;
@@ -228,6 +230,8 @@ class Customer {
     required this.id,
     required this.name,
     required this.address,
+    required this.city,
+    this.status = 'Active',
     this.phone,
     this.email,
     this.gst,
@@ -243,6 +247,8 @@ class Customer {
       id: json['id'] ?? '',
       name: json['name'] ?? '',
       address: json['address'] ?? json['location'] ?? 'Address not provided',
+      city: json['city'] ?? (json['address'] != null ? json['address'].split(',').last.trim() : 'NA'),
+      status: json['status'] ?? 'Active',
       phone: json['phone'],
       email: json['email'],
       gst: json['gst'] ?? json['gstNumber'],
@@ -259,6 +265,8 @@ class Customer {
       'id': id,
       'name': name,
       'address': address,
+      'city': city,
+      'status': status,
       if (phone != null) 'phone': phone,
       if (email != null) 'email': email,
       if (gst != null) 'gst': gst,

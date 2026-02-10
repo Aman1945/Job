@@ -79,7 +79,7 @@ class _TrackingScreenState extends State<TrackingScreen> with SingleTickerProvid
                           polylines: [
                             Polyline(
                               points: [_startPoint, _endPoint],
-                              color: NexusTheme.emerald500.withValues(alpha: 0.3),
+                              color: NexusTheme.emerald500.withOpacity(0.3),
                               strokeWidth: 4,
                             ),
                           ],

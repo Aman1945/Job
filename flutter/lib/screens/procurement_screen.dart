@@ -68,7 +68,7 @@ class _ProcurementScreenState extends State<ProcurementScreen> {
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(32),
-                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 20)],
+                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 20)],
               ),
               child: _buildProcurementTable(),
             ),

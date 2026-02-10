@@ -12,12 +12,44 @@ class PMSScreen extends StatefulWidget {
 
 class _PMSScreenState extends State<PMSScreen> {
   String _selectedPeriod = 'This Month';
+  Map<String, dynamic>? _pmsData;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    setState(() => _isLoading = true);
+    final provider = Provider.of<NexusProvider>(context, listen: false);
+    final data = await provider.fetchPMSData(
+      userId: provider.currentUser?.id,
+      period: _selectedPeriod.toLowerCase().replaceAll(' ', '-'),
+    );
+    if (mounted) {
+      setState(() {
+        _pmsData = data;
+        _isLoading = false;
+      });
+    }
+  }
   
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<NexusProvider>(context);
     final user = provider.currentUser;
+    final isAdmin = user?.id == 'admin@nexus.com';
     
+    if (_isLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    final performance = _pmsData?['userPerformance'] ?? {};
+    final kpis = _pmsData?['kpis'] ?? {};
+    final leaderboard = (_pmsData?['leaderboard'] as List? ?? []);
+
     return Scaffold(
       backgroundColor: NexusTheme.slate50,
       appBar: AppBar(
@@ -25,7 +57,7 @@ class _PMSScreenState extends State<PMSScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: () => provider.fetchOrders(),
+            onPressed: _loadData,
           ),
         ],
       ),
@@ -39,7 +71,7 @@ class _PMSScreenState extends State<PMSScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // User Performance Card
-                _buildUserPerformanceCard(user?.name ?? 'User', isMobile),
+                _buildUserPerformanceCard(user?.name ?? 'User', performance, isMobile),
                 const SizedBox(height: 24),
                 
                 // Period Selector
@@ -49,25 +81,21 @@ class _PMSScreenState extends State<PMSScreen> {
                 // KPI Dashboard
                 _buildSectionHeader('KEY PERFORMANCE INDICATORS'),
                 const SizedBox(height: 16),
-                _buildKPIDashboard(provider, isMobile),
+                _buildKPIDashboard(kpis, isMobile),
                 const SizedBox(height: 24),
                 
                 // Sales Targets
                 _buildSectionHeader('SALES TARGETS'),
                 const SizedBox(height: 16),
-                _buildSalesTargets(provider, isMobile),
+                _buildSalesTargets(performance, isMobile),
                 const SizedBox(height: 24),
                 
-                // Performance Metrics
-                _buildSectionHeader('PERFORMANCE METRICS'),
-                const SizedBox(height: 16),
-                _buildPerformanceMetrics(provider, isMobile),
-                const SizedBox(height: 24),
-                
-                // Team Leaderboard
-                _buildSectionHeader('TEAM LEADERBOARD'),
-                const SizedBox(height: 16),
-                _buildTeamLeaderboard(isMobile),
+                // Team Leaderboard (Admin Only)
+                if (isAdmin) ...[
+                  _buildSectionHeader('TEAM LEADERBOARD'),
+                  const SizedBox(height: 16),
+                  _buildTeamLeaderboard(leaderboard, isMobile),
+                ],
               ],
             ),
           );
@@ -76,7 +104,7 @@ class _PMSScreenState extends State<PMSScreen> {
     );
   }
   
-  Widget _buildUserPerformanceCard(String userName, bool isMobile) {
+  Widget _buildUserPerformanceCard(String userName, Map<String, dynamic> performance, bool isMobile) {
     return Container(
       padding: EdgeInsets.all(isMobile ? 20 : 24),
       decoration: BoxDecoration(
@@ -88,7 +116,7 @@ class _PMSScreenState extends State<PMSScreen> {
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: NexusTheme.emerald500.withValues(alpha: 0.3),
+            color: NexusTheme.emerald500.withOpacity(0.3),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -103,7 +131,7 @@ class _PMSScreenState extends State<PMSScreen> {
                 width: 60,
                 height: 60,
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.2),
+                  color: Colors.white.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: const Icon(Icons.person, color: Colors.white, size: 32),
@@ -126,11 +154,11 @@ class _PMSScreenState extends State<PMSScreen> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.2),
+                        color: Colors.white.withOpacity(0.2),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: const Text(
-                        'TOP PERFORMER',
+                        'ACTIVE PERFORMER',
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 10,
@@ -148,15 +176,15 @@ class _PMSScreenState extends State<PMSScreen> {
           Row(
             children: [
               Expanded(
-                child: _buildPerformanceMetric('Score', '95/100', Icons.star, isMobile),
+                child: _buildPerformanceMetric('Score', '${performance['score'] ?? 0}/100', Icons.star, isMobile),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: _buildPerformanceMetric('Rank', '#2', Icons.emoji_events, isMobile),
+                child: _buildPerformanceMetric('Rank', '#${performance['rank'] ?? 'N/A'}', Icons.emoji_events, isMobile),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: _buildPerformanceMetric('Growth', '+12%', Icons.trending_up, isMobile),
+                child: _buildPerformanceMetric('Sales', '₹${((performance['sales'] ?? 0)/1000).toStringAsFixed(1)}K', Icons.trending_up, isMobile),
               ),
             ],
           ),
@@ -169,7 +197,7 @@ class _PMSScreenState extends State<PMSScreen> {
     return Container(
       padding: EdgeInsets.all(isMobile ? 12 : 16),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.15),
+        color: Colors.white.withOpacity(0.15),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -180,7 +208,7 @@ class _PMSScreenState extends State<PMSScreen> {
             value,
             style: TextStyle(
               color: Colors.white,
-              fontSize: isMobile ? 16 : 18,
+              fontSize: isMobile ? 14 : 16,
               fontWeight: FontWeight.w900,
             ),
           ),
@@ -188,7 +216,7 @@ class _PMSScreenState extends State<PMSScreen> {
           Text(
             label,
             style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.8),
+              color: Colors.white.withOpacity(0.8),
               fontSize: isMobile ? 10 : 11,
               fontWeight: FontWeight.bold,
             ),
@@ -199,7 +227,7 @@ class _PMSScreenState extends State<PMSScreen> {
   }
   
   Widget _buildPeriodSelector(bool isMobile) {
-    final periods = ['Today', 'This Week', 'This Month', 'This Quarter', 'This Year'];
+    final periods = ['This Month', 'Last 6 Months', 'This Quarter', 'This Year'];
     
     return Container(
       padding: EdgeInsets.all(isMobile ? 12 : 16),
@@ -220,7 +248,12 @@ class _PMSScreenState extends State<PMSScreen> {
               isExpanded: true,
               underline: const SizedBox(),
               items: periods.map((p) => DropdownMenuItem(value: p, child: Text(p))).toList(),
-              onChanged: (value) => setState(() => _selectedPeriod = value!),
+              onChanged: (value) {
+                if (value != null) {
+                  setState(() => _selectedPeriod = value);
+                  _loadData();
+                }
+              },
             ),
           ),
         ],
@@ -228,12 +261,7 @@ class _PMSScreenState extends State<PMSScreen> {
     );
   }
   
-  Widget _buildKPIDashboard(NexusProvider provider, bool isMobile) {
-    final orders = provider.orders;
-    final completionRate = orders.isNotEmpty 
-      ? (orders.where((o) => o.status == 'Delivered').length / orders.length * 100) 
-      : 0;
-    
+  Widget _buildKPIDashboard(Map<String, dynamic> kpis, bool isMobile) {
     return GridView.count(
       crossAxisCount: 2,
       shrinkWrap: true,
@@ -242,10 +270,10 @@ class _PMSScreenState extends State<PMSScreen> {
       crossAxisSpacing: isMobile ? 12 : 16,
       childAspectRatio: isMobile ? 1.3 : 1.5,
       children: [
-        _buildKPICard('Orders Completed', '${orders.where((o) => o.status == 'Delivered').length}', completionRate, Colors.green, isMobile),
-        _buildKPICard('Response Time', '2.5 hrs', 85, Colors.blue, isMobile),
-        _buildKPICard('Customer Satisfaction', '4.8/5', 96, Colors.purple, isMobile),
-        _buildKPICard('Target Achievement', '92%', 92, Colors.orange, isMobile),
+        _buildKPICard('Orders Completed', '${kpis['ordersCompleted'] ?? 0}', 100, Colors.green, isMobile),
+        _buildKPICard('Response Time', '${kpis['responseTime'] ?? 0} hrs', 85.0, Colors.blue, isMobile),
+        _buildKPICard('Customer Sat.', '${kpis['customerSatisfaction'] ?? 0}/5', 96.0, Colors.purple, isMobile),
+        _buildKPICard('Target Achievement', '${kpis['targetAchievement'] ?? 0}%', (double.tryParse(kpis['targetAchievement']?.toString() ?? '0') ?? 0), Colors.orange, isMobile),
       ],
     );
   }
@@ -257,7 +285,7 @@ class _PMSScreenState extends State<PMSScreen> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: NexusTheme.slate200),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10)],
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10)],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -285,10 +313,10 @@ class _PMSScreenState extends State<PMSScreen> {
               ClipRRect(
                 borderRadius: BorderRadius.circular(4),
                 child: LinearProgressIndicator(
-                  value: percentage / 100,
+                  value: percentage / 100.0,
                   minHeight: 6,
                   backgroundColor: NexusTheme.slate100,
-                  valueColor: AlwaysStoppedAnimation(color),
+                  valueColor: AlwaysStoppedAnimation<Color>(color),
                 ),
               ),
             ],
@@ -298,9 +326,8 @@ class _PMSScreenState extends State<PMSScreen> {
     );
   }
   
-  Widget _buildSalesTargets(NexusProvider provider, bool isMobile) {
-    final orders = provider.orders;
-    final totalSales = orders.fold(0.0, (sum, o) => sum + o.total);
+  Widget _buildSalesTargets(Map<String, dynamic> performance, bool isMobile) {
+    final totalSales = (performance['sales'] ?? 0).toDouble();
     final target = 500000.0;
     final achievement = (totalSales / target * 100).clamp(0, 100);
     
@@ -339,10 +366,10 @@ class _PMSScreenState extends State<PMSScreen> {
           ClipRRect(
             borderRadius: BorderRadius.circular(8),
             child: LinearProgressIndicator(
-              value: achievement / 100,
+              value: achievement / 100.0,
               minHeight: 12,
               backgroundColor: NexusTheme.slate100,
-              valueColor: const AlwaysStoppedAnimation(NexusTheme.emerald500),
+              valueColor: const AlwaysStoppedAnimation<Color>(NexusTheme.emerald500),
             ),
           ),
           const SizedBox(height: 8),
@@ -355,14 +382,7 @@ class _PMSScreenState extends State<PMSScreen> {
     );
   }
   
-  Widget _buildPerformanceMetrics(NexusProvider provider, bool isMobile) {
-    final metrics = [
-      {'label': 'Average Deal Size', 'value': '₹45K', 'trend': '+8%', 'isPositive': true},
-      {'label': 'Conversion Rate', 'value': '68%', 'trend': '+5%', 'isPositive': true},
-      {'label': 'Response Time', 'value': '2.5 hrs', 'trend': '-15%', 'isPositive': true},
-      {'label': 'Customer Retention', 'value': '94%', 'trend': '+3%', 'isPositive': true},
-    ];
-    
+  Widget _buildTeamLeaderboard(List<dynamic> leaderboard, bool isMobile) {
     return Container(
       padding: EdgeInsets.all(isMobile ? 16 : 20),
       decoration: BoxDecoration(
@@ -371,82 +391,9 @@ class _PMSScreenState extends State<PMSScreen> {
         border: Border.all(color: NexusTheme.slate200),
       ),
       child: Column(
-        children: metrics.map((metric) {
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 16),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Text(
-                    metric['label'] as String,
-                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
-                  ),
-                ),
-                Row(
-                  children: [
-                    Text(
-                      metric['value'] as String,
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: NexusTheme.emerald600),
-                    ),
-                    const SizedBox(width: 12),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: (metric['isPositive'] as bool) 
-                          ? Colors.green.withValues(alpha: 0.1) 
-                          : Colors.red.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            (metric['isPositive'] as bool) ? Icons.arrow_upward : Icons.arrow_downward,
-                            size: 12,
-                            color: (metric['isPositive'] as bool) ? Colors.green : Colors.red,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            metric['trend'] as String,
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              color: (metric['isPositive'] as bool) ? Colors.green : Colors.red,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          );
-        }).toList(),
-      ),
-    );
-  }
-  
-  Widget _buildTeamLeaderboard(bool isMobile) {
-    final team = [
-      {'name': 'Rajesh Kumar', 'score': 98, 'sales': '₹125K', 'rank': 1},
-      {'name': 'Priya Sharma', 'score': 95, 'sales': '₹118K', 'rank': 2},
-      {'name': 'Amit Patel', 'score': 92, 'sales': '₹110K', 'rank': 3},
-      {'name': 'Sneha Reddy', 'score': 88, 'sales': '₹98K', 'rank': 4},
-      {'name': 'Vikram Singh', 'score': 85, 'sales': '₹92K', 'rank': 5},
-    ];
-    
-    return Container(
-      padding: EdgeInsets.all(isMobile ? 16 : 20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: NexusTheme.slate200),
-      ),
-      child: Column(
-        children: team.map((member) {
-          final rank = member['rank'] as int;
-          final medalColor = rank == 1 ? Colors.amber : rank == 2 ? Colors.grey : rank == 3 ? Colors.brown : null;
+        children: leaderboard.map((member) {
+          final index = leaderboard.indexOf(member) + 1;
+          final medalColor = index == 1 ? Colors.amber : index == 2 ? Colors.grey : index == 3 ? Colors.brown : null;
           
           return Padding(
             padding: const EdgeInsets.only(bottom: 16),
@@ -456,12 +403,12 @@ class _PMSScreenState extends State<PMSScreen> {
                   width: 40,
                   height: 40,
                   decoration: BoxDecoration(
-                    color: medalColor != null ? medalColor.withValues(alpha: 0.1) : NexusTheme.slate100,
+                    color: medalColor != null ? medalColor.withOpacity(0.1) : NexusTheme.slate100,
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Center(
                     child: Text(
-                      '#$rank',
+                      '#$index',
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w900,
@@ -475,8 +422,8 @@ class _PMSScreenState extends State<PMSScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(member['name'] as String, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
-                      Text('Sales: ${member['sales']}', style: const TextStyle(fontSize: 11, color: NexusTheme.slate500)),
+                      Text(member['name']?.toString() ?? 'User', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                      Text('Sales: ₹${((member['sales'] ?? 0)/1000).toStringAsFixed(1)}K', style: const TextStyle(fontSize: 11, color: NexusTheme.slate500)),
                     ],
                   ),
                 ),
@@ -487,7 +434,7 @@ class _PMSScreenState extends State<PMSScreen> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
-                    '${member['score']}',
+                    '${member['score'] ?? 0}',
                     style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: NexusTheme.emerald700),
                   ),
                 ),

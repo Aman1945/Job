@@ -129,7 +129,7 @@ class _NewCustomerScreenState extends State<NewCustomerScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(isMobile ? 24 : 32),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 20, offset: const Offset(0, 10))],
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 20, offset: const Offset(0, 10))],
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -278,7 +278,7 @@ class _NewCustomerScreenState extends State<NewCustomerScreen> {
         decoration: BoxDecoration(
           color: NexusTheme.emerald50,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: NexusTheme.emerald500.withValues(alpha: 0.2)),
+          border: Border.all(color: NexusTheme.emerald500.withOpacity(0.2)),
         ),
         child: const Row(
           mainAxisSize: MainAxisSize.min,
@@ -303,7 +303,7 @@ class _NewCustomerScreenState extends State<NewCustomerScreen> {
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             padding: const EdgeInsets.symmetric(horizontal: 32),
             elevation: 10,
-            shadowColor: Colors.black.withValues(alpha: 0.3),
+            shadowColor: Colors.black.withOpacity(0.3),
           ),
         ),
       ),

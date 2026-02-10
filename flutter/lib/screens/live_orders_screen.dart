@@ -46,7 +46,7 @@ class LiveOrdersScreen extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4))],
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 4))],
         border: Border.all(color: NexusTheme.slate200, width: 1),
       ),
       child: InkWell(
@@ -65,7 +65,7 @@ class LiveOrdersScreen extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: NexusTheme.emerald900.withValues(alpha: 0.1),
+                      color: NexusTheme.emerald900.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
@@ -97,9 +97,9 @@ class LiveOrdersScreen extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: statusColor.withValues(alpha: 0.1),
+                      color: statusColor.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: statusColor.withValues(alpha: 0.3)),
+                      border: Border.all(color: statusColor.withOpacity(0.3)),
                     ),
                     child: Text(
                       order.status.toUpperCase(),

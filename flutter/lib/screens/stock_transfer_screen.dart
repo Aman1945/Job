@@ -135,7 +135,7 @@ class _StockTransferScreenState extends State<StockTransferScreen> {
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(32),
-                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 20)],
+                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 20)],
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -188,7 +188,7 @@ class _StockTransferScreenState extends State<StockTransferScreen> {
               children: [
                 const Text('Stock Transfer Note (STN)', style: TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.w900, letterSpacing: -1)),
                 const SizedBox(height: 8),
-                Text('Internal facility movement - No credit approval required', style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 13, fontWeight: FontWeight.w500)),
+                Text('Internal facility movement - No credit approval required', style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 13, fontWeight: FontWeight.w500)),
               ],
              ),
            ),
@@ -209,7 +209,7 @@ class _StockTransferScreenState extends State<StockTransferScreen> {
            decoration: BoxDecoration(
              color: Colors.white,
              borderRadius: BorderRadius.circular(20),
-             border: Border.all(color: value != null ? const Color(0xFF6366F1).withValues(alpha: 0.5) : NexusTheme.slate200),
+             border: Border.all(color: value != null ? const Color(0xFF6366F1).withOpacity(0.5) : NexusTheme.slate200),
            ),
            child: DropdownButtonHideUnderline(
              child: DropdownButton2<String>(
@@ -320,7 +320,7 @@ class _StockTransferScreenState extends State<StockTransferScreen> {
               buttonStyleData: ButtonStyleData(
                   height: 48,
                   padding: const EdgeInsets.symmetric(horizontal: 12),
-                   decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFF6366F1).withValues(alpha: 0.5)), color: Colors.white),
+                   decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFF6366F1).withOpacity(0.5)), color: Colors.white),
               ),
           ),
       );
@@ -365,7 +365,7 @@ class _StockTransferScreenState extends State<StockTransferScreen> {
                _buildMiniSectionHeader('REMARKS / REASON FOR TRANSFER'),
                const SizedBox(height: 16),
                Container(
-                   decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24), border: Border.all(color: NexusTheme.slate200.withValues(alpha: 0.5))),
+                   decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24), border: Border.all(color: NexusTheme.slate200.withOpacity(0.5))),
                    padding: const EdgeInsets.all(20),
                    child: TextFormField(
                        controller: _remarksController,
@@ -385,7 +385,7 @@ class _StockTransferScreenState extends State<StockTransferScreen> {
       return _buildResponsiveLayout(isMobile, [
            Container(
                padding: const EdgeInsets.all(20),
-               decoration: BoxDecoration(color: const Color(0xFFFFF7ED), borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.orange.withValues(alpha: 0.2))),
+               decoration: BoxDecoration(color: const Color(0xFFFFF7ED), borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.orange.withOpacity(0.2))),
                child: Row(
                    children: [
                        const Icon(LucideIcons.package, color: Colors.orange, size: 24),

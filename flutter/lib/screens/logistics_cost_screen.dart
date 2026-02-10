@@ -63,7 +63,7 @@ class LogisticsCostScreen extends StatelessWidget {
       decoration: BoxDecoration(
         color: NexusTheme.slate900,
         borderRadius: BorderRadius.circular(isMobile ? 24 : 32),
-        boxShadow: [BoxShadow(color: NexusTheme.slate900.withValues(alpha: 0.3), blurRadius: 20, offset: const Offset(0, 10))],
+        boxShadow: [BoxShadow(color: NexusTheme.slate900.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 10))],
       ),
       child: Column(
         children: [
@@ -71,7 +71,7 @@ class LogisticsCostScreen extends StatelessWidget {
           SizedBox(height: isMobile ? 8 : 12),
           Text('₹${totalFreight.toStringAsFixed(2)}', style: TextStyle(color: Colors.white, fontSize: isMobile ? 28 : 36, fontWeight: FontWeight.w900, letterSpacing: -1)),
           const SizedBox(height: 8),
-          Text('FOR ${orders.length} PENDING INBOUNDS', style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: isMobile ? 8 : 9, fontWeight: FontWeight.bold)),
+          Text('FOR ${orders.length} PENDING INBOUNDS', style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: isMobile ? 8 : 9, fontWeight: FontWeight.bold)),
         ],
       ),
     );

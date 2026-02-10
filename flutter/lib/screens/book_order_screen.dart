@@ -116,7 +116,7 @@ class _BookOrderScreenState extends State<BookOrderScreen> {
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(32),
-                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 20)],
+                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 20)],
               ),
               child: Column(
                 children: [
@@ -222,7 +222,7 @@ class _BookOrderScreenState extends State<BookOrderScreen> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: NexusTheme.slate200),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10)],
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10)],
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton2<Customer>(
@@ -341,7 +341,7 @@ class _BookOrderScreenState extends State<BookOrderScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: NexusTheme.indigo600.withValues(alpha: 0.5)),
+            border: Border.all(color: NexusTheme.indigo600.withOpacity(0.5)),
             color: Colors.white,
           ),
         ),
@@ -448,7 +448,7 @@ class _BookOrderScreenState extends State<BookOrderScreen> {
         Container(
           height: 180,
           padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24), border: Border.all(color: NexusTheme.slate200.withValues(alpha:0.5))),
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24), border: Border.all(color: NexusTheme.slate200.withOpacity(0.5))),
           child: TextFormField(
             controller: _remarksController,
             maxLines: 5,

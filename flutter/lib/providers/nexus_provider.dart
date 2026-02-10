@@ -325,4 +325,44 @@ class NexusProvider with ChangeNotifier {
     }
     return false;
   }
+
+  // --- Analytics ---
+
+  Future<Map<String, dynamic>?> fetchSalesHubData({String period = 'month'}) async {
+    try {
+      final response = await http.get(Uri.parse('$_baseUrl/analytics/sales-hub?period=$period'));
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      }
+    } catch (e) {
+      debugPrint('Error fetching sales hub data: $e');
+    }
+    return null;
+  }
+
+  Future<Map<String, dynamic>?> fetchReportData({required String type, String? startDate, String? endDate}) async {
+    try {
+      final queryParams = 'type=$type${startDate != null ? "&startDate=$startDate" : ""}${endDate != null ? "&endDate=$endDate" : ""}';
+      final response = await http.get(Uri.parse('$_baseUrl/analytics/reports?$queryParams'));
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      }
+    } catch (e) {
+      debugPrint('Error fetching report data: $e');
+    }
+    return null;
+  }
+
+  Future<Map<String, dynamic>?> fetchPMSData({String? userId, String period = 'month'}) async {
+    try {
+      final queryParams = 'period=$period${userId != null ? "&userId=$userId" : ""}';
+      final response = await http.get(Uri.parse('$_baseUrl/analytics/pms?$queryParams'));
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      }
+    } catch (e) {
+      debugPrint('Error fetching PMS data: $e');
+    }
+    return null;
+  }
 }

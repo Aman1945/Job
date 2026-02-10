@@ -80,7 +80,7 @@ class _OrderArchiveScreenState extends State<OrderArchiveScreen> {
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(32),
                 border: Border.all(color: NexusTheme.slate200),
-                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 20)],
+                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 20)],
               ),
               clipBehavior: Clip.antiAlias,
               child: SingleChildScrollView(
