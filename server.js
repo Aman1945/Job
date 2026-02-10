@@ -31,37 +31,18 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 // MongoDB Connection
-let useMongoDB = false;
-if (process.env.MONGODB_URI && !process.env.MONGODB_URI.includes('your_mongodb')) {
-    mongoose.connect(process.env.MONGODB_URI)
-        .then(() => {
-            console.log('✅ Connected to MongoDB Atlas');
-            useMongoDB = true;
-        })
-        .catch(err => {
-            console.error('❌ MongoDB connection error:', err);
-            console.log('⚠️ Falling back to JSON storage');
-        });
-}
+mongoose.connect(process.env.MONGODB_URI)
+    .then(() => console.log('✅ Connected to MongoDB Atlas'))
+    .catch(err => {
+        console.error('❌ MongoDB connection error:', err);
+        process.exit(1); // Stop server if database can't connect
+    });
 
 // Models
 const User = require('./models/User');
 const Customer = require('./models/Customer');
 const Product = require('./models/Product');
 const Order = require('./models/Order');
-
-// Helper functions
-const getData = (filename) => {
-    const filePath = path.join(__dirname, 'data', `${filename}.json`);
-    if (!fs.existsSync(filePath)) return [];
-    const data = fs.readFileSync(filePath, 'utf8');
-    return JSON.parse(data);
-};
-
-const saveData = (filename, data) => {
-    const filePath = path.join(__dirname, 'data', `${filename}.json`);
-    fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
-};
 
 // ==================== HOME ROUTE ====================
 app.get('/', (req, res) => {
@@ -72,9 +53,9 @@ app.get('/', (req, res) => {
                 <p style="color: #059669; font-weight: bold;">System Terminal is ONLINE</p>
                 <div style="margin-top: 20px; text-align: left; font-size: 14px;">
                     <strong>API Status:</strong> <span style="color: #10b981;">✅ OPERATIONAL</span><br>
-                    <strong>Database:</strong> ${useMongoDB ? '☁️ MongoDB Cloud' : '📁 Local JSON Enterprise'}<br>
+                    <strong>Database:</strong> ☁️ MongoDB Cloud (Strict Mode)<br>
                     <strong>Port:</strong> ${PORT}<br>
-                    <strong>Version:</strong> v2.0.0
+                    <strong>Version:</strong> v2.1.0
                 </div>
             </div>
         </div>
@@ -87,24 +68,22 @@ app.post('/api/login', async (req, res) => {
     console.log(`🔐 Login attempt: ${email}`);
 
     try {
-        if (useMongoDB) {
-            const user = await User.findOne({ id: email, password: password });
-            if (user) {
-                console.log(`✅ Login successful: ${email}`);
-                return res.json(user);
-            }
+        // First check if user exists
+        const user = await User.findOne({ id: email });
+
+        if (!user) {
+            console.log(`❌ Login failed: ${email} (Email not registered)`);
+            return res.status(404).json({ message: 'Email not registered' });
         }
 
-        const users = getData('users');
-        const user = users.find(u => u.id === email && u.password === password);
-        if (user) {
-            console.log(`✅ Login successful: ${email}`);
-            const { password, ...rest } = user;
-            return res.json(rest);
+        // Check password
+        if (user.password !== password) {
+            console.log(`❌ Login failed: ${email} (Incorrect password)`);
+            return res.status(401).json({ message: 'Incorrect password' });
         }
 
-        console.log(`❌ Login failed: ${email}`);
-        res.status(401).json({ message: 'Invalid credentials' });
+        console.log(`✅ Login successful: ${email}`);
+        res.json(user);
     } catch (error) {
         console.error('Login error:', error);
         res.status(500).json({ message: 'Server error' });
@@ -114,14 +93,7 @@ app.post('/api/login', async (req, res) => {
 // ==================== USERS ====================
 app.get('/api/users', async (req, res) => {
     try {
-        if (useMongoDB) {
-            const users = await User.find().select('-password');
-            return res.json(users);
-        }
-        const users = getData('users').map(u => {
-            const { password, ...rest } = u;
-            return rest;
-        });
+        const users = await User.find().select('-password');
         res.json(users);
     } catch (error) {
         res.status(500).json({ message: 'Error fetching users' });
@@ -131,17 +103,9 @@ app.get('/api/users', async (req, res) => {
 app.post('/api/users', async (req, res) => {
     try {
         const userData = { ...req.body, status: 'Active' };
-
-        if (useMongoDB) {
-            const newUser = new User(userData);
-            await newUser.save();
-            return res.status(201).json(newUser);
-        }
-
-        const users = getData('users');
-        users.push(userData);
-        saveData('users', users);
-        res.status(201).json(userData);
+        const newUser = new User(userData);
+        await newUser.save();
+        res.status(201).json(newUser);
     } catch (error) {
         res.status(500).json({ message: 'Error creating user' });
     }
@@ -150,19 +114,8 @@ app.post('/api/users', async (req, res) => {
 app.patch('/api/users/:id', async (req, res) => {
     try {
         const { id } = req.params;
-
-        if (useMongoDB) {
-            const user = await User.findOneAndUpdate({ id }, req.body, { new: true });
-            if (user) return res.json(user);
-        }
-
-        const users = getData('users');
-        const index = users.findIndex(u => u.id === id);
-        if (index !== -1) {
-            users[index] = { ...users[index], ...req.body };
-            saveData('users', users);
-            return res.json(users[index]);
-        }
+        const user = await User.findOneAndUpdate({ id }, req.body, { new: true });
+        if (user) return res.json(user);
         res.status(404).json({ message: 'User not found' });
     } catch (error) {
         res.status(500).json({ message: 'Error updating user' });
@@ -172,8 +125,7 @@ app.patch('/api/users/:id', async (req, res) => {
 // ==================== CUSTOMERS ====================
 app.get('/api/customers', async (req, res) => {
     try {
-        if (useMongoDB) return res.json(await Customer.find());
-        res.json(getData('customers'));
+        res.json(await Customer.find());
     } catch (error) {
         res.status(500).json({ message: 'Error fetching customers' });
     }
@@ -187,17 +139,9 @@ app.post('/api/customers', async (req, res) => {
             status: 'Active',
             createdAt: new Date().toISOString()
         };
-
-        if (useMongoDB) {
-            const newCustomer = new Customer(customerData);
-            await newCustomer.save();
-            return res.status(201).json(newCustomer);
-        }
-
-        const customers = getData('customers');
-        customers.push(customerData);
-        saveData('customers', customers);
-        res.status(201).json(customerData);
+        const newCustomer = new Customer(customerData);
+        await newCustomer.save();
+        res.status(201).json(newCustomer);
     } catch (error) {
         res.status(500).json({ message: 'Error creating customer' });
     }
@@ -206,19 +150,8 @@ app.post('/api/customers', async (req, res) => {
 app.patch('/api/customers/:id', async (req, res) => {
     try {
         const { id } = req.params;
-
-        if (useMongoDB) {
-            const customer = await Customer.findOneAndUpdate({ id }, req.body, { new: true });
-            if (customer) return res.json(customer);
-        }
-
-        const customers = getData('customers');
-        const index = customers.findIndex(c => c.id === id);
-        if (index !== -1) {
-            customers[index] = { ...customers[index], ...req.body };
-            saveData('customers', customers);
-            return res.json(customers[index]);
-        }
+        const customer = await Customer.findOneAndUpdate({ id }, req.body, { new: true });
+        if (customer) return res.json(customer);
         res.status(404).json({ message: 'Customer not found' });
     } catch (error) {
         res.status(500).json({ message: 'Error updating customer' });
@@ -228,8 +161,7 @@ app.patch('/api/customers/:id', async (req, res) => {
 // ==================== PRODUCTS ====================
 app.get('/api/products', async (req, res) => {
     try {
-        if (useMongoDB) return res.json(await Product.find());
-        res.json(getData('products'));
+        res.json(await Product.find());
     } catch (error) {
         res.status(500).json({ message: 'Error fetching products' });
     }
@@ -242,17 +174,9 @@ app.post('/api/products', async (req, res) => {
             id: req.body.id || req.body.skuCode || `PROD-${Date.now().toString().slice(-6)}`,
             createdAt: new Date().toISOString()
         };
-
-        if (useMongoDB) {
-            const newProduct = new Product(productData);
-            await newProduct.save();
-            return res.status(201).json(newProduct);
-        }
-
-        const products = getData('products');
-        products.push(productData);
-        saveData('products', products);
-        res.status(201).json(productData);
+        const newProduct = new Product(productData);
+        await newProduct.save();
+        res.status(201).json(newProduct);
     } catch (error) {
         res.status(500).json({ message: 'Error creating product' });
     }
@@ -261,19 +185,8 @@ app.post('/api/products', async (req, res) => {
 app.patch('/api/products/:id', async (req, res) => {
     try {
         const { id } = req.params;
-
-        if (useMongoDB) {
-            const product = await Product.findOneAndUpdate({ id }, req.body, { new: true });
-            if (product) return res.json(product);
-        }
-
-        const products = getData('products');
-        const index = products.findIndex(p => p.id === id || p.skuCode === id);
-        if (index !== -1) {
-            products[index] = { ...products[index], ...req.body };
-            saveData('products', products);
-            return res.json(products[index]);
-        }
+        const product = await Product.findOneAndUpdate({ id }, req.body, { new: true });
+        if (product) return res.json(product);
         res.status(404).json({ message: 'Product not found' });
     } catch (error) {
         res.status(500).json({ message: 'Error updating product' });
@@ -284,20 +197,11 @@ app.patch('/api/products/:id', async (req, res) => {
 app.get('/api/orders', async (req, res) => {
     try {
         const { status, salespersonId } = req.query;
+        let query = {};
+        if (status) query.status = status;
+        if (salespersonId) query.salespersonId = salespersonId;
 
-        if (useMongoDB) {
-            let query = {};
-            if (status) query.status = status;
-            if (salespersonId) query.salespersonId = salespersonId;
-
-            const orders = await Order.find(query).sort({ createdAt: -1 });
-            return res.json(orders);
-        }
-
-        let orders = getData('orders');
-        if (status) orders = orders.filter(o => o.status === status);
-        if (salespersonId) orders = orders.filter(o => o.salespersonId === salespersonId);
-
+        const orders = await Order.find(query).sort({ createdAt: -1 });
         res.json(orders);
     } catch (error) {
         res.status(500).json({ message: 'Error fetching orders' });
@@ -307,16 +211,8 @@ app.get('/api/orders', async (req, res) => {
 app.get('/api/orders/:id', async (req, res) => {
     try {
         const { id } = req.params;
-
-        if (useMongoDB) {
-            const order = await Order.findOne({ id });
-            if (order) return res.json(order);
-        }
-
-        const orders = getData('orders');
-        const order = orders.find(o => o.id === id);
+        const order = await Order.findOne({ id });
         if (order) return res.json(order);
-
         res.status(404).json({ message: 'Order not found' });
     } catch (error) {
         res.status(500).json({ message: 'Error fetching order' });
@@ -454,7 +350,7 @@ app.post('/api/upload/pod', upload.single('pod'), (req, res) => {
 // ==================== ANALYTICS ====================
 app.get('/api/analytics/dashboard', async (req, res) => {
     try {
-        const orders = useMongoDB ? await Order.find() : getData('orders');
+        const orders = await Order.find();
 
         const totalOrders = orders.length;
         const totalValue = orders.reduce((sum, o) => sum + (o.total || 0), 0);
@@ -476,7 +372,7 @@ app.get('/api/analytics/dashboard', async (req, res) => {
 app.get('/api/analytics/sales', async (req, res) => {
     try {
         const { salespersonId } = req.query;
-        const orders = useMongoDB ? await Order.find({ salespersonId }) : getData('orders').filter(o => o.salespersonId === salespersonId);
+        const orders = await Order.find({ salespersonId });
 
         const totalSales = orders.reduce((sum, o) => sum + (o.total || 0), 0);
         const totalOrders = orders.length;
@@ -496,7 +392,7 @@ app.get('/api/analytics/sales', async (req, res) => {
 app.get('/api/analytics/sales-hub', async (req, res) => {
     try {
         const { period = 'month' } = req.query;
-        const orders = useMongoDB ? await Order.find() : getData('orders');
+        const orders = await Order.find();
 
         const now = new Date();
         let startDate;
@@ -541,9 +437,9 @@ app.get('/api/analytics/sales-hub', async (req, res) => {
 app.get('/api/analytics/reports', async (req, res) => {
     try {
         const { type = 'sales', startDate, endDate } = req.query;
-        const orders = useMongoDB ? await Order.find() : getData('orders');
-        const products = useMongoDB ? await Product.find() : getData('products');
-        const customers = useMongoDB ? await Customer.find() : getData('customers');
+        const orders = await Order.find();
+        const products = await Product.find();
+        const customers = await Customer.find();
 
         let filteredOrders = orders;
         if (startDate && endDate) {
@@ -569,7 +465,7 @@ app.get('/api/analytics/reports', async (req, res) => {
 // ==================== PROCUREMENT GATE API ====================
 app.get('/api/procurement', async (req, res) => {
     try {
-        const inbounds = useMongoDB ? await mongoose.connection.collection('procurement').find().toArray() : getData('procurement');
+        const inbounds = await mongoose.connection.collection('procurement').find().toArray();
         res.json(inbounds.length > 0 ? inbounds : [
             {
                 ref: 'PRC-1001',
@@ -605,13 +501,7 @@ app.post('/api/procurement', async (req, res) => {
             checks: [false, false, false]
         };
 
-        if (useMongoDB) {
-            await mongoose.connection.collection('procurement').insertOne(inboundData);
-        } else {
-            const inbounds = getData('procurement');
-            inbounds.push(inboundData);
-            saveData('procurement', inbounds);
-        }
+        await mongoose.connection.collection('procurement').insertOne(inboundData);
         res.status(201).json(inboundData);
     } catch (error) {
         res.status(500).json({ message: 'Error creating procurement entry' });
@@ -665,7 +555,7 @@ app.get('/api/analytics/fleet', async (req, res) => {
 app.get('/api/analytics/pms', async (req, res) => {
     try {
         const { userId } = req.query;
-        const orders = useMongoDB ? await Order.find() : getData('orders');
+        const orders = await Order.find();
 
         // Calculate performance for EVERY user to build a leaderboard
         const userPerformanceMap = {};
@@ -709,9 +599,9 @@ app.get('/api/analytics/pms', async (req, res) => {
 app.get('/api/analytics/export', async (req, res) => {
     try {
         const { type = 'sales_report', format = 'pdf' } = req.query;
-        const orders = useMongoDB ? await Order.find() : getData('orders');
-        const products = useMongoDB ? await Product.find() : getData('products');
-        const customers = useMongoDB ? await Customer.find() : getData('customers');
+        const orders = await Order.find();
+        const products = await Product.find();
+        const customers = await Customer.find();
 
         const reportName = type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
         const fileName = `${type}_${Date.now()}.${format}`;
@@ -838,7 +728,7 @@ function generateCSVContent(orders) {
 app.get('/api/tally/export/:orderId', async (req, res) => {
     try {
         const { orderId } = req.params;
-        const order = useMongoDB ? await Order.findOne({ id: orderId }) : getData('orders').find(o => o.id === orderId);
+        const order = await Order.findOne({ id: orderId });
 
         if (!order) {
             return res.status(404).json({ message: 'Order not found' });
@@ -859,7 +749,6 @@ app.get('/api/tally/export/:orderId', async (req, res) => {
       <DATE>${order.createdAt.split('T')[0].replace(/-/g, '')}</DATE>
       <VOUCHERNUMBER>${order.id}</VOUCHERNUMBER>
       <PARTYLEDGERNAME>${order.customerName}</PARTYLEDGERNAME>
-      <EFFECTIVEDATE>${order.createdAt.split('T')[0].replace(/-/g, '')}</EFFECTIVEDATE>
       <ALLLEDGERENTRIES.LIST>
        <LEDGERNAME>${order.customerName}</LEDGERNAME>
        <ISDEEMEDPOSITIVE>Yes</ISDEEMEDPOSITIVE>
@@ -910,11 +799,11 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`
 ╔════════════════════════════════════════════════════════╗
 ║                                                        ║
-║          🚀 NexusOMS Enterprise API v2.0.0            ║
+║          🚀 NexusOMS Enterprise API v2.1.0            ║
 ║                                                        ║
-║  Status: ✅ ONLINE                                     ║
+║  Status: ✅ ONLINE (Strict Mode)                       ║
 ║  Port: ${PORT}                                         ║
-║  Database: ${useMongoDB ? '☁️  MongoDB Atlas' : '📁 JSON Storage'}                          ║
+║  Database: ☁️  MongoDB Atlas                            ║
 ║                                                        ║
 ║  Local IPs for Mobile Connection:                      ║
 ${ips.map(ip => `║  🔗 http://${ip}:${PORT}                         `).join('\n')}
