@@ -29,24 +29,8 @@ class _PMSScreenState extends State<PMSScreen> {
         userId: provider.currentUser?.id,
         period: period,
       ).timeout(
-        const Duration(seconds: 10),
-        onTimeout: () {
-          // Return dummy data on timeout
-          return {
-            'userPerformance': {
-              'score': 85,
-              'rank': 3,
-              'sales': 425000,
-            },
-            'kpis': {
-              'ordersCompleted': 45,
-              'responseTime': 2.5,
-              'customerSatisfaction': 4.8,
-              'targetAchievement': '85',
-            },
-            'leaderboard': [],
-          };
-        },
+        const Duration(seconds: 15),
+        onTimeout: () => throw Exception('Connection Timeout'),
       );
       if (mounted) {
         setState(() {
@@ -58,22 +42,12 @@ class _PMSScreenState extends State<PMSScreen> {
       print('Error loading PMS data: $e');
       if (mounted) {
         setState(() {
-          _pmsData = {
-            'userPerformance': {
-              'score': 85,
-              'rank': 3,
-              'sales': 425000,
-            },
-            'kpis': {
-              'ordersCompleted': 45,
-              'responseTime': 2.5,
-              'customerSatisfaction': 4.8,
-              'targetAchievement': '85',
-            },
-            'leaderboard': [],
-          };
+          _pmsData = null;
           _isLoading = false;
         });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to load performance data: ${e.toString()}')),
+        );
       }
     }
   }

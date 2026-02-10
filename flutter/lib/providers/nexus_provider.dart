@@ -76,30 +76,11 @@ class NexusProvider with ChangeNotifier {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('user_session', jsonEncode(userData));
       } else {
-        // Fallback for demo if backend is not running or credentials fail
-        final fallbackUser = User(id: email, name: email.split('@')[0].toUpperCase(), role: UserRole.admin);
-        _currentUser = fallbackUser;
-        
-        // Save fallback session
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('user_session', jsonEncode({
-          'id': fallbackUser.id,
-          'name': fallbackUser.name,
-          'role': fallbackUser.role.name,
-        }));
+        throw Exception('Invalid credentials');
       }
     } catch (e) {
-      // Fallback for demo when backend is completely unavailable
-      final fallbackUser = User(id: email, name: email.split('@')[0].toUpperCase(), role: UserRole.admin);
-      _currentUser = fallbackUser;
-      
-      // Save fallback session
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('user_session', jsonEncode({
-        'id': fallbackUser.id,
-        'name': fallbackUser.name,
-        'role': fallbackUser.role.name,
-      }));
+      debugPrint('Login error: $e');
+      rethrow;
     }
     _isLoading = false;
     notifyListeners();

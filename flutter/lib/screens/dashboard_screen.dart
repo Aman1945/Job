@@ -22,6 +22,7 @@ import 'live_orders_screen.dart';
 import 'sales_hub_screen.dart';
 import 'reporting_screen.dart';
 import 'pms_screen.dart';
+import 'add_product_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
@@ -142,6 +143,7 @@ class DashboardScreen extends StatelessWidget {
   Widget _buildActionList(BuildContext context, bool isMobile) {
     final actions = [
       {'label': '0. NEW CUSTOMER', 'icon': Icons.person_add_outlined, 'color': Colors.indigo, 'screen': const NewCustomerScreen()},
+      {'label': '0.5 CREATE SKU MASTER', 'icon': Icons.post_add_rounded, 'color': NexusTheme.amber500, 'screen': const AddProductScreen()},
       {'label': '1. BOOK ORDER', 'icon': Icons.add_shopping_cart, 'color': NexusTheme.emerald700, 'screen': const BookOrderScreen()},
       {'label': '1.1 STOCK TRANSFER', 'icon': Icons.sync_alt, 'color': NexusTheme.slate600, 'screen': const StockTransferScreen()},
       {'label': '1.5 LIVE ORDERS', 'icon': Icons.pending_actions, 'color': Colors.cyan, 'screen': const LiveOrdersScreen()},
