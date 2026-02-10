@@ -16,14 +16,20 @@ class _TrackingScreenState extends State<TrackingScreen> with SingleTickerProvid
   late AnimationController _controller;
   late Animation<double> _animation;
   
-  // Simulated coordinates (Mumbai area)
-  final LatLng _startPoint = const LatLng(19.0760, 72.8777); // Mumbai
-  final LatLng _endPoint = const LatLng(19.1136, 72.8697); // Andheri
+  // Simulated Road Route (Realistic Mumbai WEH approximation)
+  final List<LatLng> _route = [
+    const LatLng(19.0760, 72.8777),
+    const LatLng(19.0720, 72.8620),
+    const LatLng(19.0820, 72.8520),
+    const LatLng(19.0950, 72.8520),
+    const LatLng(19.1050, 72.8580),
+    const LatLng(19.1136, 72.8697),
+  ];
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(duration: const Duration(seconds: 20), vsync: this)..repeat(reverse: true);
+    _controller = AnimationController(duration: const Duration(seconds: 30), vsync: this)..repeat();
     _animation = Tween<double>(begin: 0, end: 1).animate(_controller);
   }
 
@@ -33,10 +39,36 @@ class _TrackingScreenState extends State<TrackingScreen> with SingleTickerProvid
     super.dispose();
   }
 
-  LatLng _getCurrentTruckPos(double val) {
-    double lat = _startPoint.latitude + (_endPoint.latitude - _startPoint.latitude) * val;
-    double lng = _startPoint.longitude + (_endPoint.longitude - _startPoint.longitude) * val;
-    return LatLng(lat, lng);
+  Map<String, dynamic> _getTruckData(double val) {
+    if (val >= 1.0) return {'pos': _route.last, 'rotation': 0.0};
+    
+    int totalSegments = _route.length - 1;
+    double segmentProgress = val * totalSegments;
+    int index = segmentProgress.floor();
+    double fraction = segmentProgress - index;
+
+    LatLng p1 = _route[index];
+    LatLng p2 = _route[index + 1];
+
+    double lat = p1.latitude + (p2.latitude - p1.latitude) * fraction;
+    double lng = p1.longitude + (p2.longitude - p1.longitude) * fraction;
+    
+    // Simple rotation calculation (bearing)
+    double angle = 0;
+    try {
+       angle = (LatLng(p1.latitude, p1.longitude).longitude - LatLng(p2.latitude, p2.longitude).longitude).abs() > 0.0001 
+        ? (3.14159 / 2) - (p2.latitude - p1.latitude).sign * (p2.longitude - p1.longitude).sign * 0.5 
+        : 0.0;
+       // More accurate bearing for visual "facing"
+       final dy = p2.latitude - p1.latitude;
+       final dx = p2.longitude - p1.longitude;
+       angle = (3.14159 / 2) - (dy == 0 ? (dx > 0 ? 0 : 3.14159) : (dx / dy).clamp(-100, 100)); // Rough approximation
+    } catch (_) {}
+
+    return {
+      'pos': LatLng(lat, lng),
+      'rotation': angle
+    };
   }
 
   @override
@@ -64,7 +96,9 @@ class _TrackingScreenState extends State<TrackingScreen> with SingleTickerProvid
                 child: AnimatedBuilder(
                   animation: _animation,
                   builder: (context, child) {
-                    final truckPos = _getCurrentTruckPos(_animation.value);
+                    final truckData = _getTruckData(_animation.value);
+                    final truckPos = truckData['pos'] as LatLng;
+                    
                     return FlutterMap(
                       options: MapOptions(
                         initialCenter: const LatLng(19.0948, 72.8737),
@@ -78,9 +112,10 @@ class _TrackingScreenState extends State<TrackingScreen> with SingleTickerProvid
                         PolylineLayer(
                           polylines: [
                             Polyline(
-                              points: [_startPoint, _endPoint],
+                              points: _route,
                               color: NexusTheme.emerald500.withOpacity(0.3),
-                              strokeWidth: 4,
+                              strokeWidth: 6,
+                              isDotted: true,
                             ),
                           ],
                         ),
@@ -88,7 +123,7 @@ class _TrackingScreenState extends State<TrackingScreen> with SingleTickerProvid
                           markers: [
                             // Destination
                             Marker(
-                              point: _endPoint,
+                              point: _route.last,
                               width: 80,
                               height: 80,
                               child: const Icon(Icons.location_on, color: Colors.redAccent, size: 40),
@@ -112,7 +147,10 @@ class _TrackingScreenState extends State<TrackingScreen> with SingleTickerProvid
                                       style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold)
                                     ),
                                   ),
-                                  const Icon(Icons.local_shipping, color: NexusTheme.emerald600, size: 40),
+                                  Transform.rotate(
+                                    angle: truckData['rotation'] ?? 0.0,
+                                    child: const Icon(Icons.local_shipping, color: NexusTheme.emerald600, size: 40),
+                                  ),
                                 ],
                               ),
                             ),
