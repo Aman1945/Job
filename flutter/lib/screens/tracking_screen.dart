@@ -110,12 +110,11 @@ class _TrackingScreenState extends State<TrackingScreen> with SingleTickerProvid
                           userAgentPackageName: 'com.nexus.oms',
                         ),
                         PolylineLayer(
-                          polylines: [
+                          polylines: <Polyline<Object>>[
                             Polyline(
                               points: _route,
                               color: NexusTheme.emerald500.withOpacity(0.3),
                               strokeWidth: 6,
-                              isDotted: true,
                             ),
                           ],
                         ),
