@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/nexus_provider.dart';
 import '../utils/theme.dart';
@@ -17,9 +18,11 @@ import 'stock_transfer_screen.dart';
 import 'logistics_cost_screen.dart';
 import 'warehouse_inventory_screen.dart';
 import 'analytics_screen.dart';
+import 'live_orders_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
+
 
   @override
   Widget build(BuildContext context) {
@@ -30,53 +33,82 @@ class DashboardScreen extends StatelessWidget {
     final pendingCount = provider.orders.where((o) => o.status.contains('Pending')).length;
     final totalRevenue = provider.orders.fold(0.0, (sum, o) => sum + o.total);
 
-    return Scaffold(
-      backgroundColor: NexusTheme.slate50,
-      appBar: AppBar(
-        title: const Row(
-          children: [
-            Icon(Icons.shield_outlined, color: NexusTheme.emerald500),
-            SizedBox(width: 8),
-            Text('NEXUS', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.2)),
-            Text('OMS', style: TextStyle(color: NexusTheme.emerald500, fontWeight: FontWeight.w900, letterSpacing: 1.2)),
+    return WillPopScope(
+      onWillPop: () async {
+        return await _showExitDialog(context);
+      },
+      child: Scaffold(
+        backgroundColor: NexusTheme.slate50,
+        appBar: AppBar(
+          title: const Row(
+            children: [
+              Icon(Icons.shield_outlined, color: NexusTheme.emerald500),
+              SizedBox(width: 8),
+              Text('NEXUS', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.2)),
+              Text('OMS', style: TextStyle(color: NexusTheme.emerald500, fontWeight: FontWeight.w900, letterSpacing: 1.2)),
+            ],
+          ),
+          actions: [
+            IconButton(
+              onPressed: () => provider.logout(), 
+              icon: const Icon(Icons.logout, color: Colors.grey),
+              tooltip: 'Logout',
+            ),
+            IconButton(
+              onPressed: () => _showExitDialog(context), 
+              icon: const Icon(Icons.exit_to_app, color: Colors.redAccent),
+              tooltip: 'Exit App',
+            ),
+            const SizedBox(width: 8),
           ],
         ),
-        actions: [
-          IconButton(onPressed: () => provider.logout(), icon: const Icon(Icons.logout, color: Colors.grey)),
-          const SizedBox(width: 8),
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildWelcomeHeader(user?.name ?? 'User'),
-            const SizedBox(height: 32),
-            GridView.count(
-              crossAxisCount: 2,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              mainAxisSpacing: 16,
-              crossAxisSpacing: 16,
-              childAspectRatio: 1.4,
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final width = constraints.maxWidth;
+          final isMobile = width < 600;
+
+          return SingleChildScrollView(
+            padding: EdgeInsets.all(isMobile ? 16 : 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                NexusComponents.statCard(label: 'LIVE MISSIONS', value: '$liveCount', icon: Icons.radar, color: NexusTheme.emerald500, trend: '+12%'),
-                NexusComponents.statCard(label: 'PENDING OPS', value: '$pendingCount', icon: Icons.timer_outlined, color: Colors.orange),
-                NexusComponents.statCard(label: 'SCM SCORE', value: '110.0', icon: Icons.analytics_outlined, color: Colors.blue),
-                NexusComponents.statCard(label: 'MTD REVENUE', value: '₹${(totalRevenue/1000).toStringAsFixed(1)}K', icon: Icons.payments_outlined, color: Colors.purple),
+                _buildWelcomeHeader(user?.name ?? 'User'),
+                const SizedBox(height: 32),
+                
+                // Stats Cards - Always 2x2 Grid
+                GridView.count(
+                  crossAxisCount: 2,
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  mainAxisSpacing: isMobile ? 12 : 16,
+                  crossAxisSpacing: isMobile ? 12 : 16,
+                  childAspectRatio: isMobile ? 1.3 : 1.4,
+                  children: [
+                    NexusComponents.statCard(label: 'LIVE MISSIONS', value: '$liveCount', icon: Icons.radar, color: NexusTheme.emerald500, trend: '+12%'),
+                    NexusComponents.statCard(label: 'PENDING OPS', value: '$pendingCount', icon: Icons.timer_outlined, color: Colors.orange),
+                    NexusComponents.statCard(label: 'SCM SCORE', value: '110.0', icon: Icons.analytics_outlined, color: Colors.blue),
+                    NexusComponents.statCard(label: 'MTD REVENUE', value: '₹${(totalRevenue/1000).toStringAsFixed(1)}K', icon: Icons.payments_outlined, color: Colors.purple),
+                  ],
+                ),
+                const SizedBox(height: 32),
+                
+                const _SectionTitle(title: 'SUPPLY CHAIN LIFECYCLE'),
+                const SizedBox(height: 16),
+                
+                // Action Cards - In Rows
+                _buildActionList(context, isMobile),
+                
+                const SizedBox(height: 32),
+                const _SectionTitle(title: 'ENTERPRISE TERMINALS'),
+                const SizedBox(height: 16),
+                
+                // Utility Cards - 2 Rows (2 cards per row)
+                _buildUtilityGrid(context, isMobile),
               ],
             ),
-            const SizedBox(height: 32),
-            const _SectionTitle(title: 'SUPPLY CHAIN LIFECYCLE'),
-            const SizedBox(height: 16),
-            _buildActionGrid(context),
-            const SizedBox(height: 32),
-            const _SectionTitle(title: 'ENTERPRISE TERMINALS'),
-            const SizedBox(height: 16),
-            _buildUtilityGrid(context),
-          ],
-        ),
+          );
+        },
+      ),
       ),
     );
   }
@@ -104,11 +136,12 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildActionGrid(BuildContext context) {
+  Widget _buildActionList(BuildContext context, bool isMobile) {
     final actions = [
       {'label': '0. NEW CUSTOMER', 'icon': Icons.person_add_outlined, 'color': Colors.indigo, 'screen': const NewCustomerScreen()},
       {'label': '1. BOOK ORDER', 'icon': Icons.add_shopping_cart, 'color': NexusTheme.emerald700, 'screen': const BookOrderScreen()},
       {'label': '1.1 STOCK TRANSFER', 'icon': Icons.sync_alt, 'color': NexusTheme.slate600, 'screen': const StockTransferScreen()},
+      {'label': '1.5 LIVE ORDERS', 'icon': Icons.pending_actions, 'color': Colors.cyan, 'screen': const LiveOrdersScreen()},
       {'label': '2. CREDIT CONTROL', 'icon': Icons.bolt, 'color': Colors.orange, 'screen': const CreditControlScreen()},
       {'label': '2.5 WH ASSIGN', 'icon': Icons.home_work_outlined, 'color': Colors.teal, 'screen': const WarehouseSelectionScreen()},
       {'label': '3. WAREHOUSE', 'icon': Icons.inventory_2_outlined, 'color': Colors.blueGrey, 'screen': const WarehouseInventoryScreen()},
@@ -118,21 +151,21 @@ class DashboardScreen extends StatelessWidget {
       {'label': '7. EXECUTION', 'icon': Icons.local_shipping_outlined, 'color': Colors.redAccent, 'screen': const DeliveryExecutionScreen()},
     ];
 
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, mainAxisSpacing: 12, crossAxisSpacing: 12, childAspectRatio: 1.25),
-      itemCount: actions.length,
-      itemBuilder: (context, i) => _ActionCard(
-        label: actions[i]['label'] as String,
-        icon: actions[i]['icon'] as IconData,
-        color: actions[i]['color'] as Color,
-        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => actions[i]['screen'] as Widget)),
-      ),
+    return Column(
+      children: actions.map((action) => Padding(
+        padding: EdgeInsets.only(bottom: isMobile ? 10 : 12),
+        child: _ActionCard(
+          label: action['label'] as String,
+          icon: action['icon'] as IconData,
+          color: action['color'] as Color,
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => action['screen'] as Widget)),
+          isMobile: isMobile,
+        ),
+      )).toList(),
     );
   }
 
-  Widget _buildUtilityGrid(BuildContext context) {
+  Widget _buildUtilityGrid(BuildContext context, bool isMobile) {
     final utilities = [
       {'l': 'Procurement', 'i': Icons.shopping_bag_outlined, 's': const ProcurementScreen()},
       {'l': 'Intelligence', 'i': Icons.insights, 's': const AnalyticsScreen()},
@@ -143,19 +176,24 @@ class DashboardScreen extends StatelessWidget {
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, mainAxisSpacing: 12, crossAxisSpacing: 12, childAspectRatio: 1.8),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        mainAxisSpacing: 12,
+        crossAxisSpacing: 12,
+        childAspectRatio: isMobile ? 2.2 : 1.8,
+      ),
       itemCount: utilities.length,
       itemBuilder: (context, i) => InkWell(
         onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => utilities[i]['s'] as Widget)),
         borderRadius: BorderRadius.circular(16),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
+          padding: EdgeInsets.symmetric(horizontal: isMobile ? 12 : 16),
           decoration: BoxDecoration(color: NexusTheme.slate900, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: NexusTheme.slate900.withValues(alpha: 0.2), blurRadius: 10, offset: const Offset(0, 4))]),
           child: Row(
             children: [
-              Icon(utilities[i]['i'] as IconData, color: NexusTheme.emerald400, size: 18),
-              const SizedBox(width: 10),
-              Text((utilities[i]['l'] as String).toUpperCase(), style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 0.5)),
+              Icon(utilities[i]['i'] as IconData, color: NexusTheme.emerald400, size: isMobile ? 16 : 18),
+              SizedBox(width: isMobile ? 8 : 10),
+              Flexible(child: Text((utilities[i]['l'] as String).toUpperCase(), style: TextStyle(fontSize: isMobile ? 8 : 9, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 0.5))),
             ],
           ),
         ),
@@ -176,7 +214,8 @@ class _ActionCard extends StatelessWidget {
   final IconData icon;
   final Color color;
   final VoidCallback onTap;
-  const _ActionCard({required this.label, required this.icon, required this.color, required this.onTap});
+  final bool isMobile;
+  const _ActionCard({required this.label, required this.icon, required this.color, required this.onTap, required this.isMobile});
 
   @override
   Widget build(BuildContext context) {
@@ -184,16 +223,70 @@ class _ActionCard extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(20),
       child: Container(
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), border: Border.all(color: NexusTheme.slate200), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10)]),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+        padding: EdgeInsets.symmetric(horizontal: isMobile ? 16 : 20, vertical: isMobile ? 14 : 16),
+        decoration: BoxDecoration(
+          color: Colors.white, 
+          borderRadius: BorderRadius.circular(20), 
+          border: Border.all(color: NexusTheme.slate200), 
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10)]
+        ),
+        child: Row(
           children: [
-            Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: color.withValues(alpha: 0.05), shape: BoxShape.circle), child: Icon(icon, color: color, size: 24)),
-            const SizedBox(height: 10),
-            Text(label, textAlign: TextAlign.center, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: NexusTheme.slate800, letterSpacing: -0.2)),
+            Container(
+              padding: EdgeInsets.all(isMobile ? 8 : 10), 
+              decoration: BoxDecoration(color: color.withValues(alpha: 0.05), shape: BoxShape.circle), 
+              child: Icon(icon, color: color, size: isMobile ? 20 : 24)
+            ),
+            SizedBox(width: isMobile ? 12 : 16),
+            Expanded(
+              child: Text(
+                label, 
+                style: TextStyle(fontSize: isMobile ? 11 : 12, fontWeight: FontWeight.w900, color: NexusTheme.slate800, letterSpacing: -0.2)
+              ),
+            ),
+            Icon(Icons.arrow_forward_ios, size: isMobile ? 14 : 16, color: NexusTheme.slate300),
           ],
         ),
       ),
     );
   }
+}
+
+Future<bool> _showExitDialog(BuildContext context) async {
+  return await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      title: Row(
+        children: [
+          Icon(Icons.exit_to_app, color: Colors.redAccent, size: 28),
+          SizedBox(width: 12),
+          Text('Exit App', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18)),
+        ],
+      ),
+      content: Text(
+        'Are you sure you want to exit NexusOMS?',
+        style: TextStyle(fontSize: 14, color: NexusTheme.slate600),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          child: Text('CANCEL', style: TextStyle(color: NexusTheme.slate500, fontWeight: FontWeight.bold)),
+        ),
+        ElevatedButton(
+          onPressed: () {
+            Navigator.of(context).pop(true);
+            // Exit the app
+            SystemNavigator.pop();
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.redAccent,
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+          child: Text('EXIT', style: TextStyle(fontWeight: FontWeight.w900)),
+        ),
+      ],
+    ),
+  ) ?? false;
 }

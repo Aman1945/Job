@@ -120,22 +120,45 @@ class _BookOrderScreenState extends State<BookOrderScreen> {
               ),
               child: Column(
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      _buildMiniSectionHeader('SKU SELECTION & PRICING HUB', color: NexusTheme.indigo600),
-                      ElevatedButton.icon(
-                        onPressed: _addLineItem,
-                        icon: const Icon(Icons.add, size: 16),
-                        label: const Text('ADD LINE ITEM', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 10)),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: NexusTheme.indigo600,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  isMobile
+                      ? Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _buildMiniSectionHeader('SKU SELECTION & PRICING HUB', color: NexusTheme.indigo600),
+                            const SizedBox(height: 12),
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton.icon(
+                                onPressed: _addLineItem,
+                                icon: const Icon(Icons.add, size: 16),
+                                label: const Text('ADD LINE ITEM', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 10)),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: NexusTheme.indigo600,
+                                  foregroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                ),
+                              ),
+                            ),
+                          ],
+                        )
+                      : Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(child: _buildMiniSectionHeader('SKU SELECTION & PRICING HUB', color: NexusTheme.indigo600)),
+                            const SizedBox(width: 12),
+                            ElevatedButton.icon(
+                              onPressed: _addLineItem,
+                              icon: const Icon(Icons.add, size: 16),
+                              label: const Text('ADD LINE ITEM', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 10)),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: NexusTheme.indigo600,
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                    ],
-                  ),
                   const SizedBox(height: 24),
                   if (!isMobile) _buildTableHeader(),
                   const SizedBox(height: 12),
@@ -181,7 +204,14 @@ class _BookOrderScreenState extends State<BookOrderScreen> {
       children: [
         Container(width: 3, height: 16, decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(1))),
         const SizedBox(width: 8),
-        Text(title, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: NexusTheme.slate400, letterSpacing: 1)),
+        Flexible(
+          child: Text(
+            title, 
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: NexusTheme.slate400, letterSpacing: 1),
+            overflow: TextOverflow.ellipsis,
+            maxLines: 2,
+          ),
+        ),
       ],
     );
   }
@@ -444,31 +474,63 @@ class _BookOrderScreenState extends State<BookOrderScreen> {
   }
 
   Widget _buildFooter(bool isMobile) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('AGGREGATE VALUE', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 10, color: NexusTheme.slate400)),
-            Text('₹${NumberFormat('#,##,###').format(_cartTotal)}', style: const TextStyle(fontSize: 36, fontWeight: FontWeight.w900, letterSpacing: -1)),
-          ],
-        ),
-        SizedBox(
-          height: 64,
-          child: ElevatedButton.icon(
-            onPressed: _submitOrder,
-            icon: const Icon(LucideIcons.fileText, size: 20),
-            label: const Text('COMMIT SUPPLY REQUEST', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1, fontSize: 13)),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFCBD5E1), // Grayish based on screenshot
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(32)),
-              padding: const EdgeInsets.symmetric(horizontal: 40),
-            ),
-          ),
-        ),
-      ],
-    );
+    return isMobile
+        ? Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('AGGREGATE VALUE', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 10, color: NexusTheme.slate400)),
+                  const SizedBox(height: 4),
+                  Text('₹${NumberFormat('#,##,###').format(_cartTotal)}', style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w900, letterSpacing: -1)),
+                ],
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                height: 56,
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: _submitOrder,
+                  icon: const Icon(LucideIcons.fileText, size: 18),
+                  label: const Text('COMMIT SUPPLY REQUEST', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 0.5, fontSize: 12)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF10B981),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  ),
+                ),
+              ),
+            ],
+          )
+        : Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('AGGREGATE VALUE', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 10, color: NexusTheme.slate400)),
+                    Text('₹${NumberFormat('#,##,###').format(_cartTotal)}', style: const TextStyle(fontSize: 36, fontWeight: FontWeight.w900, letterSpacing: -1)),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 20),
+              SizedBox(
+                height: 64,
+                child: ElevatedButton.icon(
+                  onPressed: _submitOrder,
+                  icon: const Icon(LucideIcons.fileText, size: 20),
+                  label: const Text('COMMIT SUPPLY REQUEST', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1, fontSize: 13)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF10B981),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(32)),
+                    padding: const EdgeInsets.symmetric(horizontal: 40),
+                  ),
+                ),
+              ),
+            ],
+          );
   }
 }

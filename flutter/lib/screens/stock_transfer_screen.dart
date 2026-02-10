@@ -143,7 +143,8 @@ class _StockTransferScreenState extends State<StockTransferScreen> {
                     Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                            _buildMiniSectionHeader('INVENTORY LIST FOR TRANSFER'),
+                            Expanded(child: _buildMiniSectionHeader('INVENTORY LIST FOR TRANSFER')),
+                            const SizedBox(width: 12),
                             _buildAddButton(),
                         ],
                     ),

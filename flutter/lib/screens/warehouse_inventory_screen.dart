@@ -17,16 +17,21 @@ class WarehouseInventoryScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('3. WAREHOUSE OPERATIONS', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14)),
       ),
-      body: pendingOrders.isEmpty
-          ? _buildEmptyState()
-          : ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: pendingOrders.length,
-              itemBuilder: (context, index) {
-                final order = pendingOrders[index];
-                return _buildPackingCard(context, order, provider);
-              },
-            ),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final isMobile = constraints.maxWidth < 600;
+          return pendingOrders.isEmpty
+              ? _buildEmptyState()
+              : ListView.builder(
+                  padding: EdgeInsets.all(isMobile ? 12 : 16),
+                  itemCount: pendingOrders.length,
+                  itemBuilder: (context, index) {
+                    final order = pendingOrders[index];
+                    return _buildPackingCard(context, order, provider, isMobile);
+                  },
+                );
+        },
+      ),
     );
   }
 
@@ -44,33 +49,33 @@ class WarehouseInventoryScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildPackingCard(BuildContext context, Order order, NexusProvider provider) {
+  Widget _buildPackingCard(BuildContext context, Order order, NexusProvider provider, bool isMobile) {
     return Card(
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: EdgeInsets.only(bottom: isMobile ? 12 : 16),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: EdgeInsets.all(isMobile ? 16 : 20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(order.id, style: const TextStyle(fontWeight: FontWeight.w900, color: NexusTheme.indigo600)),
-                const Icon(Icons.qr_code_2, color: NexusTheme.slate300),
+                Flexible(child: Text(order.id, style: TextStyle(fontWeight: FontWeight.w900, color: NexusTheme.indigo600, fontSize: isMobile ? 12 : 13))),
+                Icon(Icons.qr_code_2, color: NexusTheme.slate300, size: isMobile ? 20 : 24),
               ],
             ),
             const SizedBox(height: 8),
-            Text(order.customerName, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            Text(order.customerName, style: TextStyle(fontSize: isMobile ? 16 : 18, fontWeight: FontWeight.bold)),
             const Divider(height: 32),
             ...order.items.map((item) => Padding(
               padding: const EdgeInsets.only(bottom: 8.0),
               child: Row(
                 children: [
-                  Container(width: 6, height: 6, decoration: const BoxDecoration(color: NexusTheme.emerald500, shape: BoxShape.circle)),
-                  const SizedBox(width: 12),
-                  Expanded(child: Text(item.name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500))),
-                  Text('x${item.quantity}', style: const TextStyle(fontWeight: FontWeight.w900, color: NexusTheme.slate900)),
+                  Container(width: isMobile ? 5 : 6, height: isMobile ? 5 : 6, decoration: const BoxDecoration(color: NexusTheme.emerald500, shape: BoxShape.circle)),
+                  SizedBox(width: isMobile ? 10 : 12),
+                  Expanded(child: Text(item.name, style: TextStyle(fontSize: isMobile ? 13 : 14, fontWeight: FontWeight.w500))),
+                  Text('x${item.quantity}', style: TextStyle(fontWeight: FontWeight.w900, color: NexusTheme.slate900, fontSize: isMobile ? 13 : 14)),
                 ],
               ),
             )),
@@ -79,12 +84,12 @@ class WarehouseInventoryScreen extends StatelessWidget {
               width: double.infinity,
               child: ElevatedButton.icon(
                 onPressed: () => _markPacked(context, order, provider),
-                icon: const Icon(Icons.check_circle_outline),
-                label: const Text('CONFIRM PACKING'),
+                icon: Icon(Icons.check_circle_outline, size: isMobile ? 18 : 20),
+                label: Text('CONFIRM PACKING', style: TextStyle(fontSize: isMobile ? 12 : 14)),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: NexusTheme.emerald600,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  padding: EdgeInsets.symmetric(vertical: isMobile ? 12 : 16),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 ),
               ),

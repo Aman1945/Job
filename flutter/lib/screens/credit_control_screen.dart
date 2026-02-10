@@ -17,43 +17,48 @@ class CreditControlScreen extends StatelessWidget {
         title: const Text('CREDIT CONTROL'),
         backgroundColor: NexusTheme.emerald900,
       ),
-      body: pendingOrders.isEmpty
-          ? const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.check_circle_outline, size: 80, color: NexusTheme.slate300),
-                  SizedBox(height: 16),
-                  Text(
-                    'All Clear!',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: NexusTheme.slate400),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final isMobile = constraints.maxWidth < 600;
+          return pendingOrders.isEmpty
+              ? const Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.check_circle_outline, size: 80, color: NexusTheme.slate300),
+                      SizedBox(height: 16),
+                      Text(
+                        'All Clear!',
+                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: NexusTheme.slate400),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        'No orders pending credit approval',
+                        style: TextStyle(color: NexusTheme.slate400),
+                      ),
+                    ],
                   ),
-                  SizedBox(height: 8),
-                  Text(
-                    'No orders pending credit approval',
-                    style: TextStyle(color: NexusTheme.slate400),
-                  ),
-                ],
-              ),
-            )
-          : ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: pendingOrders.length,
-              itemBuilder: (context, index) {
-                final order = pendingOrders[index];
-                return _buildOrderCard(context, order, provider);
-              },
-            ),
+                )
+              : ListView.builder(
+                  padding: EdgeInsets.all(isMobile ? 12 : 16),
+                  itemCount: pendingOrders.length,
+                  itemBuilder: (context, index) {
+                    final order = pendingOrders[index];
+                    return _buildOrderCard(context, order, provider, isMobile);
+                  },
+                );
+        },
+      ),
     );
   }
 
-  Widget _buildOrderCard(BuildContext context, Order order, NexusProvider provider) {
+  Widget _buildOrderCard(BuildContext context, Order order, NexusProvider provider, bool isMobile) {
     return Card(
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: EdgeInsets.only(bottom: isMobile ? 12 : 16),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       elevation: 2,
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(isMobile ? 12 : 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -66,8 +71,8 @@ class CreditControlScreen extends StatelessWidget {
                     children: [
                       Text(
                         order.id,
-                        style: const TextStyle(
-                          fontSize: 12,
+                        style: TextStyle(
+                          fontSize: isMobile ? 11 : 12,
                           fontWeight: FontWeight.w900,
                           color: NexusTheme.slate400,
                         ),
@@ -75,8 +80,8 @@ class CreditControlScreen extends StatelessWidget {
                       const SizedBox(height: 4),
                       Text(
                         order.customerName,
-                        style: const TextStyle(
-                          fontSize: 16,
+                        style: TextStyle(
+                          fontSize: isMobile ? 14 : 16,
                           fontWeight: FontWeight.bold,
                         ),
                         maxLines: 2,
@@ -85,8 +90,8 @@ class CreditControlScreen extends StatelessWidget {
                       const SizedBox(height: 8),
                       Text(
                         'Salesperson: ${order.salespersonId}',
-                        style: const TextStyle(
-                          fontSize: 12,
+                        style: TextStyle(
+                          fontSize: isMobile ? 11 : 12,
                           color: NexusTheme.slate500,
                         ),
                       ),
@@ -95,72 +100,123 @@ class CreditControlScreen extends StatelessWidget {
                 ),
                 const SizedBox(width: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: EdgeInsets.symmetric(horizontal: isMobile ? 8 : 12, vertical: 6),
                   decoration: BoxDecoration(
                     color: NexusTheme.amber500.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Text(
+                  child: Text(
                     'PENDING',
                     style: TextStyle(
                       color: NexusTheme.amber900,
                       fontWeight: FontWeight.w900,
-                      fontSize: 10,
+                      fontSize: isMobile ? 9 : 10,
                     ),
                   ),
                 ),
               ],
             ),
             const Divider(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'ORDER VALUE',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w900,
-                        color: NexusTheme.slate400,
+            isMobile
+                ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'ORDER VALUE',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w900,
+                              color: NexusTheme.slate400,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '₹${order.total.toStringAsFixed(2)}',
+                            style: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w900,
+                              color: NexusTheme.emerald900,
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '₹${order.total.toStringAsFixed(2)}',
-                      style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w900,
-                        color: NexusTheme.emerald900,
+                      const SizedBox(height: 12),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'ITEMS',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w900,
+                              color: NexusTheme.slate400,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${order.items.length}',
+                            style: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w900,
+                              color: NexusTheme.slate700,
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                  ],
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    const Text(
-                      'ITEMS',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w900,
-                        color: NexusTheme.slate400,
+                    ],
+                  )
+                : Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'ORDER VALUE',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w900,
+                              color: NexusTheme.slate400,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '₹${order.total.toStringAsFixed(2)}',
+                            style: const TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.w900,
+                              color: NexusTheme.emerald900,
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '${order.items.length}',
-                      style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w900,
-                        color: NexusTheme.slate700,
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          const Text(
+                            'ITEMS',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w900,
+                              color: NexusTheme.slate400,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${order.items.length}',
+                            style: const TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.w900,
+                              color: NexusTheme.slate700,
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+                    ],
+                  ),
             const SizedBox(height: 16),
             Row(
               children: [
@@ -172,7 +228,7 @@ class CreditControlScreen extends StatelessWidget {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: NexusTheme.emerald600,
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      padding: EdgeInsets.symmetric(vertical: isMobile ? 10 : 12),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -188,7 +244,7 @@ class CreditControlScreen extends StatelessWidget {
                     style: OutlinedButton.styleFrom(
                       foregroundColor: NexusTheme.rose600,
                       side: const BorderSide(color: NexusTheme.rose600),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      padding: EdgeInsets.symmetric(vertical: isMobile ? 10 : 12),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),

@@ -17,13 +17,18 @@ class WarehouseSelectionScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('2.5 WAREHOUSE ASSIGNMENT', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13))),
-      body: pendingOrders.isEmpty
-          ? NexusComponents.emptyState(icon: Icons.warehouse_outlined, title: 'All Assigned!', subtitle: 'No orders pending warehouse assignment')
-          : ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: pendingOrders.length,
-              itemBuilder: (context, index) => _OrderCard(order: pendingOrders[index], provider: provider),
-            ),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final isMobile = constraints.maxWidth < 600;
+          return pendingOrders.isEmpty
+              ? NexusComponents.emptyState(icon: Icons.warehouse_outlined, title: 'All Assigned!', subtitle: 'No orders pending warehouse assignment')
+              : ListView.builder(
+                  padding: EdgeInsets.all(isMobile ? 12 : 16),
+                  itemCount: pendingOrders.length,
+                  itemBuilder: (context, index) => _OrderCard(order: pendingOrders[index], provider: provider, isMobile: isMobile),
+                );
+        },
+      ),
     );
   }
 }
@@ -31,15 +36,16 @@ class WarehouseSelectionScreen extends StatelessWidget {
 class _OrderCard extends StatelessWidget {
   final Order order;
   final NexusProvider provider;
-  const _OrderCard({required this.order, required this.provider});
+  final bool isMobile;
+  const _OrderCard({required this.order, required this.provider, required this.isMobile});
 
   @override
   Widget build(BuildContext context) {
     return Card(
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: EdgeInsets.only(bottom: isMobile ? 12 : 16),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(isMobile ? 12 : 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -49,9 +55,9 @@ class _OrderCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(order.id, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: NexusTheme.slate400)),
+                      Text(order.id, style: TextStyle(fontSize: isMobile ? 11 : 12, fontWeight: FontWeight.w900, color: NexusTheme.slate400)),
                       const SizedBox(height: 4),
-                      Text(order.customerName, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold), maxLines: 2, overflow: TextOverflow.ellipsis),
+                      Text(order.customerName, style: TextStyle(fontSize: isMobile ? 14 : 16, fontWeight: FontWeight.bold), maxLines: 2, overflow: TextOverflow.ellipsis),
                     ],
                   ),
                 ),
@@ -59,11 +65,11 @@ class _OrderCard extends StatelessWidget {
               ],
             ),
             const Divider(height: 24),
-            const Text('SELECT WAREHOUSE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: NexusTheme.slate400)),
+            Text('SELECT WAREHOUSE', style: TextStyle(fontSize: isMobile ? 9 : 10, fontWeight: FontWeight.w900, color: NexusTheme.slate400)),
             const SizedBox(height: 12),
             Wrap(
-              spacing: 8,
-              runSpacing: 8,
+              spacing: isMobile ? 6 : 8,
+              runSpacing: isMobile ? 6 : 8,
               children: WarehouseSelectionScreen.warehouses.map((wh) {
                 return ChoiceChip(
                   label: Text(wh),
@@ -78,7 +84,7 @@ class _OrderCard extends StatelessWidget {
                   },
                   selectedColor: NexusTheme.emerald500,
                   backgroundColor: NexusTheme.slate100,
-                  labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                  labelStyle: TextStyle(fontSize: isMobile ? 11 : 12, fontWeight: FontWeight.bold),
                 );
               }).toList(),
             ),

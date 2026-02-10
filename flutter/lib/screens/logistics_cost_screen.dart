@@ -17,56 +17,61 @@ class LogisticsCostScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('4. LOGISTICS COSTING', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14)),
       ),
-      body: Column(
-        children: [
-          _buildSummaryHeader(pendingOrders),
-          const SizedBox(height: 24),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0),
-            child: Row(
-              children: [
-                const Text('PENDING FREIGHT ASSIGNMENT', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 10, color: NexusTheme.slate400, letterSpacing: 1)),
-                const Spacer(),
-                Text('${pendingOrders.length} ORDERS', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 10, color: NexusTheme.indigo600)),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          Expanded(
-            child: pendingOrders.isEmpty 
-              ? _buildEmptyState()
-              : ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  itemCount: pendingOrders.length,
-                  itemBuilder: (context, index) {
-                    final order = pendingOrders[index];
-                    return _buildCostCard(context, order, provider);
-                  },
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final isMobile = constraints.maxWidth < 600;
+          return Column(
+            children: [
+              _buildSummaryHeader(pendingOrders, isMobile),
+              const SizedBox(height: 24),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: isMobile ? 16.0 : 24.0),
+                child: Row(
+                  children: [
+                    Text('PENDING FREIGHT ASSIGNMENT', style: TextStyle(fontWeight: FontWeight.w900, fontSize: isMobile ? 9 : 10, color: NexusTheme.slate400, letterSpacing: 1)),
+                    const Spacer(),
+                    Text('${pendingOrders.length} ORDERS', style: TextStyle(fontWeight: FontWeight.w900, fontSize: isMobile ? 9 : 10, color: NexusTheme.indigo600)),
+                  ],
                 ),
-          ),
-        ],
+              ),
+              const SizedBox(height: 16),
+              Expanded(
+                child: pendingOrders.isEmpty 
+                  ? _buildEmptyState()
+                  : ListView.builder(
+                      padding: EdgeInsets.symmetric(horizontal: isMobile ? 12 : 16),
+                      itemCount: pendingOrders.length,
+                      itemBuilder: (context, index) {
+                        final order = pendingOrders[index];
+                        return _buildCostCard(context, order, provider, isMobile);
+                      },
+                    ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
 
-  Widget _buildSummaryHeader(List<Order> orders) {
+  Widget _buildSummaryHeader(List<Order> orders, bool isMobile) {
     double totalFreight = orders.length * 250.0; // Mock calculation
     return Container(
       width: double.infinity,
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.all(32),
+      margin: EdgeInsets.all(isMobile ? 12 : 16),
+      padding: EdgeInsets.all(isMobile ? 24 : 32),
       decoration: BoxDecoration(
         color: NexusTheme.slate900,
-        borderRadius: BorderRadius.circular(32),
+        borderRadius: BorderRadius.circular(isMobile ? 24 : 32),
         boxShadow: [BoxShadow(color: NexusTheme.slate900.withValues(alpha: 0.3), blurRadius: 20, offset: const Offset(0, 10))],
       ),
       child: Column(
         children: [
-          const Text('ESTIMATED FREIGHT LIABILITIES', style: TextStyle(color: NexusTheme.emerald400, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1.5)),
-          const SizedBox(height: 12),
-          Text('₹${totalFreight.toStringAsFixed(2)}', style: const TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.w900, letterSpacing: -1)),
+          Text('ESTIMATED FREIGHT LIABILITIES', style: TextStyle(color: NexusTheme.emerald400, fontSize: isMobile ? 9 : 10, fontWeight: FontWeight.w900, letterSpacing: 1.5)),
+          SizedBox(height: isMobile ? 8 : 12),
+          Text('₹${totalFreight.toStringAsFixed(2)}', style: TextStyle(color: Colors.white, fontSize: isMobile ? 28 : 36, fontWeight: FontWeight.w900, letterSpacing: -1)),
           const SizedBox(height: 8),
-          Text('FOR ${orders.length} PENDING INBOUNDS', style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 9, fontWeight: FontWeight.bold)),
+          Text('FOR ${orders.length} PENDING INBOUNDS', style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: isMobile ? 8 : 9, fontWeight: FontWeight.bold)),
         ],
       ),
     );
@@ -86,58 +91,84 @@ class LogisticsCostScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildCostCard(BuildContext context, Order order, NexusProvider provider) {
+  Widget _buildCostCard(BuildContext context, Order order, NexusProvider provider, bool isMobile) {
     return Card(
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: EdgeInsets.only(bottom: isMobile ? 12 : 16),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: EdgeInsets.all(isMobile ? 16 : 20),
         child: Column(
           children: [
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(12),
+                  padding: EdgeInsets.all(isMobile ? 10 : 12),
                   decoration: BoxDecoration(color: NexusTheme.indigo50, borderRadius: BorderRadius.circular(16)),
-                  child: const Icon(Icons.local_shipping_outlined, color: NexusTheme.indigo600),
+                  child: Icon(Icons.local_shipping_outlined, color: NexusTheme.indigo600, size: isMobile ? 20 : 24),
                 ),
-                const SizedBox(width: 16),
+                SizedBox(width: isMobile ? 12 : 16),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(order.id, style: const TextStyle(fontWeight: FontWeight.w900, color: NexusTheme.slate400, fontSize: 11)),
-                      Text(order.customerName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                      Text(order.id, style: TextStyle(fontWeight: FontWeight.w900, color: NexusTheme.slate400, fontSize: isMobile ? 10 : 11)),
+                      Text(order.customerName, style: TextStyle(fontWeight: FontWeight.bold, fontSize: isMobile ? 14 : 15)),
                     ],
                   ),
                 ),
-                const Text('₹250.00', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: NexusTheme.emerald900)),
+                Text('₹250.00', style: TextStyle(fontWeight: FontWeight.w900, fontSize: isMobile ? 16 : 18, color: NexusTheme.emerald900)),
               ],
             ),
             const Divider(height: 32),
-            Row(
-              children: [
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+            isMobile
+                ? Column(
                     children: [
-                      Text('TRANSIT PARTNER', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: NexusTheme.slate400)),
-                      Text('Blue Dart Logistics', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                      const Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('TRANSIT PARTNER', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: NexusTheme.slate400)),
+                          Text('Blue Dart Logistics', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: () => _approveCost(context, order, provider),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: NexusTheme.indigo600,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                          ),
+                          child: const Text('APPROVE & BILL', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900)),
+                        ),
+                      ),
+                    ],
+                  )
+                : Row(
+                    children: [
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('TRANSIT PARTNER', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: NexusTheme.slate400)),
+                            Text('Blue Dart Logistics', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                          ],
+                        ),
+                      ),
+                      ElevatedButton(
+                        onPressed: () => _approveCost(context, order, provider),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: NexusTheme.indigo600,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                        ),
+                        child: const Text('APPROVE & BILL', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900)),
+                      ),
                     ],
                   ),
-                ),
-                ElevatedButton(
-                  onPressed: () => _approveCost(context, order, provider),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: NexusTheme.indigo600,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                  ),
-                  child: const Text('APPROVE & BILL', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900)),
-                ),
-              ],
-            ),
           ],
         ),
       ),
