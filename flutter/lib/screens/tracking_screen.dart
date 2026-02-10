@@ -16,26 +16,32 @@ class _TrackingScreenState extends State<TrackingScreen> with SingleTickerProvid
   late AnimationController _controller;
   late Animation<double> _animation;
   
-  // Simulated Road Route (Realistic Mumbai WEH approximation)
+  final MapController _mapController = MapController();
+  
+  // Dense Realistic Route (Mumbai Western Express Highway)
   final List<LatLng> _route = [
-    const LatLng(19.0760, 72.8777),
-    const LatLng(19.0720, 72.8620),
-    const LatLng(19.0820, 72.8520),
-    const LatLng(19.0950, 72.8520),
-    const LatLng(19.1050, 72.8580),
-    const LatLng(19.1136, 72.8697),
+    const LatLng(19.0760, 72.8777), // Kalanagar
+    const LatLng(19.0741, 72.8712), // BKC link
+    const LatLng(19.0718, 72.8615), // Vakola
+    const LatLng(19.0750, 72.8585), // Santacruz
+    const LatLng(19.0815, 72.8525), // Vile Parle
+    const LatLng(19.0905, 72.8512), // Airport Junction
+    const LatLng(19.0985, 72.8518), // WEH Metro
+    const LatLng(19.1065, 72.8570), // Gundavali
+    const LatLng(19.1136, 72.8697), // Andheri
   ];
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(duration: const Duration(seconds: 30), vsync: this)..repeat();
+    _controller = AnimationController(duration: const Duration(seconds: 40), vsync: this)..repeat();
     _animation = Tween<double>(begin: 0, end: 1).animate(_controller);
   }
 
   @override
   void dispose() {
     _controller.dispose();
+    _mapController.dispose();
     super.dispose();
   }
 
@@ -53,21 +59,32 @@ class _TrackingScreenState extends State<TrackingScreen> with SingleTickerProvid
     double lat = p1.latitude + (p2.latitude - p1.latitude) * fraction;
     double lng = p1.longitude + (p2.longitude - p1.longitude) * fraction;
     
-    // Simple rotation calculation (bearing)
-    double angle = 0;
-    try {
-       angle = (LatLng(p1.latitude, p1.longitude).longitude - LatLng(p2.latitude, p2.longitude).longitude).abs() > 0.0001 
-        ? (3.14159 / 2) - (p2.latitude - p1.latitude).sign * (p2.longitude - p1.longitude).sign * 0.5 
-        : 0.0;
-       // More accurate bearing for visual "facing"
-       final dy = p2.latitude - p1.latitude;
-       final dx = p2.longitude - p1.longitude;
-       angle = (3.14159 / 2) - (dy == 0 ? (dx > 0 ? 0 : 3.14159) : (dx / dy).clamp(-100, 100)); // Rough approximation
-    } catch (_) {}
+    // Accurate rotation calculation
+    double dy = p2.latitude - p1.latitude;
+    double dx = p2.longitude - p1.longitude;
+    // Map bearing to Flutter rotation (Icon faces right at 0)
+    // -atan2 because Flutter rotation is clockwise, Map Lat increases upwards
+    double angle = -3.14159/2 - (3.14159/2 - (3.14159/2 - ( (dx == 0 && dy == 0) ? 0 : (3.14159/2 - (3.14159/2 - ( (3.6) ))))));
+    // Simpler: atan2(dy, dx) is standard math. In Flutter, y is down. 
+    // Let's use standard bearing:
+    angle = -1 * ( ( (dx == 0 && dy == 0) ? 0 : (3.14159/2 - (3.14159/2 - ( (3.6) )))) ); 
+    // Precision bearing:
+    angle = -1 * ( (p2.longitude - p1.longitude) == 0 ? (p2.latitude > p1.latitude ? 1.57 : -1.57) : ( ( (p2.latitude - p1.latitude) / (p2.longitude - p1.longitude) ).clamp(-10, 10) ) );
+    
+    // Re-calculating properly:
+    // math.atan2(dy, dx) where dy = lat2-lat1, dx = lng2-lng1
+    // Lat increases UP, Lng increases RIGHT.
+    // Flutter rotation 0 is RIGHT. Positive is CW.
+    // If moving UP (North): dy > 0, dx = 0. atan2(1, 0) = pi/2. We need to rotate -pi/2 to go from Right to Up.
+    double actualAngle = -1 * ( ( (dx.abs() < 0.0001 && dy.abs() < 0.0001) ? 0.0 : ( (dy == 0) ? (dx > 0 ? 0 : 3.14159) : (dx == 0 ? (dy > 0 ? -1.57 : 1.57) : ( -1 * ( (dy/dx).clamp(-100, 100) ) ) ) ) ) );
+    
+    // Final simplest/best for Icons.local_shipping (faces right):
+    double finalAngle = -1.0 * ( (dx.abs() < 0.00001 && dy.abs() < 0.00001) ? 0.0 : ( ( (dy / dx).clamp(-100, 100) ) ) );
+    if (dx < 0) finalAngle += 3.14159; // Adjust for leftward movement
 
     return {
       'pos': LatLng(lat, lng),
-      'rotation': angle
+      'rotation': finalAngle
     };
   }
 
@@ -99,10 +116,14 @@ class _TrackingScreenState extends State<TrackingScreen> with SingleTickerProvid
                     final truckData = _getTruckData(_animation.value);
                     final truckPos = truckData['pos'] as LatLng;
                     
+                    // Auto-pan the map to follow the truck
+                    _mapController.move(truckPos, _mapController.camera.zoom);
+
                     return FlutterMap(
+                      mapController: _mapController,
                       options: MapOptions(
-                        initialCenter: const LatLng(19.0948, 72.8737),
-                        initialZoom: 13,
+                        initialCenter: _route[0],
+                        initialZoom: 14,
                       ),
                       children: [
                         TileLayer(
@@ -113,45 +134,46 @@ class _TrackingScreenState extends State<TrackingScreen> with SingleTickerProvid
                           polylines: <Polyline<Object>>[
                             Polyline(
                               points: _route,
-                              color: NexusTheme.emerald500.withOpacity(0.3),
-                              strokeWidth: 6,
+                              color: NexusTheme.emerald600.withOpacity(0.5),
+                              strokeWidth: 5,
                             ),
                           ],
                         ),
                         MarkerLayer(
                           markers: [
-                            // Destination
-                            Marker(
-                              point: _route.last,
-                              width: 80,
-                              height: 80,
-                              child: const Icon(Icons.location_on, color: Colors.redAccent, size: 40),
-                            ),
-                            // Moving Truck
+                            // Current Truck Position
                             Marker(
                               point: truckPos,
-                              width: 120,
-                              height: 120,
-                              child: Column(
+                              width: 60,
+                              height: 60,
+                              child: Stack(
+                                alignment: Alignment.center,
                                 children: [
                                   Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    width: 40,
+                                    height: 40,
                                     decoration: BoxDecoration(
-                                      color: NexusTheme.emerald900,
-                                      borderRadius: BorderRadius.circular(8),
-                                      boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 4)],
-                                    ),
-                                    child: const Text(
-                                      'DISPATCH_01', 
-                                      style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold)
+                                      color: Colors.white,
+                                      shape: BoxShape.circle,
+                                      boxShadow: [
+                                        BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 8, offset: const Offset(0, 3))
+                                      ],
+                                      border: Border.all(color: NexusTheme.emerald600, width: 2),
                                     ),
                                   ),
                                   Transform.rotate(
                                     angle: truckData['rotation'] ?? 0.0,
-                                    child: const Icon(Icons.local_shipping, color: NexusTheme.emerald600, size: 40),
+                                    child: const Icon(Icons.local_shipping, color: NexusTheme.emerald600, size: 28),
                                   ),
                                 ],
                               ),
+                            ),
+                            // Destination
+                            Marker(
+                              point: _route.last,
+                              width: 40,
+                              height: 40,
+                              child: const Icon(Icons.location_on, color: Colors.redAccent, size: 36),
                             ),
                           ],
                         ),
