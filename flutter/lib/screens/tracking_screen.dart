@@ -1,3 +1,4 @@
+import 'dart:ui' as ui;
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -25,6 +26,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
   Marker? _destinationMarker;
   List<LatLng> _routePoints = [];
   Polyline? _routePolyline;
+  BitmapDescriptor? _customTruckIcon;
   
   bool _isLoading = true;
   double _totalDistance = 0.0;
@@ -38,46 +40,242 @@ class _TrackingScreenState extends State<TrackingScreen> {
   @override
   void initState() {
     super.initState();
+    _loadCustomTruckIcon();
     _initializeTracking();
+  }
+
+  Future<void> _loadCustomTruckIcon() async {
+    final iconData = Icons.local_shipping;
+    final pictureRecorder = ui.PictureRecorder();
+    final canvas = Canvas(pictureRecorder);
+    const size = ui.Size(120, 120);
+    
+    // Draw background circle
+    final paint = Paint()..color = NexusTheme.indigo600;
+    canvas.drawCircle(const Offset(60, 60), 60, paint);
+    
+    // Draw icon
+    final textPainter = TextPainter(textDirection: TextDirection.ltr);
+    textPainter.text = TextSpan(
+      text: String.fromCharCode(iconData.codePoint),
+      style: TextStyle(
+        fontSize: 70,
+        fontFamily: iconData.fontFamily,
+        color: Colors.white,
+      ),
+    );
+    textPainter.layout();
+    textPainter.paint(canvas, const Offset(25, 25));
+
+    final picture = pictureRecorder.endRecording();
+    final image = await picture.toImage(size.width.toInt(), size.height.toInt());
+    final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+    
+    if (bytes != null) {
+      setState(() {
+        _customTruckIcon = BitmapDescriptor.fromBytes(bytes.buffer.asUint8List());
+      });
+    }
   }
 
   Future<void> _initializeTracking() async {
     setState(() => _isLoading = true);
 
-    // 1. Check if we have an active drive state to resume
-    if (DriveStateManager.hasActiveDrive && DriveStateManager.eventId == widget.order.id) {
-      _totalDistance = DriveStateManager.totalDistance;
-      _routePoints = await _db.getRoutePoints(widget.order.id);
-      _currentPosition = DriveStateManager.lastLocation;
-    } else {
-      // Start fresh
-      Position pos = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
-      _currentPosition = LatLng(pos.latitude, pos.longitude);
-      _routePoints = [_currentPosition!];
+    try {
+      // 1. Check & Request Permissions with a better UI
+      bool hasPermission = await _requestLocationPermission();
+      if (!hasPermission) {
+        if (mounted) {
+          setState(() => _isLoading = false);
+        }
+        return;
+      }
+
+      // 2. Check if we have an active drive state to resume
+      if (DriveStateManager.hasActiveDrive && DriveStateManager.eventId == widget.order.id) {
+        _totalDistance = DriveStateManager.totalDistance;
+        _routePoints = await _db.getRoutePoints(widget.order.id);
+        _currentPosition = DriveStateManager.lastLocation;
+      } else {
+        // Start fresh
+        Position pos = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+        _currentPosition = LatLng(pos.latitude, pos.longitude);
+        _routePoints = [_currentPosition!];
+        
+        await DriveStateManager.startDrive(
+          eventId: widget.order.id,
+          leadId: widget.order.customerId,
+          startLocation: _currentPosition!,
+        );
+      }
+
+      _updateMarkers();
+      _updatePolyline();
+
+      // 3. Start Background Service
+      await _bgService.initialize();
+      await _bgService.startTracking();
+      _bgService.sendDriveId(widget.order.id);
       
-      await DriveStateManager.startDrive(
-        eventId: widget.order.id,
-        leadId: widget.order.customerId,
-        startLocation: _currentPosition!,
-      );
+      // 4. Listen for updates
+      _bgService.listenToUpdates((data) {
+        if (mounted) {
+          _handleLocationUpdate(data);
+        }
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Tracking Error: $e'),
+            backgroundColor: NexusTheme.rose600,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     }
 
-    _updateMarkers();
-    _updatePolyline();
+    if (mounted) {
+      setState(() => _isLoading = false);
+    }
+  }
 
-    // 2. Start Background Service
-    await _bgService.initialize();
-    await _bgService.startTracking();
-    _bgService.sendDriveId(widget.order.id);
-    
-    // 3. Listen for updates
-    _bgService.listenToUpdates((data) {
+  Future<bool> _requestLocationPermission() async {
+    bool serviceEnabled;
+    LocationPermission permission;
+
+    // Test if location services are enabled.
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
       if (mounted) {
-        _handleLocationUpdate(data);
+        _showErrorDialog(
+          "Location Service Disabled",
+          "Please enable GPS to start live tracking.",
+          Icons.location_off,
+        );
       }
-    });
+      return false;
+    }
 
-    setState(() => _isLoading = false);
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      // Show custom explanation dialog first
+      bool? proceed = await _showPermissionExplainer();
+      if (proceed != true) return false;
+
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        if (mounted) {
+          _showErrorDialog(
+            "Permission Denied",
+            "Location access is mandatory for freight tracking.",
+            Icons.security_update_warning,
+          );
+        }
+        return false;
+      }
+    }
+    
+    if (permission == LocationPermission.deniedForever) {
+      if (mounted) {
+        _showErrorDialog(
+          "Permanent Denial",
+          "Location permissions are permanently blocked. Please enable them in system settings.",
+          Icons.settings_suggest,
+          showSettings: true,
+        );
+      }
+      return false;
+    }
+
+    return true;
+  }
+
+  Future<bool?> _showPermissionExplainer() {
+    return showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(32)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(color: NexusTheme.indigo50, shape: BoxShape.circle),
+              child: const Icon(Icons.location_on, color: NexusTheme.indigo600, size: 48),
+            ),
+            const SizedBox(height: 32),
+            const Text("Location Access", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 24, color: NexusTheme.slate900)),
+            const SizedBox(height: 16),
+            const Text(
+              "We need your location to track freight movement and calculate delivery ETAs in real-time.",
+              textAlign: TextAlign.center,
+              style: TextStyle(color: NexusTheme.slate500, fontWeight: FontWeight.w500, fontSize: 14),
+            ),
+            const SizedBox(height: 32),
+            SizedBox(
+              width: double.infinity,
+              height: 56,
+              child: ElevatedButton(
+                onPressed: () => Navigator.pop(context, true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: NexusTheme.indigo600,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  elevation: 0,
+                ),
+                child: const Text("GRANT ACCESS", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 1)),
+              ),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text("NOT NOW", style: TextStyle(color: NexusTheme.slate400, fontWeight: FontWeight.bold, fontSize: 12)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showErrorDialog(String title, String message, IconData icon, {bool showSettings = false}) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(32)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 16),
+            Icon(icon, color: NexusTheme.rose600, size: 64),
+            const SizedBox(height: 24),
+            Text(title, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 22, color: NexusTheme.slate900)),
+            const SizedBox(height: 12),
+            Text(message, textAlign: TextAlign.center, style: const TextStyle(color: NexusTheme.slate500, fontWeight: FontWeight.w500)),
+            const SizedBox(height: 32),
+            SizedBox(
+              width: double.infinity,
+              height: 56,
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  if (showSettings) Geolocator.openAppSettings();
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: NexusTheme.slate900,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                ),
+                child: Text(showSettings ? "OPEN SETTINGS" : "OKAY", style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _handleLocationUpdate(Map<String, dynamic> data) async {
@@ -114,7 +312,9 @@ class _TrackingScreenState extends State<TrackingScreen> {
     _truckMarker = Marker(
       markerId: const MarkerId('truck'),
       position: _currentPosition!,
-      icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueCyan),
+      icon: _customTruckIcon ?? BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueCyan),
+      rotation: DriveStateManager.lastLocation != null ? 0 : 0, // Could add rotation based on heading
+      anchor: const Offset(0.5, 0.5),
       infoWindow: const InfoWindow(title: "Truck Location"),
     );
 

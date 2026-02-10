@@ -10,238 +10,280 @@ class InvoicingScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<NexusProvider>(context);
-    final pendingOrders = provider.orders
-        .where((o) => o.status == 'Cost Added' || o.status == 'Pending Invoicing')
-        .toList();
+    final pendingOrders = provider.orders.where((o) => o.status == 'Cost Added' || o.status == 'Pending Invoicing').toList();
+    final invoicedOrders = provider.orders.where((o) => o.status == 'Invoiced' || o.status == 'Ready for Dispatch' || o.status == 'Picked Up' || o.status == 'Delivered').toList();
 
     return Scaffold(
+      backgroundColor: NexusTheme.slate50,
       appBar: AppBar(
-        title: const Text('INVOICING'),
-        backgroundColor: NexusTheme.emerald900,
+        title: const Text('INVOICING TERMINAL', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 0.5)),
+        leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () => Navigator.pop(context)),
       ),
-      body: pendingOrders.isEmpty
-          ? const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.receipt_long_outlined, size: 80, color: NexusTheme.slate300),
-                  SizedBox(height: 16),
-                  Text(
-                    'All Invoiced!',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: NexusTheme.slate400),
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    'No orders pending invoice generation',
-                    style: TextStyle(color: NexusTheme.slate400),
-                  ),
-                ],
-              ),
-            )
-          : ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: pendingOrders.length,
-              itemBuilder: (context, index) {
-                final order = pendingOrders[index];
-                return _buildOrderCard(context, order, provider);
-              },
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final isMobile = constraints.maxWidth < 900;
+          
+          return SingleChildScrollView(
+            padding: EdgeInsets.symmetric(
+              horizontal: isMobile ? 20.0 : 40.0, 
+              vertical: isMobile ? 24.0 : 32.0
             ),
-    );
-  }
-
-  Widget _buildOrderCard(BuildContext context, Order order, NexusProvider provider) {
-    final gstAmount = order.total * 0.18; // 18% GST
-    final totalWithGst = order.total + gstAmount;
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: Column(
+                if (isMobile)
+                  Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        order.id,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w900,
-                          color: NexusTheme.slate400,
-                        ),
+                      const Text('Invoicing Terminal', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: NexusTheme.slate900, letterSpacing: -1, height: 1)),
+                      const SizedBox(height: 8),
+                      const Text('POST-CREDIT REVENUE ACCOUNTING', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: NexusTheme.slate400, letterSpacing: 1.5)),
+                      const SizedBox(height: 16),
+                      _buildDateBadge(),
+                    ],
+                  )
+                else
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Invoicing Terminal', style: TextStyle(fontSize: 36, fontWeight: FontWeight.w900, color: NexusTheme.slate900, letterSpacing: -1, height: 1)),
+                          Text('POST-CREDIT REVENUE ACCOUNTING & BILLING', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: NexusTheme.slate400, letterSpacing: 1.5)),
+                        ],
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        order.customerName,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                      _buildDateBadge(),
                     ],
                   ),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: NexusTheme.indigo500.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
+                const SizedBox(height: 32),
+                if (isMobile)
+                  Column(
+                    children: [
+                      _buildPendingView(pendingOrders, provider, isMobile),
+                      const SizedBox(height: 48),
+                      _buildBilledView(invoicedOrders, isMobile),
+                    ],
+                  )
+                else
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(flex: 3, child: _buildPendingView(pendingOrders, provider, isMobile)),
+                      const SizedBox(width: 48),
+                      Expanded(flex: 2, child: _buildBilledView(invoicedOrders, isMobile)),
+                    ],
                   ),
-                  child: const Text(
-                    'INVOICE',
-                    style: TextStyle(
-                      color: NexusTheme.indigo900,
-                      fontWeight: FontWeight.w900,
-                      fontSize: 10,
-                    ),
-                  ),
-                ),
               ],
             ),
-            const Divider(height: 24),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: NexusTheme.slate50,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Column(
-                children: [
-                  _buildAmountRow('Subtotal', order.total),
-                  const SizedBox(height: 8),
-                  _buildAmountRow('GST (18%)', gstAmount),
-                  const Divider(height: 16),
-                  _buildAmountRow('TOTAL', totalWithGst, isTotal: true),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () => _previewInvoice(context, order),
-                    icon: const Icon(Icons.visibility, size: 18),
-                    label: const Text('PREVIEW'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: NexusTheme.emerald600,
-                      side: const BorderSide(color: NexusTheme.emerald600),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () => _generateInvoice(context, order, provider),
-                    icon: const Icon(Icons.receipt, size: 18),
-                    label: const Text('GENERATE'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: NexusTheme.emerald600,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
 
-  Widget _buildAmountRow(String label, double amount, {bool isTotal = false}) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  Widget _buildDateBadge() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: NexusTheme.slate200)),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.calendar_today, size: 12, color: NexusTheme.slate400),
+          const SizedBox(width: 8),
+          Text(DateTime.now().toString().split(' ')[0], style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: NexusTheme.slate900)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPendingView(List<Order> pendingOrders, NexusProvider provider, bool isMobile) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: isTotal ? 14 : 12,
-            fontWeight: isTotal ? FontWeight.w900 : FontWeight.w600,
-            color: isTotal ? NexusTheme.emerald900 : NexusTheme.slate600,
+        _buildSectionHeader('AWAITING BILLING', pendingOrders.length, NexusTheme.indigo500),
+        const SizedBox(height: 24),
+        if (pendingOrders.isEmpty)
+          _buildEmptyQueue()
+        else
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: isMobile ? 1 : 2,
+              crossAxisSpacing: 24,
+              mainAxisSpacing: 24,
+              mainAxisExtent: isMobile ? 180 : 220,
+            ),
+            itemCount: pendingOrders.length,
+            itemBuilder: (context, index) => _buildPendingOrderCard(context, pendingOrders[index], provider, isMobile),
           ),
-        ),
-        Text(
-          '₹${amount.toStringAsFixed(2)}',
-          style: TextStyle(
-            fontSize: isTotal ? 18 : 14,
-            fontWeight: FontWeight.w900,
-            color: isTotal ? NexusTheme.emerald900 : NexusTheme.slate700,
+      ],
+    );
+  }
+
+  Widget _buildBilledView(List<Order> invoicedOrders, bool isMobile) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionHeader('BILLED RECORDS', invoicedOrders.length, NexusTheme.slate900),
+        const SizedBox(height: 24),
+        Container(
+          padding: EdgeInsets.all(isMobile ? 20 : 24),
+          decoration: BoxDecoration(
+            color: const Color(0xFF0F172A),
+            borderRadius: BorderRadius.circular(32),
+            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 30, offset: const Offset(0, 15))],
+          ),
+          child: Column(
+            children: [
+              if (invoicedOrders.isEmpty)
+                _buildNoHistory()
+              else
+                ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: invoicedOrders.length,
+                  separatorBuilder: (_, __) => Divider(color: Colors.white.withOpacity(0.05), height: 32),
+                  itemBuilder: (context, index) => _buildHistoryCard(invoicedOrders[index]),
+                ),
+            ],
           ),
         ),
       ],
     );
   }
 
-  void _previewInvoice(BuildContext context, Order order) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Invoice Preview'),
-        content: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
+  Widget _buildSectionHeader(String title, int count, Color color) {
+    return Row(
+      children: [
+        Container(width: 4, height: 16, decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2))),
+        const SizedBox(width: 12),
+        Text(title, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: NexusTheme.slate900, letterSpacing: 1.5)),
+        const SizedBox(width: 12),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(20)),
+          child: Text('$count ITEMS', style: TextStyle(color: color, fontSize: 8, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEmptyQueue() {
+    return Container(
+      width: double.infinity,
+      height: 300,
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(40), border: Border.all(color: NexusTheme.slate100)),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(padding: const EdgeInsets.all(32), decoration: BoxDecoration(color: NexusTheme.slate50, shape: BoxShape.circle), child: const Icon(Icons.receipt_long_outlined, color: NexusTheme.slate200, size: 48)),
+            const SizedBox(height: 24),
+            const Text('BILLING QUEUE CLEAR', style: TextStyle(color: NexusTheme.slate300, fontSize: 11, fontWeight: FontWeight.w900, letterSpacing: 2)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNoHistory() {
+    return const SizedBox(
+      height: 200,
+      child: Center(
+        child: Text('NO BILLED RECORDS FOUND', style: TextStyle(color: Colors.white12, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 2.5)),
+      ),
+    );
+  }
+
+  Widget _buildPendingOrderCard(BuildContext context, Order order, NexusProvider provider, bool isMobile) {
+    return Container(
+      padding: EdgeInsets.all(isMobile ? 24 : 32),
+      decoration: BoxDecoration(
+        color: Colors.white, 
+        borderRadius: BorderRadius.circular(32), 
+        border: Border.all(color: NexusTheme.slate200),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 20, offset: const Offset(0, 10))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Invoice No: INV-${order.id}'),
-              Text('Customer: ${order.customerName}'),
-              const Divider(),
-              Text('Items: ${order.items.length}'),
-              Text('Subtotal: ₹${order.total.toStringAsFixed(2)}'),
-              Text('GST: ₹${(order.total * 0.18).toStringAsFixed(2)}'),
-              Text('Total: ₹${(order.total * 1.18).toStringAsFixed(2)}', 
-                style: const TextStyle(fontWeight: FontWeight.bold)),
+              Text(order.id, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 10, color: NexusTheme.slate400, letterSpacing: 0.5)),
+              const Icon(Icons.more_vert, color: NexusTheme.slate300, size: 16),
             ],
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('CLOSE'),
+          const SizedBox(height: 12),
+          Text(order.customerName, style: TextStyle(fontWeight: FontWeight.w900, fontSize: isMobile ? 16 : 18, color: NexusTheme.slate800, height: 1.2)),
+          const Spacer(),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('TOTAL AMT', style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: NexusTheme.slate400, letterSpacing: 0.5)),
+              Text('₹${order.total.toStringAsFixed(0)}', style: TextStyle(fontWeight: FontWeight.w900, fontSize: isMobile ? 18 : 20, color: NexusTheme.slate900)),
+            ],
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () => _generateInvoice(context, order, provider),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: NexusTheme.indigo600, 
+                foregroundColor: Colors.white, 
+                elevation: 0,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)), 
+                padding: EdgeInsets.symmetric(vertical: isMobile ? 16 : 20)
+              ),
+              child: const Text('ISSUE INVOICE', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 11, letterSpacing: 1)),
+            ),
           ),
         ],
       ),
     );
   }
 
-  void _generateInvoice(BuildContext context, Order order, NexusProvider provider) async {
-    final success = await provider.updateOrderStatus(order.id, 'Invoiced');
-    
-    if (success && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Invoice generated for ${order.id}'),
-          backgroundColor: NexusTheme.emerald600,
-          action: SnackBarAction(
-            label: 'TALLY EXPORT',
-            textColor: Colors.white,
-            onPressed: () {
-              // Export to Tally XML
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Exported to Tally successfully!')),
-              );
-            },
+  Widget _buildHistoryCard(Order order) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(color: Colors.white.withOpacity(0.05), borderRadius: BorderRadius.circular(12)),
+          child: const Icon(Icons.description, color: NexusTheme.emerald400, size: 18),
+        ),
+        const SizedBox(width: 20),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('INV-26-${order.id}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 0.5)),
+              const SizedBox(height: 4),
+              Text(order.customerName, style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 10, fontWeight: FontWeight.bold)),
+            ],
           ),
         ),
-      );
-    }
+        Text('₹${(order.total/1000).toStringAsFixed(1)}K', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 14)),
+      ],
+    );
   }
+
+  void _generateInvoice(BuildContext context, Order order, NexusProvider provider) async {
+    final success = await provider.updateOrderStatus(order.id, 'Invoiced');
+    if (success && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle, color: Colors.white, size: 16),
+            const SizedBox(width: 12),
+            Text('Invoice issued for ${order.id} successfully'),
+          ],
+        ), 
+        backgroundColor: NexusTheme.emerald500,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      ));
+  }}
 }

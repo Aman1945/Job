@@ -26,7 +26,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
     final provider = Provider.of<NexusProvider>(context, listen: false);
-    
+
     final results = await Future.wait([
       provider.fetchCategorySplitData(),
       provider.fetchFleetIntelligenceData(),
@@ -39,15 +39,26 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     });
   }
 
-
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) return const Scaffold(body: Center(child: CircularProgressIndicator(color: NexusTheme.indigo600)));
+    if (_isLoading)
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(color: NexusTheme.indigo600),
+        ),
+      );
 
     return Scaffold(
       backgroundColor: NexusTheme.slate50,
       appBar: AppBar(
-        title: const Text('INTELLIGENCE TERMINAL', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1)),
+        title: const Text(
+          'INTELLIGENCE TERMINAL',
+          style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1),
+        ),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: NexusTheme.slate400),
+          onPressed: () => Navigator.pop(context),
+        ),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(60),
           child: SingleChildScrollView(
@@ -71,20 +82,25 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'INTELLIGENCE TERMINAL',
-                  style: TextStyle(fontWeight: FontWeight.w900, fontSize: 28, color: NexusTheme.slate900),
-                ),
+                // const Text(
+                //   'INTELLIGENCE TERMINAL',
+                //   style: TextStyle(fontWeight: FontWeight.w900, fontSize: 28, color: NexusTheme.slate900),
+                // ),
                 const Text(
                   'HOLISTIC OPERATIONAL & CATEGORY PERFORMANCE ANALYTICS',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10, color: NexusTheme.slate400, letterSpacing: 0.5),
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 10,
+                    color: NexusTheme.slate400,
+                    letterSpacing: 0.5,
+                  ),
                 ),
               ],
             ),
             const SizedBox(height: 24),
-            
+
             _buildSelectedTerminalView(),
-            
+
             const SizedBox(height: 24),
             _buildIncentiveCard(),
           ],
@@ -108,16 +124,47 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   Widget _buildOrderFlowView() {
     return Column(
       children: [
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            children: [
-              _buildMetricCard('MTD QTY FULFILMENT', '0.0%', 'Ordered: 10 units', Colors.indigo, NexusTheme.blue900, icon: Icons.shopping_basket),
-              _buildMetricCard('ORDER SUCCESS RATE', '0.0%', 'Total MTD: 1 orders', Colors.emerald, NexusTheme.emerald900, icon: Icons.check_circle),
-              _buildMetricCard('STOCK SHORTAGE (LOSS)', '₹225', '5.2% leakage avg', Colors.orange, NexusTheme.amber900, icon: Icons.trending_down),
-              _buildMetricCard('AVG LEAD TIME', '3.4 Days', '-0.8d vs Q1', Colors.slate, NexusTheme.slate900, icon: Icons.timer),
-            ],
-          ),
+        GridView.count(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          crossAxisCount: 2,
+          crossAxisSpacing: 16,
+          mainAxisSpacing: 16,
+          childAspectRatio: 1.55,
+          children: [
+            _buildMetricCard(
+              'MTD QTY FULFILMENT',
+              '0.0%',
+              'Ordered: 10 units',
+              Colors.indigo,
+              NexusTheme.blue900,
+              icon: Icons.shopping_basket,
+            ),
+            _buildMetricCard(
+              'ORDER SUCCESS RATE',
+              '0.0%',
+              'Total MTD: 1 orders',
+              NexusTheme.emerald500,
+              NexusTheme.emerald900,
+              icon: Icons.check_circle,
+            ),
+            _buildMetricCard(
+              'STOCK SHORTAGE',
+              '₹225',
+              '5.2% leakage avg',
+              Colors.orange,
+              NexusTheme.amber900,
+              icon: Icons.trending_down,
+            ),
+            _buildMetricCard(
+              'AVG LEAD TIME',
+              '3.4 Days',
+              '-0.8d vs Q1',
+              NexusTheme.slate500,
+              NexusTheme.slate900,
+              icon: Icons.timer,
+            ),
+          ],
         ),
         const SizedBox(height: 24),
         _buildChartContainer(
@@ -142,11 +189,15 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                   color: NexusTheme.indigo500,
                   barWidth: 4,
                   dotData: const FlDotData(show: false),
-                  belowBarData: BarAreaData(show: true, color: NexusTheme.indigo500.withOpacity(0.1)),
+                  belowBarData: BarAreaData(
+                    show: true,
+                    color: NexusTheme.indigo500.withOpacity(0.1),
+                  ),
                 ),
               ],
             ),
           ),
+          icon: Icons.auto_graph,
         ),
       ],
     );
@@ -156,55 +207,81 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     final splitList = _categoryData['split'] as List? ?? [];
     final concentrationList = _categoryData['concentration'] as List? ?? [];
 
-    return Row(
+    return Column(
       children: [
-        Expanded(
-          child: _buildChartContainer(
-            'Value by Category Split',
-            Stack(
-              alignment: Alignment.center,
-              children: [
-                PieChart(
-                  PieChartData(
-                    sections: splitList.map((s) => PieChartSectionData(
-                      color: Color(int.parse(s['color'].toString().replaceFirst('#', '0xFF'))), 
-                      value: s['value'].toDouble(), 
-                      radius: 40, 
-                      showTitle: false
-                    )).toList(),
-                    centerSpaceRadius: 60,
-                  ),
+        _buildChartContainer(
+          'Value by Category Split',
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              PieChart(
+                PieChartData(
+                  sections: splitList
+                      .map(
+                        (s) => PieChartSectionData(
+                          color: Color(
+                            int.parse(
+                              s['color'].toString().replaceFirst('#', '0xFF'),
+                            ),
+                          ),
+                          value: s['value'].toDouble(),
+                          radius: 30,
+                          showTitle: false,
+                        ),
+                      )
+                      .toList(),
+                  centerSpaceRadius: 50,
                 ),
-                Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(width: 8, height: 8, color: NexusTheme.indigo500),
-                    const SizedBox(height: 4),
-                    Text(splitList.isNotEmpty ? splitList[0]['category'] : 'N/A', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
-                  ],
-                ),
-              ],
-            ),
-            icon: Icons.pie_chart_outline,
-          ),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: _buildChartContainer(
-            'Qty Concentration',
-            BarChart(
-              BarChartData(
-                gridData: const FlGridData(show: false),
-                titlesData: const FlTitlesData(show: false),
-                borderData: FlBorderData(show: false),
-                barGroups: concentrationList.asMap().entries.map((e) => BarChartGroupData(x: e.key, barRods: [
-                  BarChartRodData(toY: e.value['qty'].toDouble() / 50, color: NexusTheme.emerald500, width: 22, borderRadius: BorderRadius.circular(4))
-                ])).toList(),
               ),
-            ),
-            icon: Icons.bar_chart,
-            footerLabel: concentrationList.isNotEmpty ? concentrationList[0]['label'] : 'N/A',
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(width: 8, height: 8, color: NexusTheme.indigo500),
+                  const SizedBox(height: 4),
+                  Text(
+                    splitList.isNotEmpty ? splitList[0]['category'] : 'N/A',
+                    style: const TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
+          icon: Icons.pie_chart_outline,
+        ),
+        const SizedBox(height: 24),
+        _buildChartContainer(
+          'Qty Concentration',
+          BarChart(
+            BarChartData(
+              gridData: const FlGridData(show: false),
+              titlesData: const FlTitlesData(show: false),
+              borderData: FlBorderData(show: false),
+              barGroups: concentrationList
+                  .asMap()
+                  .entries
+                  .map(
+                    (e) => BarChartGroupData(
+                      x: e.key,
+                      barRods: [
+                        BarChartRodData(
+                          toY: e.value['qty'].toDouble() / 50,
+                          color: NexusTheme.emerald500,
+                          width: 22,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ],
+                    ),
+                  )
+                  .toList(),
+            ),
+          ),
+          icon: Icons.bar_chart,
+          footerLabel: concentrationList.isNotEmpty
+              ? concentrationList[0]['label']
+              : 'N/A',
         ),
       ],
     );
@@ -214,48 +291,110 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     final metrics = _fleetData['metrics'] ?? {};
     return Column(
       children: [
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            children: [
-              _buildMetricCard('FLEET COVERAGE', metrics['coverage'] ?? '0 KM', 'Trip distance MTD', Colors.indigo, NexusTheme.blue900, icon: Icons.route),
-              _buildMetricCard('ACTIVE ASSETS', metrics['activeAssets'] ?? '0', 'Unique Reg Numbers', Colors.orange, NexusTheme.amber900, icon: Icons.local_shipping),
-              _buildMetricCard('SUCCESSFUL DROPS', metrics['successfulDrops'] ?? '0', 'Confirmed PODs', Colors.emerald, NexusTheme.emerald900, icon: Icons.verified_user),
-              _buildMetricCard('FLEET PERSONNEL', metrics['personnel'] ?? '0', 'On-field force', Colors.slate, NexusTheme.slate900, icon: Icons.person_pin_circle),
-            ],
-          ),
+        GridView.count(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          crossAxisCount: 2,
+          crossAxisSpacing: 16,
+          mainAxisSpacing: 16,
+          childAspectRatio: 1.55,
+          children: [
+            _buildMetricCard(
+              'FLEET COVERAGE',
+              metrics['coverage'] ?? '0 KM',
+              'Trip distance MTD',
+              const Color(0xFF6366F1),
+              const Color(0xFF4338CA),
+              icon: Icons.route,
+            ),
+            _buildMetricCard(
+              'ACTIVE ASSETS',
+              metrics['activeAssets'] ?? '0',
+              'Unique Reg Numbers',
+              const Color(0xFFF59E0B),
+              const Color(0xFFB45309),
+              icon: Icons.local_shipping,
+            ),
+            _buildMetricCard(
+              'SUCCESSFUL DROPS',
+              metrics['successfulDrops'] ?? '0',
+              'Confirmed PODs',
+              const Color(0xFF10B981),
+              const Color(0xFF047857),
+              icon: Icons.verified_user,
+            ),
+            _buildMetricCard(
+              'FIELD PERSONNEL',
+              metrics['personnel'] ?? '0',
+              'On-field force',
+              const Color(0xFF64748B),
+              const Color(0xFF334155),
+              icon: Icons.person_pin_circle,
+            ),
+          ],
         ),
         const SizedBox(height: 24),
         _buildChartContainer(
           'Fleet Assignment Velocity',
-          const Center(child: Text('No Data Available', style: TextStyle(color: NexusTheme.slate400, fontSize: 12))),
+          const Center(
+            child: Text(
+              'No Data Available',
+              style: TextStyle(color: NexusTheme.slate400, fontSize: 12),
+            ),
+          ),
+          icon: Icons.speed_rounded,
         ),
       ],
     );
   }
 
-  Widget _buildChartContainer(String title, Widget chart, {IconData? icon, String? footerLabel}) {
+  Widget _buildChartContainer(
+    String title,
+    Widget chart, {
+    IconData? icon,
+    String? footerLabel,
+  }) {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(32),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 20)],
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 20),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              if (icon != null) ...[Icon(icon, size: 18, color: NexusTheme.indigo500), const SizedBox(width: 8)],
-              Text(title, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14)),
+              if (icon != null) ...[
+                Icon(icon, size: 18, color: NexusTheme.indigo500),
+                const SizedBox(width: 8),
+              ],
+              Text(
+                title,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w900,
+                  fontSize: 14,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 32),
           SizedBox(height: 200, child: chart),
           if (footerLabel != null) ...[
             const SizedBox(height: 16),
-            Center(child: Text(footerLabel, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: NexusTheme.slate400))),
+            Center(
+              child: Text(
+                footerLabel,
+                style: const TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  color: NexusTheme.slate400,
+                ),
+              ),
+            ),
           ],
         ],
       ),
@@ -270,9 +409,15 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
         margin: const EdgeInsets.only(right: 8),
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
         decoration: BoxDecoration(
-          color: isSelected ? NexusTheme.indigo500.withOpacity(0.1) : Colors.transparent,
+          color: isSelected
+              ? NexusTheme.indigo500.withOpacity(0.1)
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: isSelected ? NexusTheme.indigo500.withOpacity(0.2) : Colors.transparent),
+          border: Border.all(
+            color: isSelected
+                ? NexusTheme.indigo500.withOpacity(0.2)
+                : Colors.transparent,
+          ),
         ),
         child: Text(
           title,
@@ -287,31 +432,80 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     );
   }
 
-  Widget _buildMetricCard(String title, String value, String subtitle, Color color, Color accentColor, {IconData? icon}) {
+  Widget _buildMetricCard(
+    String title,
+    String value,
+    String subtitle,
+    Color color,
+    Color accentColor, {
+    IconData? icon,
+  }) {
     return Container(
-      width: 180,
-      margin: const EdgeInsets.only(right: 16),
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
         border: Border(left: BorderSide(color: color, width: 4)),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 4))],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(title, style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: NexusTheme.slate400, letterSpacing: 0.5)),
-              if (icon != null) Icon(icon, size: 14, color: NexusTheme.slate200),
+              Expanded(
+                child: Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 8,
+                    fontWeight: FontWeight.w900,
+                    color: NexusTheme.slate400,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ),
+              if (icon != null)
+                Icon(icon, size: 14, color: NexusTheme.slate200),
             ],
           ),
-          const SizedBox(height: 12),
-          Text(value, style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: NexusTheme.slate900, letterSpacing: -1)),
-          const SizedBox(height: 4),
-          Text(subtitle, style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: NexusTheme.slate400)),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w900,
+                    color: NexusTheme.slate900,
+                    letterSpacing: -1,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                subtitle,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 9,
+                  fontWeight: FontWeight.bold,
+                  color: NexusTheme.slate400,
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
@@ -334,16 +528,38 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
             children: [
               Container(
                 padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(color: NexusTheme.emerald500, borderRadius: BorderRadius.circular(16)),
-                child: const Icon(Icons.calculate, color: Colors.white, size: 28),
+                decoration: BoxDecoration(
+                  color: NexusTheme.emerald500,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const Icon(
+                  Icons.calculate,
+                  color: Colors.white,
+                  size: 28,
+                ),
               ),
               const SizedBox(width: 16),
               const Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Animesh Jamuar', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w900)),
-                    Text('FEB\'26 INCENTIVE TERMINAL', style: TextStyle(color: NexusTheme.emerald400, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1)),
+                    Text(
+                      'Animesh Jamuar',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 24,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    Text(
+                      'FEB\'26 INCENTIVE TERMINAL',
+                      style: TextStyle(
+                        color: NexusTheme.emerald400,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -354,7 +570,11 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               _buildIncentiveMetric('GROSS MONTHLY SALARY', '₹131,089'),
-              _buildIncentiveMetric('PAYABLE INCENTIVE', '₹32,772.25', isGreen: true),
+              _buildIncentiveMetric(
+                'PAYABLE INCENTIVE',
+                '₹32,772.25',
+                isGreen: true,
+              ),
             ],
           ),
         ],
@@ -362,20 +582,44 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     );
   }
 
-  Widget _buildIncentiveMetric(String label, String value, {bool isGreen = false}) {
+  Widget _buildIncentiveMetric(
+    String label,
+    String value, {
+    bool isGreen = false,
+  }) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: isGreen ? NexusTheme.emerald500.withOpacity(0.2) : Colors.white10,
+        color: isGreen
+            ? NexusTheme.emerald500.withOpacity(0.2)
+            : Colors.white10,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: isGreen ? NexusTheme.emerald500 : Colors.white24, width: 1),
+        border: Border.all(
+          color: isGreen ? NexusTheme.emerald500 : Colors.white24,
+          width: 1,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(color: Colors.white70, fontSize: 7, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white70,
+              fontSize: 7,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 0.5,
+            ),
+          ),
           const SizedBox(height: 4),
-          Text(value, style: TextStyle(color: isGreen ? NexusTheme.emerald400 : Colors.white, fontSize: 18, fontWeight: FontWeight.w900)),
+          Text(
+            value,
+            style: TextStyle(
+              color: isGreen ? NexusTheme.emerald400 : Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
         ],
       ),
     );

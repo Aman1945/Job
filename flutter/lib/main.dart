@@ -74,9 +74,11 @@ class _NexusAppState extends State<NexusApp> {
       },
       home: Consumer<NexusProvider>(
         builder: (context, provider, child) {
-          if (_isInitializing || provider.isLoading) {
+          // Only show splash during the absolute initial hardware/app boot
+          if (_isInitializing) {
             return const SplashScreen();
           }
+          
           if (provider.currentUser == null) {
             return LoginScreen();
           } else {

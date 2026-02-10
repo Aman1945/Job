@@ -16,11 +16,32 @@ class _LoginScreenState extends State<LoginScreen> {
 
   void _handleLogin() async {
     final provider = Provider.of<NexusProvider>(context, listen: false);
-    await provider.login(_emailController.text, _passwordController.text);
-    if (provider.currentUser == null) {
+    try {
+      await provider.login(_emailController.text, _passwordController.text);
+    } catch (e) {
       if (!mounted) return;
+      String error = e.toString().replaceFirst('Exception: ', '').trim();
+      
+      String displayMessage;
+      bool isTop = false;
+
+      if (error == 'EMAIL_NOT_FOUND') {
+        displayMessage = 'Email not registered. Please contact Admin';
+      } else if (error == 'WRONG_PASSWORD' || error == 'Invalid credentials') {
+        displayMessage = 'Password wrong';
+      } else {
+        displayMessage = error;
+      }
+
+      ScaffoldMessenger.of(context).clearSnackBars();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Invalid Email or Password')),
+        SnackBar(
+          content: Text(displayMessage, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+          backgroundColor: Colors.redAccent.shade700,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          margin: const EdgeInsets.all(20), // Always show at bottom
+        ),
       );
     }
   }
@@ -89,19 +110,34 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
                 const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  height: 36,
-                  child: ElevatedButton(
-                    onPressed: _handleLogin,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: NexusTheme.emerald500,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      elevation: 10,
-                    ),
-                    child: const Text('AUTHENTICATE', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.5)),
-                  ),
+                Consumer<NexusProvider>(
+                  builder: (context, provider, child) {
+                    return SizedBox(
+                      width: double.infinity,
+                      height: 50, // Slightly taller for better feel
+                      child: ElevatedButton(
+                        onPressed: provider.isLoading ? null : _handleLogin,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: NexusTheme.emerald500,
+                          foregroundColor: Colors.white,
+                          disabledBackgroundColor: NexusTheme.emerald500.withOpacity(0.5),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          elevation: provider.isLoading ? 0 : 10,
+                        ),
+                        child: provider.isLoading
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Text('AUTHENTICATE', 
+                                style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.5)),
+                      ),
+                    );
+                  },
                 ),
               ],
             ),

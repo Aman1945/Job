@@ -7,10 +7,10 @@ import '../models/models.dart';
 import '../services/downloader_service.dart';
 
 class NexusProvider with ChangeNotifier {
-  // Machine IP: 192.168.0.241 (Works on both Real Phone & Emulator)
-  static const String serverAddress = '192.168.0.241:3000';
-  final String _baseUrl = 'http://$serverAddress/api';
-  final String _socketUrl = 'http://$serverAddress';
+  // Production Render URL
+  static const String serverAddress = 'nexus-oms-backend.onrender.com';
+  final String _baseUrl = 'https://$serverAddress/api';
+  final String _socketUrl = 'https://$serverAddress';
   
   User? _currentUser;
 
@@ -66,7 +66,7 @@ class NexusProvider with ChangeNotifier {
         Uri.parse('$_baseUrl/login'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'email': email, 'password': password}),
-      );
+      ).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final userData = jsonDecode(response.body);
@@ -76,14 +76,17 @@ class NexusProvider with ChangeNotifier {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('user_session', jsonEncode(userData));
       } else {
-        throw Exception('Invalid credentials');
+        final data = jsonDecode(response.body);
+        final errorMsg = data['message'] ?? data['error'] ?? 'Invalid credentials';
+        throw Exception(errorMsg);
       }
     } catch (e) {
       debugPrint('Login error: $e');
       rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
-    _isLoading = false;
-    notifyListeners();
   }
 
   void logout() async {
@@ -97,7 +100,7 @@ class NexusProvider with ChangeNotifier {
 
   Future<void> fetchOrders() async {
     try {
-      final response = await http.get(Uri.parse('$_baseUrl/orders'));
+      final response = await http.get(Uri.parse('$_baseUrl/orders')).timeout(const Duration(seconds: 5));
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
         _orders = data.map((json) => Order.fromJson(json)).toList();
@@ -110,7 +113,7 @@ class NexusProvider with ChangeNotifier {
 
   Future<void> fetchProducts() async {
     try {
-      final response = await http.get(Uri.parse('$_baseUrl/products'));
+      final response = await http.get(Uri.parse('$_baseUrl/products')).timeout(const Duration(seconds: 5));
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
         _products = data.map((json) => Product.fromJson(json)).toList();
@@ -123,7 +126,7 @@ class NexusProvider with ChangeNotifier {
 
   Future<void> fetchCustomers() async {
     try {
-      final response = await http.get(Uri.parse('$_baseUrl/customers'));
+      final response = await http.get(Uri.parse('$_baseUrl/customers')).timeout(const Duration(seconds: 5));
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
         _customers = data.map((json) => Customer.fromJson(json)).toList();
@@ -136,7 +139,7 @@ class NexusProvider with ChangeNotifier {
 
   Future<void> fetchUsers() async {
     try {
-      final response = await http.get(Uri.parse('$_baseUrl/users'));
+      final response = await http.get(Uri.parse('$_baseUrl/users')).timeout(const Duration(seconds: 5));
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
         _users = data.map((json) => User.fromJson(json)).toList();
