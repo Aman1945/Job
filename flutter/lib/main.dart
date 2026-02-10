@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'providers/nexus_provider.dart';
 import 'screens/login_screen.dart';
 import 'screens/dashboard_screen.dart';
+import 'screens/splash_screen.dart';
 import 'screens/add_product_screen.dart';
 import 'screens/new_customer_screen.dart';
 import 'screens/book_order_screen.dart';
@@ -34,8 +35,29 @@ void main() async {
   );
 }
 
-class NexusApp extends StatelessWidget {
+class NexusApp extends StatefulWidget {
   const NexusApp({super.key});
+
+  @override
+  State<NexusApp> createState() => _NexusAppState();
+}
+
+class _NexusAppState extends State<NexusApp> {
+  bool _isInitializing = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeApp();
+  }
+
+  Future<void> _initializeApp() async {
+    // Wait for provider to initialize and check saved session
+    await Future.delayed(const Duration(milliseconds: 1500));
+    if (mounted) {
+      setState(() => _isInitializing = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -50,15 +72,17 @@ class NexusApp extends StatelessWidget {
         '/new-customer': (context) => const NewCustomerScreen(),
         '/book-order': (context) => const BookOrderScreen(),
       },
-      home: Consumer<NexusProvider>(
-        builder: (context, provider, child) {
-          if (provider.currentUser == null) {
-            return LoginScreen();
-          } else {
-            return DashboardScreen();
-          }
-        },
-      ),
+      home: _isInitializing
+          ? const SplashScreen()
+          : Consumer<NexusProvider>(
+              builder: (context, provider, child) {
+                if (provider.currentUser == null) {
+                  return LoginScreen();
+                } else {
+                  return DashboardScreen();
+                }
+              },
+            ),
     );
   }
 }
