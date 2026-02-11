@@ -605,36 +605,33 @@ class _MasterDataScreenState extends State<MasterDataScreen> {
           .map(
             (f) => Padding(
               padding: const EdgeInsets.only(bottom: 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    f.toUpperCase(),
-                    style: const TextStyle(
-                      fontSize: 9,
-                      fontWeight: FontWeight.w900,
-                      color: Color(0xFF64748B),
-                      letterSpacing: 1,
-                    ),
+              child: TextField(
+                style: const TextStyle(
+                  color: Color(0xFF0F172A),
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+                decoration: InputDecoration(
+                  labelText: f.toUpperCase(),
+                  labelStyle: const TextStyle(
+                    color: Color(0xFF64748B),
+                    fontWeight: FontWeight.w900,
+                    fontSize: 10,
+                    letterSpacing: 1,
                   ),
-                  const SizedBox(height: 10),
-                  Container(
-                    height: 56,
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF333333),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: const TextField(
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13,
-                      ),
-                      decoration: InputDecoration(border: InputBorder.none),
-                    ),
+                  floatingLabelBehavior: FloatingLabelBehavior.always,
+                  enabledBorder: OutlineInputBorder(
+                    borderSide: const BorderSide(color: Color(0xFF0F172A), width: 1.5),
+                    borderRadius: BorderRadius.circular(16),
                   ),
-                ],
+                  focusedBorder: OutlineInputBorder(
+                    borderSide: const BorderSide(color: Color(0xFF6366F1), width: 2),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  filled: true,
+                  fillColor: const Color(0xFFF8FAFC),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+                ),
               ),
             ),
           )
