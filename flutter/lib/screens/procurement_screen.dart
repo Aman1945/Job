@@ -41,7 +41,7 @@ class _ProcurementScreenState extends State<ProcurementScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.menu, color: NexusTheme.slate900),
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: NexusTheme.slate900, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -206,8 +206,11 @@ class _ProcurementScreenState extends State<ProcurementScreen> {
                       });
                       if (success) {
                         _supplierController.clear();
-                        setState(() => _showInboundForm = false);
-                        _loadData();
+                        setState(() {
+                          _selectedSku = null;
+                          _showInboundForm = false;
+                        });
+                        await _loadData();
                       }
                     },
                     style: ElevatedButton.styleFrom(

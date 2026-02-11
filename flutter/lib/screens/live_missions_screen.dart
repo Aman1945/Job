@@ -737,7 +737,10 @@ class _LiveMissionsScreenState extends State<LiveMissionsScreen> {
             if (success) setState(() => _selectedOrder = null);
           }),
           const SizedBox(height: 12),
-          _buildDetailedButton('PLACE ON HOLD', const Color(0xFFF59E0B), Icons.pause_circle_outline, () {}),
+          _buildDetailedButton('PLACE ON HOLD', const Color(0xFFF59E0B), Icons.pause_circle_outline, () async {
+            final success = await provider.updateOrderStatus(order.id, 'On Hold');
+            if (success) setState(() => _selectedOrder = null);
+          }),
           const SizedBox(height: 12),
           _buildDetailedButton('REJECT ORDER', Colors.white, Icons.cancel_outlined, () async {
             final success = await provider.updateOrderStatus(order.id, 'Rejected');
