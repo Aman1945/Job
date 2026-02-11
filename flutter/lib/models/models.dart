@@ -354,16 +354,40 @@ class ProcurementItem {
   });
 
   factory ProcurementItem.fromJson(Map<String, dynamic> json) {
+    // Smart mapping for legacy data keys
+    final String id = json['id'] ?? json['ref'] ?? '';
+    final String supplier = json['supplierName'] ?? json['vendor'] ?? '';
+    final String sku = json['skuName'] ?? json['sku'] ?? '';
+    final String code = json['skuCode'] ?? json['code'] ?? '';
+    
+    // Legacy status mapping
+    String currentStatus = json['status'] ?? json['stage'] ?? 'Pending';
+    if (currentStatus == 'PENDING') currentStatus = 'Pending';
+    
+    // Legacy checks mapping (if checks was an array)
+    bool sip = json['sipChecked'] ?? false;
+    bool lbl = json['labelsChecked'] ?? false;
+    bool doc = json['docsChecked'] ?? false;
+    
+    if (json['checks'] is List && (json['checks'] as List).length >= 3) {
+      final List checks = json['checks'];
+      sip = checks[0] ?? false;
+      lbl = checks[1] ?? false;
+      doc = checks[2] ?? false;
+    }
+
     return ProcurementItem(
-      id: json['id'] ?? '',
-      supplierName: json['supplierName'] ?? '',
-      skuName: json['skuName'] ?? '',
-      skuCode: json['skuCode'] ?? '',
-      sipChecked: json['sipChecked'] ?? false,
-      labelsChecked: json['labelsChecked'] ?? false,
-      docsChecked: json['docsChecked'] ?? false,
-      status: json['status'] ?? 'Pending',
-      createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt']) : DateTime.now(),
+      id: id,
+      supplierName: supplier,
+      skuName: sku,
+      skuCode: code,
+      sipChecked: sip,
+      labelsChecked: lbl,
+      docsChecked: doc,
+      status: currentStatus,
+      createdAt: json['createdAt'] != null 
+          ? DateTime.parse(json['createdAt']) 
+          : (json['date'] != null ? DateTime.now() : DateTime.now()), // Fallback for date string if needed
       attachment: json['attachment'],
       attachmentName: json['attachmentName'],
       clearedBy: json['clearedBy'],
