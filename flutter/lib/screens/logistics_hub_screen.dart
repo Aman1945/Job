@@ -187,17 +187,27 @@ class _LogisticsHubScreenState extends State<LogisticsHubScreen> {
 
   Widget _buildTableHeader(bool isMobile, int totalCount) {
     if (isMobile) return const SizedBox.shrink();
+    
+    // Get pending orders for select all functionality
+    final provider = Provider.of<NexusProvider>(context, listen: false);
+    final pendingOrders = provider.orders.where((o) => 
+      (o.status == 'Invoiced' || o.status == 'Ready for Dispatch') && 
+      o.logistics?.deliveryAgentId == null &&
+      (o.id.toLowerCase().contains(_searchTerm.toLowerCase()) || o.customerName.toLowerCase().contains(_searchTerm.toLowerCase()))
+    ).toList();
+    
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
       child: Row(
         children: [
           Checkbox(
-            value: _selectedOrderIds.length == totalCount && totalCount > 0,
+            value: _selectedOrderIds.length == pendingOrders.length && pendingOrders.isNotEmpty,
             activeColor: NexusTheme.emerald600,
             onChanged: (v) {
               setState(() {
                 if (v == true) {
-                  // Not perfect since we don't have orders here, but we'll get them in next build
+                  _selectedOrderIds.clear();
+                  _selectedOrderIds.addAll(pendingOrders.map((o) => o.id));
                 } else {
                   _selectedOrderIds.clear();
                 }
@@ -564,6 +574,7 @@ class _LogisticsHubScreenState extends State<LogisticsHubScreen> {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
       decoration: BoxDecoration(
+        // ignore: deprecated_member_use
         color: Colors.white.withOpacity(0.04),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.white.withOpacity(0.05)),

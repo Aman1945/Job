@@ -46,66 +46,66 @@ class _MasterDataScreenState extends State<MasterDataScreen> {
           ),
         ),
       ),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _selectedTab
-                      .split(' ')
-                      .map((s) => s[0] + s.substring(1).toLowerCase())
-                      .join(' '),
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w900,
-                    fontSize: 28,
-                    color: NexusTheme.slate900,
-                  ),
-                ),
-                const Text(
-                  'ENTERPRISE MASTER REGISTRY & DATA MANAGEMENT TERMINAL',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 10,
-                    color: NexusTheme.slate400,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-                const SizedBox(height: 24),
-
-                // Intelligence-style Metric Cards
-                _buildMasterMetricsGrid(),
-
-                const SizedBox(height: 24),
-
-                // Action Buttons
-                Row(
-                  children: [
-                    _buildActionButton(
-                      icon: Icons.description_outlined,
-                      label: 'TEMPLATE',
-                      onTap: () => _showMasterForm(context),
-                      isPrimary: false,
+      body: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _selectedTab
+                        .split(' ')
+                        .map((s) => s[0] + s.substring(1).toLowerCase())
+                        .join(' '),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w900,
+                      fontSize: 28,
+                      color: NexusTheme.slate900,
                     ),
-                    const SizedBox(width: 12),
-                    _buildActionButton(
-                      icon: Icons.add,
-                      label: 'ADD NEW',
-                      onTap: () => _showMasterForm(context),
-                      isPrimary: true,
+                  ),
+                  const Text(
+                    'ENTERPRISE MASTER REGISTRY & DATA MANAGEMENT TERMINAL',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 10,
+                      color: NexusTheme.slate400,
+                      letterSpacing: 0.5,
                     ),
-                  ],
-                ),
-              ],
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Intelligence-style Metric Cards
+                  _buildMasterMetricsGrid(),
+
+                  const SizedBox(height: 24),
+
+                  // Action Buttons
+                  Row(
+                    children: [
+                      _buildActionButton(
+                        icon: Icons.description_outlined,
+                        label: 'TEMPLATE',
+                        onTap: () => _showMasterForm(context),
+                        isPrimary: false,
+                      ),
+                      const SizedBox(width: 12),
+                      _buildActionButton(
+                        icon: Icons.add,
+                        label: 'ADD NEW',
+                        onTap: () => _showMasterForm(context),
+                        isPrimary: true,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
 
-          // Data Table Card (Restored to Image 1 Style) - Now correctly expands
-          Expanded(
-            child: Container(
+            // Data Table Card (Restored to Image 1 Style)
+            Container(
               width: double.infinity,
               margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
               decoration: BoxDecoration(
@@ -122,6 +122,7 @@ class _MasterDataScreenState extends State<MasterDataScreen> {
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(60),
                 child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     const SizedBox(height: 48),
                     const Padding(
@@ -159,13 +160,13 @@ class _MasterDataScreenState extends State<MasterDataScreen> {
                       padding: EdgeInsets.fromLTRB(48, 16, 48, 0),
                       child: Divider(color: Color(0xFFF1F5F9), height: 1),
                     ),
-                    Expanded(child: _buildDataTable()),
+                    _buildDataTable(),
                   ],
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -448,6 +449,8 @@ class _MasterDataScreenState extends State<MasterDataScreen> {
     }
 
     return ListView.separated(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(48, 24, 48, 48),
       itemCount: items.length,
       separatorBuilder: (_, __) =>
