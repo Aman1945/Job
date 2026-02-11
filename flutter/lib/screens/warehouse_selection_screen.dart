@@ -8,7 +8,14 @@ import '../widgets/nexus_components.dart';
 class WarehouseSelectionScreen extends StatelessWidget {
   const WarehouseSelectionScreen({super.key});
 
-  static const warehouses = ['Mumbai Central', 'Delhi NCR', 'Bangalore Hub', 'Chennai Depot', 'Kolkata East', 'Hyderabad Tech'];
+  static const warehouses = [
+    'IOPL Kurla',
+    'IOPL DP WORLD',
+    'IOPL Arihant Delhi',
+    'IOPL Jolly Bng',
+    'IOPL Hyderabad',
+    'IOPL Chennai'
+  ];
 
   @override
   Widget build(BuildContext context) {
