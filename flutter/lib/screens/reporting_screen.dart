@@ -643,6 +643,13 @@ class _ReportingScreenState extends State<ReportingScreen> {
   }
 
   Future<void> _exportReport(BuildContext context, NexusProvider provider, String format) async {
+    // Capture state variables before async operation
+    final startDate = _startDate;
+    final endDate = _endDate;
+    final selectedStatuses = List<String>.from(_selectedStatuses);
+    final selectedSalespersons = List<String>.from(_selectedSalespersons);
+    final reportType = _selectedReportType;
+    
     Navigator.pop(context); // Close dialog
 
     // Show loading
@@ -670,18 +677,18 @@ class _ReportingScreenState extends State<ReportingScreen> {
       // Filter orders based on selected filters
       var filteredOrders = provider.orders.where((order) {
         // Date range filter
-        if (order.createdAt.isBefore(_startDate) || order.createdAt.isAfter(_endDate)) {
+        if (order.createdAt.isBefore(startDate) || order.createdAt.isAfter(endDate)) {
           return false;
         }
 
         // Status filter
-        if (_selectedStatuses.isNotEmpty && !_selectedStatuses.contains(order.status)) {
+        if (selectedStatuses.isNotEmpty && !selectedStatuses.contains(order.status)) {
           return false;
         }
 
         // Salesperson filter
-        if (_selectedSalespersons.isNotEmpty && 
-            (order.salespersonId == null || !_selectedSalespersons.contains(order.salespersonId))) {
+        if (selectedSalespersons.isNotEmpty && 
+            (order.salespersonId == null || !selectedSalespersons.contains(order.salespersonId))) {
           return false;
         }
 
@@ -693,16 +700,16 @@ class _ReportingScreenState extends State<ReportingScreen> {
       if (format == 'excel') {
         await ReportExporter.exportToExcel(
           orders: filteredOrders,
-          reportType: _selectedReportType,
-          startDate: _startDate,
-          endDate: _endDate,
+          reportType: reportType,
+          startDate: startDate,
+          endDate: endDate,
         );
       } else if (format == 'csv') {
         await ReportExporter.exportToCSV(
           orders: filteredOrders,
-          reportType: _selectedReportType,
-          startDate: _startDate,
-          endDate: _endDate,
+          reportType: reportType,
+          startDate: startDate,
+          endDate: endDate,
         );
       }
 
@@ -751,4 +758,3 @@ class _ReportingScreenState extends State<ReportingScreen> {
       }
     }
   }
-
