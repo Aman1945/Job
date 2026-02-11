@@ -4,6 +4,8 @@ import 'package:intl/intl.dart';
 import '../providers/nexus_provider.dart';
 import '../utils/theme.dart';
 import '../models/models.dart';
+import '../widgets/advanced_filters_widget.dart';
+import '../utils/report_exporter.dart';
 
 class ReportingScreen extends StatefulWidget {
   const ReportingScreen({super.key});
@@ -16,6 +18,12 @@ class _ReportingScreenState extends State<ReportingScreen> {
   String _selectedReportType = 'Sales Report';
   DateTime _startDate = DateTime.now().subtract(const Duration(days: 30));
   DateTime _endDate = DateTime.now();
+  
+  // Advanced Filters
+  List<String> _selectedCategories = [];
+  List<String> _selectedRegions = [];
+  List<String> _selectedSalespersons = [];
+  List<String> _selectedStatuses = [];
   
   @override
   Widget build(BuildContext context) {
@@ -48,6 +56,25 @@ class _ReportingScreenState extends State<ReportingScreen> {
                 
                 // Date Range Selector
                 _buildDateRangeSelector(isMobile),
+                const SizedBox(height: 20),
+                
+                // Advanced Filters
+                AdvancedFiltersWidget(
+                  selectedCategories: _selectedCategories,
+                  selectedRegions: _selectedRegions,
+                  selectedSalespersons: _selectedSalespersons,
+                  selectedStatuses: _selectedStatuses,
+                  onCategoriesChanged: (val) => setState(() => _selectedCategories = val),
+                  onRegionsChanged: (val) => setState(() => _selectedRegions = val),
+                  onSalespersonsChanged: (val) => setState(() => _selectedSalespersons = val),
+                  onStatusesChanged: (val) => setState(() => _selectedStatuses = val),
+                  onClearAll: () => setState(() {
+                    _selectedCategories.clear();
+                    _selectedRegions.clear();
+                    _selectedSalespersons.clear();
+                    _selectedStatuses.clear();
+                  }),
+                ),
                 const SizedBox(height: 24),
                 
                 // Report Content
@@ -591,5 +618,239 @@ class _ReportingScreenState extends State<ReportingScreen> {
         ],
       ),
     );
+  }
+
+  void _showExportDialog(BuildContext context) {
+    final provider = Provider.of<NexusProvider>(context, listen: false);
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.file_download, color: NexusTheme.emerald600),
+            SizedBox(width: 12),
+            Text('Export Report', style: TextStyle(fontWeight: FontWeight.w900)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Select export format:',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+            ),
+            const SizedBox(height: 16),
+            _buildExportOption(
+              context,
+              'Excel (.xlsx)',
+              'Formatted spreadsheet with styling',
+              Icons.table_chart,
+              NexusTheme.emerald600,
+              () => _exportReport(context, provider, 'excel'),
+            ),
+            const SizedBox(height: 12),
+            _buildExportOption(
+              context,
+              'CSV (.csv)',
+              'Comma-separated values',
+              Icons.description,
+              NexusTheme.indigo600,
+              () => _exportReport(context, provider, 'csv'),
+            ),
+            const SizedBox(height: 12),
+            _buildExportOption(
+              context,
+              'PDF (.pdf)',
+              'Portable document format (Coming Soon)',
+              Icons.picture_as_pdf,
+              NexusTheme.slate400,
+              null, // Disabled for now
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('CANCEL'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildExportOption(
+    BuildContext context,
+    String title,
+    String subtitle,
+    IconData icon,
+    Color color,
+    VoidCallback? onTap,
+  ) {
+    final isDisabled = onTap == null;
+    return InkWell(
+      onTap: isDisabled ? null : onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isDisabled ? NexusTheme.slate50 : color.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isDisabled ? NexusTheme.slate200 : color.withOpacity(0.3),
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: isDisabled ? NexusTheme.slate200 : color.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, color: isDisabled ? NexusTheme.slate400 : color, size: 24),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                      color: isDisabled ? NexusTheme.slate400 : NexusTheme.slate900,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: isDisabled ? NexusTheme.slate300 : NexusTheme.slate500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (!isDisabled)
+              Icon(Icons.arrow_forward_ios, size: 16, color: color),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _exportReport(BuildContext context, NexusProvider provider, String format) async {
+    Navigator.pop(context); // Close dialog
+
+    // Show loading
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: Card(
+          child: Padding(
+            padding: EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(color: NexusTheme.emerald600),
+                SizedBox(height: 16),
+                Text('Generating report...', style: TextStyle(fontWeight: FontWeight.bold)),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    try {
+      // Filter orders based on selected filters
+      var filteredOrders = provider.orders.where((order) {
+        // Date range filter
+        if (order.createdAt.isBefore(_startDate) || order.createdAt.isAfter(_endDate)) {
+          return false;
+        }
+
+        // Status filter
+        if (_selectedStatuses.isNotEmpty && !_selectedStatuses.contains(order.status)) {
+          return false;
+        }
+
+        // Salesperson filter
+        if (_selectedSalespersons.isNotEmpty && 
+            (order.salespersonId == null || !_selectedSalespersons.contains(order.salespersonId))) {
+          return false;
+        }
+
+        // Add more filters as needed (category, region, etc.)
+        return true;
+      }).toList();
+
+      // Export based on format
+      if (format == 'excel') {
+        await ReportExporter.exportToExcel(
+          orders: filteredOrders,
+          reportType: _selectedReportType,
+          startDate: _startDate,
+          endDate: _endDate,
+        );
+      } else if (format == 'csv') {
+        await ReportExporter.exportToCSV(
+          orders: filteredOrders,
+          reportType: _selectedReportType,
+          startDate: _startDate,
+          endDate: _endDate,
+        );
+      }
+
+      // Close loading
+      if (context.mounted) Navigator.pop(context);
+
+      // Show success
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle, color: Colors.white),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text('Report exported successfully!', style: const TextStyle(fontWeight: FontWeight.bold)),
+                      Text('${filteredOrders.length} orders exported as ${format.toUpperCase()}', style: const TextStyle(fontSize: 12)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: NexusTheme.emerald600,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    } catch (e) {
+      // Close loading
+      if (context.mounted) Navigator.pop(context);
+
+      // Show error
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Export failed: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 }
