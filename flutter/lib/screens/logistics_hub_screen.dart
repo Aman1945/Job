@@ -30,90 +30,115 @@ class _LogisticsHubScreenState extends State<LogisticsHubScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.menu, color: NexusTheme.slate900),
+          icon: const Icon(Icons.arrow_back, color: NexusTheme.slate900),
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: Column(
-        children: [
-          // Header Section
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final isMobile = constraints.maxWidth < 900;
+          
+          return SingleChildScrollView(
+            child: Column(
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Logistics Hub (Fleet Loading)',
-                      style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: NexusTheme.slate900, letterSpacing: -0.5),
-                    ),
-                    const Text(
-                      'Assign delivery agents and vehicles to invoiced missions',
-                      style: TextStyle(fontSize: 13, color: NexusTheme.slate400, fontWeight: FontWeight.w500),
-                    ),
-                  ],
+                // Header Section
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                  child: isMobile 
+                    ? Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Logistics Hub',
+                            style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: NexusTheme.slate900, letterSpacing: -0.5),
+                          ),
+                          const Text(
+                            'Assign fleet & vehicles',
+                            style: TextStyle(fontSize: 13, color: NexusTheme.slate400, fontWeight: FontWeight.w500),
+                          ),
+                          const SizedBox(height: 16),
+                          _buildStatusTabs(readyOrders.length),
+                        ],
+                      )
+                    : Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Logistics Hub (Fleet Loading)',
+                                style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: NexusTheme.slate900, letterSpacing: -0.5),
+                              ),
+                              const Text(
+                                'Assign delivery agents and vehicles to invoiced missions',
+                                style: TextStyle(fontSize: 13, color: NexusTheme.slate400, fontWeight: FontWeight.w500),
+                              ),
+                            ],
+                          ),
+                          _buildStatusTabs(readyOrders.length),
+                        ],
+                      ),
                 ),
-                _buildStatusTabs(readyOrders.length),
+                
+                const SizedBox(height: 32),
+                
+                // Search Bar
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                  child: Container(
+                    height: 52,
+                    decoration: BoxDecoration(
+                      color: NexusTheme.slate50,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: NexusTheme.slate100),
+                    ),
+                    child: const TextField(
+                      decoration: InputDecoration(
+                        hintText: 'Trace by ID or Client...',
+                        hintStyle: TextStyle(fontSize: 14, color: NexusTheme.slate300, fontWeight: FontWeight.w600),
+                        prefixIcon: Icon(Icons.search, size: 20, color: NexusTheme.slate300),
+                        border: InputBorder.none,
+                        contentPadding: EdgeInsets.symmetric(vertical: 16),
+                      ),
+                    ),
+                  ),
+                ),
+                
+                const SizedBox(height: 24),
+
+                // Order Table Area
+                Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(32),
+                    border: Border.all(color: NexusTheme.slate100),
+                  ),
+                  child: Column(
+                    children: [
+                      _buildTableHeader(isMobile),
+                      if (readyOrders.isEmpty) 
+                        _buildEmptyPlaceholder()
+                      else
+                        ListView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: readyOrders.length,
+                          itemBuilder: (context, index) => _buildOrderRow(readyOrders[index], isMobile),
+                        ),
+                    ],
+                  ),
+                ),
+                
+                const SizedBox(height: 24),
+
+                // Assignment Panel
+                _buildAssignmentPanel(drivers, provider, readyOrders, isMobile),
               ],
             ),
-          ),
-          
-          const SizedBox(height: 32),
-          
-          // Search Bar
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0),
-            child: Container(
-              height: 52,
-              decoration: BoxDecoration(
-                color: NexusTheme.slate50,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: NexusTheme.slate100),
-              ),
-              child: const TextField(
-                decoration: InputDecoration(
-                  hintText: 'Trace by ID or Client...',
-                  hintStyle: TextStyle(fontSize: 14, color: NexusTheme.slate300, fontWeight: FontWeight.w600),
-                  prefixIcon: Icon(Icons.search, size: 20, color: NexusTheme.slate300),
-                  border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(vertical: 16),
-                ),
-              ),
-            ),
-          ),
-          
-          const SizedBox(height: 24),
-
-          // Order Table Area
-          Expanded(
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-                border: Border.all(color: NexusTheme.slate100),
-              ),
-              child: Column(
-                children: [
-                  _buildTableHeader(),
-                  Expanded(
-                    child: readyOrders.isEmpty 
-                      ? _buildEmptyPlaceholder()
-                      : ListView.builder(
-                          itemCount: readyOrders.length,
-                          itemBuilder: (context, index) => _buildOrderRow(readyOrders[index]),
-                        ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          // Assignment Panel - Fixed at bottom
-          _buildAssignmentPanel(drivers, provider, readyOrders),
-        ],
+          );
+        },
       ),
     );
   }
@@ -152,7 +177,8 @@ class _LogisticsHubScreenState extends State<LogisticsHubScreen> {
     );
   }
 
-  Widget _buildTableHeader() {
+  Widget _buildTableHeader(bool isMobile) {
+    if (isMobile) return const SizedBox.shrink();
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
       child: Row(
@@ -181,7 +207,29 @@ class _LogisticsHubScreenState extends State<LogisticsHubScreen> {
     );
   }
 
-  Widget _buildOrderRow(Order order) {
+  Widget _buildOrderRow(Order order, bool isMobile) {
+    if (isMobile) {
+      return Container(
+        padding: const EdgeInsets.all(24),
+        decoration: const BoxDecoration(border: Border(top: BorderSide(color: NexusTheme.slate50))),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(order.id, style: const TextStyle(fontWeight: FontWeight.w900, color: NexusTheme.indigo600, fontSize: 13)),
+                const Text('INV/24/00431', style: TextStyle(fontWeight: FontWeight.w900, color: NexusTheme.slate400, fontSize: 11)),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(order.customerName.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w900, color: NexusTheme.slate800, fontSize: 15)),
+            const SizedBox(height: 8),
+            const Text('8 BOXES • READY FOR LOADING', style: TextStyle(fontWeight: FontWeight.w900, color: NexusTheme.slate400, fontSize: 11)),
+          ],
+        ),
+      );
+    }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 20),
       decoration: const BoxDecoration(border: Border(top: BorderSide(color: NexusTheme.slate50))),
@@ -198,14 +246,14 @@ class _LogisticsHubScreenState extends State<LogisticsHubScreen> {
     );
   }
 
-  Widget _buildAssignmentPanel(List<User> drivers, NexusProvider provider, List<Order> readyOrders) {
+  Widget _buildAssignmentPanel(List<User> drivers, NexusProvider provider, List<Order> readyOrders, bool isMobile) {
     return Container(
       width: double.infinity,
       decoration: const BoxDecoration(
         color: Color(0xFF04261E), // Deep Emerald from screenshot
         borderRadius: BorderRadius.only(topLeft: Radius.circular(40), topRight: Radius.circular(40)),
       ),
-      padding: const EdgeInsets.all(40),
+      padding: EdgeInsets.all(isMobile ? 24 : 40),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -213,7 +261,7 @@ class _LogisticsHubScreenState extends State<LogisticsHubScreen> {
             children: [
               const Icon(Icons.near_me_outlined, color: NexusTheme.emerald400, size: 24),
               const SizedBox(width: 12),
-              const Text('Assignment Panel', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900, letterSpacing: -0.5)),
+              Text('Assignment Panel', style: TextStyle(color: Colors.white, fontSize: isMobile ? 18 : 20, fontWeight: FontWeight.w900, letterSpacing: -0.5)),
             ],
           ),
           const SizedBox(height: 32),
@@ -225,8 +273,15 @@ class _LogisticsHubScreenState extends State<LogisticsHubScreen> {
               _buildFleetToggle('INTERNAL'),
               const SizedBox(width: 12),
               _buildFleetToggle('PORTER'),
-              const SizedBox(width: 12),
+              if (!isMobile) const SizedBox(width: 12),
+              if (!isMobile) _buildFleetToggle('OTHER'),
+            ],
+          ),
+          if (isMobile) const SizedBox(height: 12),
+          if (isMobile) Row(
+            children: [
               _buildFleetToggle('OTHER'),
+              const Expanded(flex: 2, child: SizedBox()),
             ],
           ),
           
@@ -296,12 +351,12 @@ class _LogisticsHubScreenState extends State<LogisticsHubScreen> {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                 elevation: 0,
               ),
-              child: const Row(
+              child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text('CONFIRM LOADING', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, letterSpacing: 1)),
-                  SizedBox(width: 12),
-                  Icon(Icons.arrow_forward_rounded, size: 20),
+                  const Text('CONFIRM LOADING', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, letterSpacing: 1)),
+                  const SizedBox(width: 12),
+                  const Icon(Icons.arrow_forward_rounded, size: 20),
                 ],
               ),
             ),

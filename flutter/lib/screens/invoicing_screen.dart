@@ -113,7 +113,7 @@ class InvoicingScreen extends StatelessWidget {
               crossAxisCount: isMobile ? 1 : 2,
               crossAxisSpacing: 24,
               mainAxisSpacing: 24,
-              mainAxisExtent: isMobile ? 180 : 220,
+              mainAxisExtent: isMobile ? 220 : 220,
             ),
             itemCount: pendingOrders.length,
             itemBuilder: (context, index) => _buildPendingOrderCard(context, pendingOrders[index], provider, isMobile),
