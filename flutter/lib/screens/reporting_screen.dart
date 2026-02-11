@@ -226,9 +226,33 @@ class _ReportingScreenState extends State<ReportingScreen> {
   }
   
   Widget _buildSalesReport(NexusProvider provider, bool isMobile) {
-    final orders = provider.orders;
-    final totalSales = orders.fold(0.0, (sum, o) => sum + o.total);
-    final totalOrders = orders.length;
+    // Apply filters to orders
+    var filteredOrders = provider.orders.where((order) {
+      // Date range filter
+      if (order.createdAt.isBefore(_startDate) || order.createdAt.isAfter(_endDate)) {
+        return false;
+      }
+
+      // Status filter
+      if (_selectedStatuses.isNotEmpty && !_selectedStatuses.contains(order.status)) {
+        return false;
+      }
+
+      // Salesperson filter (if order has salespersonId)
+      if (_selectedSalespersons.isNotEmpty && 
+          order.salespersonId != null && 
+          !_selectedSalespersons.contains(order.salespersonId)) {
+        return false;
+      }
+
+      // Category & Region filters would need additional order fields
+      // For now, we'll filter based on available data
+      
+      return true;
+    }).toList();
+
+    final totalSales = filteredOrders.fold(0.0, (sum, o) => sum + o.total);
+    final totalOrders = filteredOrders.length;
     final avgOrderValue = totalOrders > 0 ? (totalSales / totalOrders).toDouble() : 0.0;
     
     return Column(
@@ -241,10 +265,211 @@ class _ReportingScreenState extends State<ReportingScreen> {
           {'label': 'Avg Order Value', 'value': '₹${NumberFormat('#,##,###').format(avgOrderValue)}', 'color': Colors.purple},
         ], isMobile),
         const SizedBox(height: 24),
-        _buildSectionHeader('ORDER BREAKDOWN'),
+        _buildSectionHeader('ORDERS DATA TABLE'),
         const SizedBox(height: 16),
-        _buildOrderBreakdown(orders, isMobile),
+        _buildOrdersDataTable(filteredOrders, isMobile),
       ],
+    );
+  }
+
+  Widget _buildOrdersDataTable(List<Order> orders, bool isMobile) {
+    if (orders.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(40),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: NexusTheme.slate200),
+        ),
+        child: Column(
+          children: [
+            Icon(Icons.filter_alt_off, size: 48, color: NexusTheme.slate300),
+            const SizedBox(height: 16),
+            Text(
+              'No orders match the selected filters',
+              style: TextStyle(color: NexusTheme.slate500, fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: NexusTheme.slate200),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10)],
+      ),
+      child: Column(
+        children: [
+          // Table Header
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            decoration: BoxDecoration(
+              color: NexusTheme.slate50,
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(20),
+                topRight: Radius.circular(20),
+              ),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  flex: 2,
+                  child: Text('ORDER ID', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: NexusTheme.slate600)),
+                ),
+                Expanded(
+                  flex: 3,
+                  child: Text('CUSTOMER', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: NexusTheme.slate600)),
+                ),
+                Expanded(
+                  flex: 2,
+                  child: Text('STATUS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: NexusTheme.slate600)),
+                ),
+                Expanded(
+                  flex: 2,
+                  child: Text('AMOUNT', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: NexusTheme.slate600), textAlign: TextAlign.right),
+                ),
+                Expanded(
+                  flex: 2,
+                  child: Text('DATE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: NexusTheme.slate600), textAlign: TextAlign.right),
+                ),
+              ],
+            ),
+          ),
+          
+          // Table Rows
+          ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: orders.length > 50 ? 50 : orders.length, // Limit to 50 rows
+            itemBuilder: (context, index) {
+              final order = orders[index];
+              final isEven = index % 2 == 0;
+              
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                decoration: BoxDecoration(
+                  color: isEven ? Colors.white : NexusTheme.slate50.withOpacity(0.3),
+                  border: Border(
+                    bottom: BorderSide(
+                      color: NexusTheme.slate100,
+                      width: 0.5,
+                    ),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      flex: 2,
+                      child: Text(
+                        order.id,
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: NexusTheme.indigo600),
+                      ),
+                    ),
+                    Expanded(
+                      flex: 3,
+                      child: Text(
+                        order.customerName,
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    Expanded(
+                      flex: 2,
+                      child: _buildStatusChip(order.status),
+                    ),
+                    Expanded(
+                      flex: 2,
+                      child: Text(
+                        '₹${NumberFormat('#,##,###').format(order.total)}',
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: NexusTheme.emerald600),
+                        textAlign: TextAlign.right,
+                      ),
+                    ),
+                    Expanded(
+                      flex: 2,
+                      child: Text(
+                        DateFormat('dd MMM').format(order.createdAt),
+                        style: TextStyle(fontSize: 11, color: NexusTheme.slate500),
+                        textAlign: TextAlign.right,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+          
+          // Footer
+          if (orders.length > 50)
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: NexusTheme.slate50,
+                borderRadius: const BorderRadius.only(
+                  bottomLeft: Radius.circular(20),
+                  bottomRight: Radius.circular(20),
+                ),
+              ),
+              child: Text(
+                'Showing 50 of ${orders.length} orders',
+                style: TextStyle(fontSize: 11, color: NexusTheme.slate500, fontWeight: FontWeight.w600),
+                textAlign: TextAlign.center,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatusChip(String status) {
+    Color bgColor;
+    Color textColor;
+    
+    switch (status.toLowerCase()) {
+      case 'pending':
+        bgColor = Colors.orange.withOpacity(0.1);
+        textColor = Colors.orange.shade700;
+        break;
+      case 'approved':
+        bgColor = Colors.blue.withOpacity(0.1);
+        textColor = Colors.blue.shade700;
+        break;
+      case 'in transit':
+        bgColor = Colors.purple.withOpacity(0.1);
+        textColor = Colors.purple.shade700;
+        break;
+      case 'delivered':
+        bgColor = Colors.green.withOpacity(0.1);
+        textColor = Colors.green.shade700;
+        break;
+      case 'cancelled':
+        bgColor = Colors.red.withOpacity(0.1);
+        textColor = Colors.red.shade700;
+        break;
+      default:
+        bgColor = NexusTheme.slate100;
+        textColor = NexusTheme.slate600;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        status.toUpperCase(),
+        style: TextStyle(
+          fontSize: 9,
+          fontWeight: FontWeight.w900,
+          color: textColor,
+          letterSpacing: 0.5,
+        ),
+        textAlign: TextAlign.center,
+      ),
     );
   }
   
