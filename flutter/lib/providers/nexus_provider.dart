@@ -498,14 +498,11 @@ class NexusProvider with ChangeNotifier {
   Future<bool> assignLogistics(List<String> orderIds, Map<String, dynamic> logisticsData) async {
     try {
       final response = await http.post(
-        Uri.parse('$_baseUrl/orders/bulk-update'),
+        Uri.parse('$_baseUrl/logistics/bulk-assign'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'orderIds': orderIds,
-          'updates': {
-            'status': 'Ready for Dispatch',
-            'logistics': logisticsData,
-          },
+          'logisticsData': logisticsData,
         }),
       );
 
@@ -521,7 +518,7 @@ class NexusProvider with ChangeNotifier {
           final old = _orders[index];
           _orders[index] = Order(
             id: old.id, customerId: old.customerId, customerName: old.customerName,
-            status: 'Ready for Dispatch', total: old.total, createdAt: old.createdAt,
+            status: 'In Transit', total: old.total, createdAt: old.createdAt,
             items: old.items, salespersonId: old.salespersonId,
             logistics: LogisticsData.fromJson(logisticsData),
           );
@@ -531,6 +528,35 @@ class NexusProvider with ChangeNotifier {
       return true;
     }
     return false;
+  }
+
+  // Calculate logistics cost
+  Future<Map<String, dynamic>?> calculateLogisticsCost({
+    required String origin,
+    required String destination,
+    required String vehicleType,
+    double? distance,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/logistics/calculate-cost'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'origin': origin,
+          'destination': destination,
+          'vehicleType': vehicleType,
+          if (distance != null) 'distance': distance,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['data'];
+      }
+    } catch (e) {
+      print('Cost calculation error: $e');
+    }
+    return null;
   }
 }
 

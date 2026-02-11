@@ -269,6 +269,7 @@ class Customer {
   final double overdue;
   final int exposureDays;
   final Map<String, dynamic>? agingData;
+  final List<CustomerAddress>? addresses; // Multi-address support
 
   Customer({
     required this.id,
@@ -284,6 +285,7 @@ class Customer {
     this.overdue = 0,
     this.exposureDays = 15,
     this.agingData,
+    this.addresses,
   });
 
   factory Customer.fromJson(Map<String, dynamic> json) {
@@ -301,6 +303,9 @@ class Customer {
       overdue: (json['overdue'] ?? 0).toDouble(),
       exposureDays: json['exposureDays'] ?? 15,
       agingData: json['agingData'],
+      addresses: json['addresses'] != null
+          ? (json['addresses'] as List).map((a) => CustomerAddress.fromJson(a)).toList()
+          : null,
     );
   }
 
@@ -319,6 +324,56 @@ class Customer {
       'overdue': overdue,
       'exposureDays': exposureDays,
       if (agingData != null) 'agingData': agingData,
+      if (addresses != null) 'addresses': addresses!.map((a) => a.toJson()).toList(),
+    };
+  }
+}
+
+// Customer Address Model
+class CustomerAddress {
+  final String id;
+  final String label; // e.g., "Main Office", "Warehouse 1"
+  final String street;
+  final String city;
+  final String state;
+  final String pincode;
+  final String type; // "Billing" or "Delivery"
+  final bool isDefault;
+
+  CustomerAddress({
+    required this.id,
+    required this.label,
+    required this.street,
+    required this.city,
+    required this.state,
+    required this.pincode,
+    this.type = 'Delivery',
+    this.isDefault = false,
+  });
+
+  factory CustomerAddress.fromJson(Map<String, dynamic> json) {
+    return CustomerAddress(
+      id: json['id'] ?? '',
+      label: json['label'] ?? '',
+      street: json['street'] ?? '',
+      city: json['city'] ?? '',
+      state: json['state'] ?? '',
+      pincode: json['pincode'] ?? '',
+      type: json['type'] ?? 'Delivery',
+      isDefault: json['isDefault'] ?? false,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'label': label,
+      'street': street,
+      'city': city,
+      'state': state,
+      'pincode': pincode,
+      'type': type,
+      'isDefault': isDefault,
     };
   }
 }

@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/nexus_provider.dart';
 import '../utils/theme.dart';
+import '../models/models.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:dropdown_button2/dropdown_button2.dart';
+import '../widgets/address_management_widget.dart';
 
 class NewCustomerScreen extends StatefulWidget {
   const NewCustomerScreen({super.key});
@@ -31,6 +33,9 @@ class _NewCustomerScreenState extends State<NewCustomerScreen> {
   String? _selectedManager;
   String? _selectedEmployee;
   String? _selectedState;
+  
+  // Multi-address support
+  List<CustomerAddress> _deliveryAddresses = [];
 
   final List<String> _constitutions = ['Proprietorship', 'Partnership', 'Company'];
   final List<String> _states = ['Maharashtra', 'Karnataka', 'Delhi', 'Tamil Nadu', 'Gujarat'];
@@ -111,6 +116,15 @@ class _NewCustomerScreenState extends State<NewCustomerScreen> {
                 _buildTextField('2. CREDIT LIMIT (AMOUNT) *', _creditLimitController, required: true),
                 _buildTextField('3. CUSTOMER TYPE', TextEditingController(text: 'Distributor')),
               ], triple: true),
+              const SizedBox(height: 32),
+
+              // Step 3: Delivery Addresses
+              AddressManagementWidget(
+                addresses: _deliveryAddresses,
+                onAddressesChanged: (addresses) {
+                  setState(() => _deliveryAddresses = addresses);
+                },
+              ),
               const SizedBox(height: 48),
 
               // Footer Actions
@@ -346,12 +360,35 @@ class _NewCustomerScreenState extends State<NewCustomerScreen> {
       'limit': double.tryParse(_creditLimitController.text) ?? 0,
       'creditDays': _creditDaysController.text,
       'type': 'Distributor',
+      'addresses': _deliveryAddresses.map((a) => a.toJson()).toList(),
     };
 
     final success = await provider.createCustomer(customerData);
     if (success && mounted) {
       Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Customer Onboarded Successfully!')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle, color: Colors.white),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('Customer Onboarded Successfully!', style: TextStyle(fontWeight: FontWeight.bold)),
+                    Text('${_deliveryAddresses.length} delivery addresses added', style: const TextStyle(fontSize: 12)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: NexusTheme.emerald600,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
     }
   }
 }
