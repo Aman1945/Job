@@ -145,6 +145,7 @@ class Order {
   final String? sourceWarehouse;
   final String? destinationWarehouse;
   final String? remarks;
+  final LogisticsData? logistics;
 
   Order({
     required this.id,
@@ -163,6 +164,7 @@ class Order {
     this.sourceWarehouse,
     this.destinationWarehouse,
     this.remarks,
+    this.logistics,
   });
 
   factory Order.fromJson(Map<String, dynamic> json) {
@@ -194,6 +196,7 @@ class Order {
       sourceWarehouse: json['sourceWarehouse'],
       destinationWarehouse: json['destinationWarehouse'],
       remarks: json['remarks'],
+      logistics: json['logistics'] != null ? LogisticsData.fromJson(json['logistics']) : null,
     );
   }
 
@@ -215,6 +218,39 @@ class Order {
       if (sourceWarehouse != null) 'sourceWarehouse': sourceWarehouse,
       if (destinationWarehouse != null) 'destinationWarehouse': destinationWarehouse,
       if (remarks != null) 'remarks': remarks,
+      if (logistics != null) 'logistics': logistics!.toJson(),
+    };
+  }
+}
+
+class LogisticsData {
+  final String? deliveryAgentId;
+  final String? vehicleNo;
+  final String? vehicleProvider;
+  final double? distanceKm;
+
+  LogisticsData({
+    this.deliveryAgentId,
+    this.vehicleNo,
+    this.vehicleProvider,
+    this.distanceKm,
+  });
+
+  factory LogisticsData.fromJson(Map<String, dynamic> json) {
+    return LogisticsData(
+      deliveryAgentId: json['deliveryAgentId'],
+      vehicleNo: json['vehicleNo'],
+      vehicleProvider: json['vehicleProvider'],
+      distanceKm: (json['distanceKm'] as num?)?.toDouble(),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      if (deliveryAgentId != null) 'deliveryAgentId': deliveryAgentId,
+      if (vehicleNo != null) 'vehicleNo': vehicleNo,
+      if (vehicleProvider != null) 'vehicleProvider': vehicleProvider,
+      if (distanceKm != null) 'distanceKm': distanceKm,
     };
   }
 }

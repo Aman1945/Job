@@ -358,7 +358,14 @@ app.post('/api/orders/bulk-update', async (req, res) => {
         const { orderIds, updates } = req.body;
 
         if (useMongoDB) {
-            await Order.updateMany({ id: { $in: orderIds } }, updates);
+            const updateObj = { ...updates };
+            const query = { $set: updateObj };
+
+            if (updates.status) {
+                query.$push = { statusHistory: { status: updates.status, timestamp: new Date().toISOString() } };
+            }
+
+            await Order.updateMany({ id: { $in: orderIds } }, query);
             const updatedOrders = await Order.find({ id: { $in: orderIds } });
             return res.json(updatedOrders);
         }
@@ -366,7 +373,11 @@ app.post('/api/orders/bulk-update', async (req, res) => {
         const orders = getData('orders');
         const updatedOrders = orders.map(o => {
             if (orderIds.includes(o.id)) {
-                return { ...o, ...updates };
+                const history = o.statusHistory || [];
+                if (updates.status) {
+                    history.push({ status: updates.status, timestamp: new Date().toISOString() });
+                }
+                return { ...o, ...updates, statusHistory: history };
             }
             return o;
         });

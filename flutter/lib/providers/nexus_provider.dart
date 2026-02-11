@@ -440,5 +440,43 @@ class NexusProvider with ChangeNotifier {
     }
     return {};
   }
+
+  Future<bool> assignLogistics(List<String> orderIds, Map<String, dynamic> logisticsData) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/orders/bulk-update'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'orderIds': orderIds,
+          'updates': {
+            'status': 'Ready for Dispatch',
+            'logistics': logisticsData,
+          },
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        await fetchOrders();
+        return true;
+      }
+    } catch (e) {
+      // Local fallback
+      for (var id in orderIds) {
+        final index = _orders.indexWhere((o) => o.id == id);
+        if (index != -1) {
+          final old = _orders[index];
+          _orders[index] = Order(
+            id: old.id, customerId: old.customerId, customerName: old.customerName,
+            status: 'Ready for Dispatch', total: old.total, createdAt: old.createdAt,
+            items: old.items, salespersonId: old.salespersonId,
+            logistics: LogisticsData.fromJson(logisticsData),
+          );
+        }
+      }
+      notifyListeners();
+      return true;
+    }
+    return false;
+  }
 }
 
