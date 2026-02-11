@@ -293,7 +293,17 @@ app.patch('/api/orders/:id', async (req, res) => {
         }
 
         if (useMongoDB) {
-            const order = await Order.findOneAndUpdate({ id }, updateData, { new: true });
+            const updateObj = { ...updateData };
+            delete updateObj.statusHistory;
+
+            const order = await Order.findOneAndUpdate(
+                { id },
+                {
+                    $set: updateObj,
+                    $push: { statusHistory: { status: updateData.status, timestamp: new Date().toISOString() } }
+                },
+                { new: true }
+            );
             if (order) {
                 console.log(`✅ Order updated: ${id}`);
                 return res.json(order);
@@ -303,7 +313,11 @@ app.patch('/api/orders/:id', async (req, res) => {
         const orders = getData('orders');
         const index = orders.findIndex(o => o.id === id);
         if (index !== -1) {
-            orders[index] = { ...orders[index], ...updateData };
+            const history = orders[index].statusHistory || [];
+            if (updateData.status) {
+                history.push({ status: updateData.status, timestamp: new Date().toISOString() });
+            }
+            orders[index] = { ...orders[index], ...updateData, statusHistory: history };
             saveData('orders', orders);
             console.log(`✅ Order updated: ${id}`);
             return res.json(orders[index]);
