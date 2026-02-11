@@ -29,6 +29,7 @@ class _LogisticsHubScreenState extends State<LogisticsHubScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
+        title: const Text('LOGISTICS HUB', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: NexusTheme.slate900, letterSpacing: 1)),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: NexusTheme.slate900),
           onPressed: () => Navigator.pop(context),
