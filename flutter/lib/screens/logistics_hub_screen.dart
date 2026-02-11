@@ -48,13 +48,7 @@ class _LogisticsHubScreenState extends State<LogisticsHubScreen> {
           icon: const Icon(Icons.arrow_back, color: NexusTheme.slate900),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Row(
-          children: [
-            const Text('LOGISTICS HUB', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: NexusTheme.slate900, letterSpacing: 1)),
-            const SizedBox(width: 20),
-            _buildStatusTabs(pendingOrders.length, activeShipments.length),
-          ],
-        ),
+        title: const Text('LOGISTICS HUB', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: NexusTheme.slate900, letterSpacing: 1)),
       ),
       body: LayoutBuilder(
         builder: (context, constraints) {
@@ -88,6 +82,18 @@ class _LogisticsHubScreenState extends State<LogisticsHubScreen> {
                   ),
                 ),
                 
+                const SizedBox(height: 20),
+                
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    children: [
+                      _buildStatusTabs(pendingOrders.length, activeShipments.length),
+                    ],
+                  ),
+                ),
+
                 const SizedBox(height: 24),
 
                 // Order Table Area
