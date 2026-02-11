@@ -514,10 +514,8 @@ class _ReportingScreenState extends State<ReportingScreen> {
     }
   }
 
-  // New enhanced export dialog is below (line 623+)
+  // Export dialog methods below
   
-  }
-
   void _showExportDialog(BuildContext context) {
     final provider = Provider.of<NexusProvider>(context, listen: false);
     
@@ -757,4 +755,4 @@ class _ReportingScreenState extends State<ReportingScreen> {
         );
       }
     }
-  }
+  }}
