@@ -322,3 +322,70 @@ class Customer {
     };
   }
 }
+class ProcurementItem {
+  final String id;
+  final String supplierName;
+  final String skuName;
+  final String skuCode;
+  bool sipChecked;
+  bool labelsChecked;
+  bool docsChecked;
+  String status;
+  final DateTime createdAt;
+  String? attachment;
+  String? attachmentName;
+  String? clearedBy;
+  String? approvedBy;
+
+  ProcurementItem({
+    required this.id,
+    required this.supplierName,
+    required this.skuName,
+    required this.skuCode,
+    this.sipChecked = false,
+    this.labelsChecked = false,
+    this.docsChecked = false,
+    this.status = 'Pending',
+    required this.createdAt,
+    this.attachment,
+    this.attachmentName,
+    this.clearedBy,
+    this.approvedBy,
+  });
+
+  factory ProcurementItem.fromJson(Map<String, dynamic> json) {
+    return ProcurementItem(
+      id: json['id'] ?? '',
+      supplierName: json['supplierName'] ?? '',
+      skuName: json['skuName'] ?? '',
+      skuCode: json['skuCode'] ?? '',
+      sipChecked: json['sipChecked'] ?? false,
+      labelsChecked: json['labelsChecked'] ?? false,
+      docsChecked: json['docsChecked'] ?? false,
+      status: json['status'] ?? 'Pending',
+      createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt']) : DateTime.now(),
+      attachment: json['attachment'],
+      attachmentName: json['attachmentName'],
+      clearedBy: json['clearedBy'],
+      approvedBy: json['approvedBy'],
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'supplierName': supplierName,
+      'skuName': skuName,
+      'skuCode': skuCode,
+      'sipChecked': sipChecked,
+      'labelsChecked': labelsChecked,
+      'docsChecked': docsChecked,
+      'status': status,
+      'createdAt': createdAt.toIso8601String(),
+      if (attachment != null) 'attachment': attachment,
+      if (attachmentName != null) 'attachmentName': attachmentName,
+      if (clearedBy != null) 'clearedBy': clearedBy,
+      if (approvedBy != null) 'approvedBy': approvedBy,
+    };
+  }
+}

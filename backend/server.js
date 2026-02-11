@@ -43,6 +43,7 @@ const User = require('./models/User');
 const Customer = require('./models/Customer');
 const Product = require('./models/Product');
 const Order = require('./models/Order');
+const Procurement = require('./models/Procurement');
 
 // Use MongoDB as the primary database
 const useMongoDB = true;
@@ -519,46 +520,76 @@ app.get('/api/analytics/reports', async (req, res) => {
 // ==================== PROCUREMENT GATE API ====================
 app.get('/api/procurement', async (req, res) => {
     try {
-        const inbounds = await mongoose.connection.collection('procurement').find().toArray();
-        res.json(inbounds.length > 0 ? inbounds : [
-            {
-                ref: 'PRC-1001',
-                date: new Date().toLocaleDateString(),
-                vendor: 'Global Fisheries Ltd',
-                sku: 'Frozen Salmon Fillets 500G',
-                code: 'SKU-SM-01',
-                checks: [true, true, true],
-                stage: 'PENDING'
-            },
-            {
-                ref: 'PRC-1002',
-                date: new Date().toLocaleDateString(),
-                vendor: 'Ocean Fresh Imports',
-                sku: 'Tuna Steak Premium 200G',
-                code: 'SKU-TN-42',
-                checks: [true, true, true],
-                stage: 'PENDING'
-            }
-        ]);
+        if (useMongoDB) {
+            const items = await Procurement.find().sort({ createdAt: -1 });
+            return res.json(items);
+        }
+        res.json(getData('procurement'));
     } catch (error) {
-        res.status(500).json({ message: 'Error fetching procurement data' });
+        res.status(500).json({ message: 'Error fetching procurement' });
     }
 });
 
 app.post('/api/procurement', async (req, res) => {
     try {
-        const inboundData = {
+        const itemData = {
             ...req.body,
-            ref: `PRC-${Date.now().toString().slice(-4)}`,
-            date: new Date().toLocaleDateString(),
-            stage: 'PENDING',
-            checks: [false, false, false]
+            id: req.body.id || `PRC-${Date.now().toString().slice(-4)}`,
+            createdAt: new Date().toISOString(),
+            status: 'Pending'
         };
 
-        await mongoose.connection.collection('procurement').insertOne(inboundData);
-        res.status(201).json(inboundData);
+        if (useMongoDB) {
+            const newItem = new Procurement(itemData);
+            await newItem.save();
+            return res.status(201).json(newItem);
+        }
+
+        const items = getData('procurement');
+        items.unshift(itemData);
+        saveData('procurement', items);
+        res.status(201).json(itemData);
     } catch (error) {
         res.status(500).json({ message: 'Error creating procurement entry' });
+    }
+});
+
+app.put('/api/procurement/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const updates = req.body;
+
+        if (useMongoDB) {
+            const item = await Procurement.findOneAndUpdate({ id }, updates, { new: true });
+            return res.json(item);
+        }
+
+        const items = getData('procurement');
+        const index = items.findIndex(i => i.id === id);
+        if (index !== -1) {
+            items[index] = { ...items[index], ...updates };
+            saveData('procurement', items);
+            return res.json(items[index]);
+        }
+        res.status(404).json({ message: 'Not found' });
+    } catch (error) {
+        res.status(500).json({ message: 'Error updating procurement' });
+    }
+});
+
+app.delete('/api/procurement/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (useMongoDB) {
+            await Procurement.findOneAndDelete({ id });
+            return res.json({ message: 'Deleted' });
+        }
+        const items = getData('procurement');
+        const newItems = items.filter(i => i.id !== id);
+        saveData('procurement', newItems);
+        res.json({ message: 'Deleted' });
+    } catch (error) {
+        res.status(500).json({ message: 'Error deleting procurement' });
     }
 });
 

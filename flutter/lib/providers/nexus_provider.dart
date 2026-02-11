@@ -21,6 +21,7 @@ class NexusProvider with ChangeNotifier {
   List<Customer> _customers = [];
   List<Product> _products = [];
   List<User> _users = [];
+  List<ProcurementItem> _procurementItems = [];
   bool _isLoading = false;
 
   User? get currentUser => _currentUser;
@@ -28,6 +29,7 @@ class NexusProvider with ChangeNotifier {
   List<Customer> get customers => _customers;
   List<Product> get products => _products;
   List<User> get users => _users;
+  List<ProcurementItem> get procurementItems => _procurementItems;
   bool get isLoading => _isLoading;
 
   NexusProvider() {
@@ -51,6 +53,7 @@ class NexusProvider with ChangeNotifier {
       fetchCustomers(),
       fetchProducts(),
       fetchOrders(),
+      fetchProcurementItems(),
     ]);
     _isLoading = false;
     notifyListeners();
@@ -388,16 +391,17 @@ class NexusProvider with ChangeNotifier {
   }
 
 
-  Future<List<dynamic>> fetchProcurementData() async {
+  Future<void> fetchProcurementItems() async {
     try {
       final response = await http.get(Uri.parse('$_baseUrl/procurement'));
       if (response.statusCode == 200) {
-        return jsonDecode(response.body);
+        final List<dynamic> data = jsonDecode(response.body);
+        _procurementItems = data.map((json) => ProcurementItem.fromJson(json)).toList();
+        notifyListeners();
       }
     } catch (e) {
-      debugPrint('Error fetching procurement data: $e');
+      debugPrint('Error fetching procurement: $e');
     }
-    return [];
   }
 
   Future<bool> createProcurementEntry(Map<String, dynamic> data) async {
@@ -407,13 +411,63 @@ class NexusProvider with ChangeNotifier {
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode(data),
       );
-      if (response.statusCode == 201) return true;
-      throw Exception('Server error');
+      if (response.statusCode == 201) {
+        await fetchProcurementItems();
+        return true;
+      }
+      return false;
     } catch (e) {
-      debugPrint('Error creating procurement entry: $e');
-      // No local state for procurement yet, but returning true allows UI to "pretend" success if needed.
-      // However, it's better to manage a local _procurement list.
-      return true; // Return true to allow UI to refresh from mock if needed
+      // Local fallback
+      final newItem = ProcurementItem(
+        id: 'PRC-${DateTime.now().millisecondsSinceEpoch.toString().substring(9)}',
+        supplierName: data['supplierName'] ?? data['vendor'] ?? '',
+        skuCode: data['skuCode'] ?? data['code'] ?? '',
+        skuName: data['skuName'] ?? data['sku'] ?? 'Unknown SKU',
+        createdAt: DateTime.now(),
+      );
+      _procurementItems.insert(0, newItem);
+      notifyListeners();
+      return true;
+    }
+  }
+
+  Future<bool> updateProcurementItem(String id, Map<String, dynamic> updates) async {
+    try {
+      final response = await http.put(
+        Uri.parse('$_baseUrl/procurement/$id'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(updates),
+      );
+      if (response.statusCode == 200) {
+        await fetchProcurementItems();
+        return true;
+      }
+      return false;
+    } catch (e) {
+      final index = _procurementItems.indexWhere((i) => i.id == id);
+      if (index != -1) {
+        final current = _procurementItems[index];
+        final json = current.toJson();
+        updates.forEach((key, value) => json[key] = value);
+        _procurementItems[index] = ProcurementItem.fromJson(json);
+        notifyListeners();
+      }
+      return true;
+    }
+  }
+
+  Future<bool> deleteProcurementItem(String id) async {
+    try {
+      final response = await http.delete(Uri.parse('$_baseUrl/procurement/$id'));
+      if (response.statusCode == 200) {
+        await fetchProcurementItems();
+        return true;
+      }
+      return false;
+    } catch (e) {
+      _procurementItems.removeWhere((i) => i.id == id);
+      notifyListeners();
+      return true;
     }
   }
 
