@@ -402,6 +402,177 @@ app.post('/api/upload/pod', upload.single('pod'), (req, res) => {
     }
 });
 
+// ==================== CREDIT CONTROL ====================
+// Get customer payment history
+app.get('/api/customers/:customerId/payments', async (req, res) => {
+    try {
+        const { customerId } = req.params;
+
+        // Mock payment data (in production, fetch from Payment collection)
+        const mockPayments = [
+            {
+                date: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000),
+                amount: 45000,
+                status: 'Paid',
+                orderId: 'ORD-001',
+                method: 'Bank Transfer'
+            },
+            {
+                date: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000),
+                amount: 32000,
+                status: 'Paid',
+                orderId: 'ORD-002',
+                method: 'Cheque'
+            },
+            {
+                date: new Date(Date.now() - 75 * 24 * 60 * 60 * 1000),
+                amount: 28000,
+                status: 'Overdue',
+                orderId: 'ORD-003',
+                method: 'Pending'
+            }
+        ];
+
+        res.json(mockPayments);
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching payment history' });
+    }
+});
+
+// Get customer credit aging analysis
+app.get('/api/customers/:customerId/aging', async (req, res) => {
+    try {
+        const { customerId } = req.params;
+
+        // Calculate aging buckets
+        const agingData = {
+            '0-30': { count: 2, amount: 15000 },
+            '31-60': { count: 1, amount: 8000 },
+            '60+': { count: 1, amount: 28000 },
+            totalOutstanding: 51000,
+            creditLimit: 100000,
+            creditUtilization: 51
+        };
+
+        res.json(agingData);
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching aging data' });
+    }
+});
+
+// ==================== LOGISTICS HUB ====================
+// Bulk assign logistics to multiple orders
+app.post('/api/logistics/bulk-assign', async (req, res) => {
+    try {
+        const { orderIds, logisticsData } = req.body;
+
+        if (!orderIds || !Array.isArray(orderIds) || orderIds.length === 0) {
+            return res.status(400).json({ message: 'Order IDs array is required' });
+        }
+
+        const { deliveryAgentId, vehicleNo, vehicleProvider, distanceKm } = logisticsData;
+
+        // Update all orders with logistics info
+        const updateResult = await Order.updateMany(
+            { _id: { $in: orderIds } },
+            {
+                $set: {
+                    'logistics.deliveryAgentId': deliveryAgentId,
+                    'logistics.vehicleNo': vehicleNo,
+                    'logistics.vehicleProvider': vehicleProvider,
+                    'logistics.distanceKm': distanceKm,
+                    'logistics.assignedAt': new Date(),
+                    status: 'In Transit'
+                }
+            }
+        );
+
+        res.json({
+            success: true,
+            message: `${updateResult.modifiedCount} orders assigned to ${deliveryAgentId}`,
+            modifiedCount: updateResult.modifiedCount
+        });
+    } catch (error) {
+        console.error('Bulk assignment error:', error);
+        res.status(500).json({ message: 'Error assigning logistics' });
+    }
+});
+
+// ==================== LOGISTICS COST CALCULATOR ====================
+// Calculate logistics cost for a route
+app.post('/api/logistics/calculate-cost', async (req, res) => {
+    try {
+        const { origin, destination, vehicleType, distance: providedDistance } = req.body;
+
+        // Mock distance calculation (in production, use Google Maps Distance Matrix API)
+        const distance = providedDistance || Math.floor(Math.random() * 500) + 50; // km
+
+        // Cost parameters (configurable)
+        const FUEL_RATES = {
+            'Truck': 8.5,      // ₹ per km
+            'Tempo': 6.5,
+            'Van': 5.0,
+            'Bike': 2.5
+        };
+
+        const DRIVER_ALLOWANCES = {
+            'Truck': 800,      // ₹ per day
+            'Tempo': 600,
+            'Van': 500,
+            'Bike': 300
+        };
+
+        const selectedVehicle = vehicleType || 'Truck';
+        const fuelRate = FUEL_RATES[selectedVehicle] || FUEL_RATES['Truck'];
+        const driverAllowance = DRIVER_ALLOWANCES[selectedVehicle] || DRIVER_ALLOWANCES['Truck'];
+
+        // Calculate costs
+        const fuelCost = distance * fuelRate;
+        const tollCharges = distance > 100 ? Math.floor(distance / 100) * 150 : 0; // ₹150 per 100km
+        const miscCharges = 100; // Loading/unloading
+        const totalCost = fuelCost + driverAllowance + tollCharges + miscCharges;
+
+        res.json({
+            success: true,
+            data: {
+                origin,
+                destination,
+                distance,
+                vehicleType: selectedVehicle,
+                breakdown: {
+                    fuelCost: Math.round(fuelCost),
+                    driverAllowance,
+                    tollCharges,
+                    miscCharges,
+                    total: Math.round(totalCost)
+                },
+                estimatedTime: Math.ceil(distance / 60) + ' hours', // Assuming 60 km/h avg speed
+            }
+        });
+    } catch (error) {
+        console.error('Cost calculation error:', error);
+        res.status(500).json({ message: 'Error calculating logistics cost' });
+    }
+});
+
+// Get cost history for analytics
+app.get('/api/logistics/cost-history', async (req, res) => {
+    try {
+        const { startDate, endDate } = req.query;
+
+        // Mock cost history data
+        const mockHistory = [
+            { date: new Date(), orderId: 'ORD-001', route: 'Mumbai-Delhi', cost: 4500, vehicleType: 'Truck' },
+            { date: new Date(), orderId: 'ORD-002', route: 'Delhi-Bangalore', cost: 6200, vehicleType: 'Truck' },
+            { date: new Date(), orderId: 'ORD-003', route: 'Mumbai-Pune', cost: 1200, vehicleType: 'Tempo' },
+        ];
+
+        res.json(mockHistory);
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching cost history' });
+    }
+});
+
 // ==================== ANALYTICS ====================
 app.get('/api/analytics/dashboard', async (req, res) => {
     try {
