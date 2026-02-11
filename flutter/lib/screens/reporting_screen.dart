@@ -6,6 +6,7 @@ import '../utils/theme.dart';
 import '../models/models.dart';
 import '../widgets/advanced_filters_widget.dart';
 import '../utils/report_exporter.dart';
+import 'package:fl_chart/fl_chart.dart';
 
 class ReportingScreen extends StatefulWidget {
   const ReportingScreen({super.key});
@@ -17,17 +18,42 @@ class ReportingScreen extends StatefulWidget {
 class _ReportingScreenState extends State<ReportingScreen> {
   String _selectedReportType = 'Sales Report';
   DateTime _startDate = DateTime.now().subtract(const Duration(days: 30));
-  DateTime _endDate = DateTime.now();
+  DateTime _endDate = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day, 23, 59, 59);
   
   // Advanced Filters
   List<String> _selectedCategories = [];
   List<String> _selectedRegions = [];
   List<String> _selectedSalespersons = [];
   List<String> _selectedStatuses = [];
+  bool _isInitialLoading = true;
+  
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    final provider = Provider.of<NexusProvider>(context, listen: false);
+    await provider.fetchOrders();
+    if (mounted) {
+      setState(() {
+        _isInitialLoading = false;
+      });
+    }
+  }
   
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<NexusProvider>(context);
+    
+    if (_isInitialLoading || provider.isLoading) {
+      return Scaffold(
+        backgroundColor: NexusTheme.slate50,
+        appBar: AppBar(title: const Text('REPORTING CENTER')),
+        body: const Center(child: CircularProgressIndicator(color: NexusTheme.emerald600)),
+      );
+    }
     
     return Scaffold(
       backgroundColor: NexusTheme.slate50,
@@ -69,10 +95,10 @@ class _ReportingScreenState extends State<ReportingScreen> {
                   onSalespersonsChanged: (val) => setState(() => _selectedSalespersons = val),
                   onStatusesChanged: (val) => setState(() => _selectedStatuses = val),
                   onClearAll: () => setState(() {
-                    _selectedCategories.clear();
-                    _selectedRegions.clear();
-                    _selectedSalespersons.clear();
-                    _selectedStatuses.clear();
+                    _selectedCategories = [];
+                    _selectedRegions = [];
+                    _selectedSalespersons = [];
+                    _selectedStatuses = [];
                   }),
                 ),
                 const SizedBox(height: 24),
@@ -226,6 +252,21 @@ class _ReportingScreenState extends State<ReportingScreen> {
   }
   
   Widget _buildSalesReport(NexusProvider provider, bool isMobile) {
+    if (provider.orders.isEmpty) {
+      return Container(
+        height: 300,
+        alignment: Alignment.center,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.inventory_2_outlined, size: 48, color: NexusTheme.slate300),
+            const SizedBox(height: 16),
+            const Text('NO ORDERS FOUND IN SYSTEM', style: TextStyle(fontWeight: FontWeight.bold, color: NexusTheme.slate400)),
+          ],
+        ),
+      );
+    }
+
     // Apply filters to orders
     var filteredOrders = provider.orders.where((order) {
       // Date range filter
@@ -265,10 +306,110 @@ class _ReportingScreenState extends State<ReportingScreen> {
           {'label': 'Avg Order Value', 'value': '₹${NumberFormat('#,##,###').format(avgOrderValue)}', 'color': Colors.purple},
         ], isMobile),
         const SizedBox(height: 24),
+        _buildSectionHeader('SALES TREND'),
+        const SizedBox(height: 16),
+        _buildSalesTrendChart(filteredOrders, isMobile),
+        const SizedBox(height: 24),
         _buildSectionHeader('ORDERS DATA TABLE'),
         const SizedBox(height: 16),
         _buildOrdersDataTable(filteredOrders, isMobile),
       ],
+    );
+  }
+
+  Widget _buildSalesTrendChart(List<Order> orders, bool isMobile) {
+    if (orders.isEmpty) return const SizedBox();
+
+    // Group sales by date
+    Map<String, double> dailySales = {};
+    for (var order in orders) {
+      String date = DateFormat('dd/MM').format(order.createdAt);
+      dailySales[date] = (dailySales[date] ?? 0) + order.total;
+    }
+
+    var sortedDates = dailySales.keys.toList()..sort((a, b) => a.compareTo(b));
+    if (sortedDates.length > 7) {
+      sortedDates = sortedDates.sublist(sortedDates.length - 7);
+    }
+
+    List<BarChartGroupData> barGroups = [];
+    for (int i = 0; i < sortedDates.length; i++) {
+      barGroups.add(
+        BarChartGroupData(
+          x: i,
+          barRods: [
+            BarChartRodData(
+              toY: dailySales[sortedDates[i]]!,
+              color: NexusTheme.emerald500,
+              width: isMobile ? 12 : 18,
+              borderRadius: const BorderRadius.only(topLeft: Radius.circular(4), topRight: Radius.circular(4)),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      height: 250,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: NexusTheme.slate200),
+      ),
+      child: BarChart(
+        BarChartData(
+          alignment: BarChartAlignment.spaceAround,
+          maxY: (dailySales.values.isEmpty ? 0 : dailySales.values.reduce((a, b) => a > b ? a : b)) * 1.2,
+          barTouchData: BarTouchData(
+            touchTooltipData: BarTouchTooltipData(
+              getTooltipColor: (_) => NexusTheme.slate900,
+              getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                return BarTooltipItem(
+                  '${sortedDates[groupIndex]}\n₹${NumberFormat('#,##,###').format(rod.toY)}',
+                  const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 10),
+                );
+              },
+            ),
+          ),
+          titlesData: FlTitlesData(
+            show: true,
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                getTitlesWidget: (value, meta) {
+                  int index = value.toInt();
+                  if (index >= 0 && index < sortedDates.length) {
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 8.0),
+                      child: Text(sortedDates[index], style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: NexusTheme.slate500)),
+                    );
+                  }
+                  return const SizedBox();
+                },
+              ),
+            ),
+            leftTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 40,
+                getTitlesWidget: (value, meta) {
+                  if (value == 0) return const SizedBox();
+                  return Text(
+                    '₹${(value / 1000).toStringAsFixed(0)}k',
+                    style: const TextStyle(fontSize: 8, color: NexusTheme.slate400),
+                  );
+                },
+              ),
+            ),
+            topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          ),
+          gridData: const FlGridData(show: false),
+          borderData: FlBorderData(show: false),
+          barGroups: barGroups,
+        ),
+      ),
     );
   }
 
@@ -301,125 +442,82 @@ class _ReportingScreenState extends State<ReportingScreen> {
         border: Border.all(color: NexusTheme.slate200),
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10)],
       ),
-      child: Column(
-        children: [
-          // Table Header
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-            decoration: BoxDecoration(
-              color: NexusTheme.slate50,
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(20),
-                topRight: Radius.circular(20),
-              ),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  flex: 2,
-                  child: Text('ORDER ID', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: NexusTheme.slate600)),
-                ),
-                Expanded(
-                  flex: 3,
-                  child: Text('CUSTOMER', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: NexusTheme.slate600)),
-                ),
-                Expanded(
-                  flex: 2,
-                  child: Text('STATUS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: NexusTheme.slate600)),
-                ),
-                Expanded(
-                  flex: 2,
-                  child: Text('AMOUNT', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: NexusTheme.slate600), textAlign: TextAlign.right),
-                ),
-                Expanded(
-                  flex: 2,
-                  child: Text('DATE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: NexusTheme.slate600), textAlign: TextAlign.right),
-                ),
-              ],
-            ),
-          ),
-          
-          // Table Rows
-          ListView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: orders.length > 50 ? 50 : orders.length, // Limit to 50 rows
-            itemBuilder: (context, index) {
-              final order = orders[index];
-              final isEven = index % 2 == 0;
-              
-              return Container(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: SizedBox(
+          width: 520, // Increased from 500 to account for 466px content + 40px padding
+          child: Column(
+            children: [
+              // Table Header
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                 decoration: BoxDecoration(
-                  color: isEven ? Colors.white : NexusTheme.slate50.withOpacity(0.3),
-                  border: Border(
-                    bottom: BorderSide(
-                      color: NexusTheme.slate100,
-                      width: 0.5,
-                    ),
+                  color: NexusTheme.slate50,
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(20),
+                    topRight: Radius.circular(20),
                   ),
                 ),
                 child: Row(
                   children: [
-                    Expanded(
-                      flex: 2,
-                      child: Text(
-                        order.id,
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: NexusTheme.indigo600),
-                      ),
+                    SizedBox(
+                      width: 50,
+                      child: Text('ORD\nID', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: NexusTheme.slate600, height: 1.1)),
                     ),
-                    Expanded(
-                      flex: 3,
-                      child: Text(
-                        order.customerName,
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                    const SizedBox(width: 8),
+                    SizedBox(
+                      width: 130,
+                      child: Text('CUSTOMER', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: NexusTheme.slate600)),
                     ),
-                    Expanded(
-                      flex: 2,
-                      child: _buildStatusChip(order.status),
+                    const SizedBox(width: 8),
+                    SizedBox(
+                      width: 90,
+                      child: Text('STATUS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: NexusTheme.slate600)),
                     ),
-                    Expanded(
-                      flex: 2,
-                      child: Text(
-                        '₹${NumberFormat('#,##,###').format(order.total)}',
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: NexusTheme.emerald600),
-                        textAlign: TextAlign.right,
-                      ),
+                    SizedBox(
+                      width: 90,
+                      child: Text('AMOUNT', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: NexusTheme.slate600), textAlign: TextAlign.right),
                     ),
-                    Expanded(
-                      flex: 2,
-                      child: Text(
-                        DateFormat('dd MMM').format(order.createdAt),
-                        style: TextStyle(fontSize: 11, color: NexusTheme.slate500),
-                        textAlign: TextAlign.right,
-                      ),
+                    SizedBox(
+                      width: 90,
+                      child: Text('DATE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: NexusTheme.slate600), textAlign: TextAlign.right),
                     ),
                   ],
                 ),
-              );
-            },
-          ),
-          
-          // Footer
-          if (orders.length > 50)
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: NexusTheme.slate50,
-                borderRadius: const BorderRadius.only(
-                  bottomLeft: Radius.circular(20),
-                  bottomRight: Radius.circular(20),
+              ),
+              
+              // Table Rows
+              ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: orders.length > 50 ? 50 : orders.length,
+                itemBuilder: (context, index) {
+                  final order = orders[index];
+                  return _CollapsibleOrderRow(order: order, isEven: index % 2 == 0);
+                },
+              ),
+              
+              // Footer
+              if (orders.length > 50)
+                Container(
+                  width: 520,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: NexusTheme.slate50,
+                    borderRadius: const BorderRadius.only(
+                      bottomLeft: Radius.circular(20),
+                      bottomRight: Radius.circular(20),
+                    ),
+                  ),
+                  child: Text(
+                    'Showing 50 of ${orders.length} orders',
+                    style: TextStyle(fontSize: 11, color: NexusTheme.slate500, fontWeight: FontWeight.w600),
+                    textAlign: TextAlign.center,
+                  ),
                 ),
-              ),
-              child: Text(
-                'Showing 50 of ${orders.length} orders',
-                style: TextStyle(fontSize: 11, color: NexusTheme.slate500, fontWeight: FontWeight.w600),
-                textAlign: TextAlign.center,
-              ),
-            ),
-        ],
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -488,10 +586,59 @@ class _ReportingScreenState extends State<ReportingScreen> {
           {'label': 'Low Stock Items', 'value': '${products.where((p) => (p.stock ?? 0) < 10).length}', 'color': Colors.red},
         ], isMobile),
         const SizedBox(height: 24),
+        _buildSectionHeader('STOCK DISTRIBUTION'),
+        const SizedBox(height: 16),
+        _buildInventoryChart(products, isMobile),
+        const SizedBox(height: 24),
         _buildSectionHeader('PRODUCT LIST'),
         const SizedBox(height: 16),
         _buildProductList(products, isMobile),
       ],
+    );
+  }
+
+  Widget _buildInventoryChart(List<Product> products, bool isMobile) {
+    int lowStock = products.where((p) => (p.stock ?? 0) < 10).length;
+    int optimal = products.where((p) => (p.stock ?? 0) >= 10 && (p.stock ?? 0) < 50).length;
+    int surplus = products.where((p) => (p.stock ?? 0) >= 50).length;
+
+    return Container(
+      height: 200,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: NexusTheme.slate200),
+      ),
+      child: PieChart(
+        PieChartData(
+          sectionsSpace: 4,
+          centerSpaceRadius: 40,
+          sections: [
+            PieChartSectionData(
+              color: Colors.red.shade400,
+              value: lowStock.toDouble(),
+              title: isMobile ? '' : 'Low',
+              radius: 50,
+              titleStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
+            ),
+            PieChartSectionData(
+              color: Colors.blue.shade400,
+              value: optimal.toDouble(),
+              title: isMobile ? '' : 'Optimal',
+              radius: 50,
+              titleStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
+            ),
+            PieChartSectionData(
+              color: Colors.green.shade400,
+              value: surplus.toDouble(),
+              title: isMobile ? '' : 'Surplus',
+              radius: 50,
+              titleStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
+            ),
+          ],
+        ),
+      ),
     );
   }
   
@@ -509,10 +656,73 @@ class _ReportingScreenState extends State<ReportingScreen> {
           {'label': 'Inactive', 'value': '${customers.length - activeCustomers}', 'color': Colors.orange},
         ], isMobile),
         const SizedBox(height: 24),
+        _buildSectionHeader('REGION DISTRIBUTION'),
+        const SizedBox(height: 16),
+        _buildCustomerChart(customers, isMobile),
+        const SizedBox(height: 24),
         _buildSectionHeader('CUSTOMER LIST'),
         const SizedBox(height: 16),
         _buildCustomerList(customers, isMobile),
       ],
+    );
+  }
+
+  Widget _buildCustomerChart(List<Customer> customers, bool isMobile) {
+    Map<String, int> regionCounts = {};
+    for (var c in customers) {
+      regionCounts[c.city] = (regionCounts[c.city] ?? 0) + 1;
+    }
+
+    var sortedRegions = regionCounts.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+    if (sortedRegions.length > 5) sortedRegions = sortedRegions.sublist(0, 5);
+
+    return Container(
+      height: 200,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: NexusTheme.slate200),
+      ),
+      child: BarChart(
+        BarChartData(
+          gridData: const FlGridData(show: false),
+          titlesData: FlTitlesData(
+            leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                getTitlesWidget: (val, meta) {
+                  int idx = val.toInt();
+                  if (idx >= 0 && idx < sortedRegions.length) {
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 8.0),
+                      child: Text(sortedRegions[idx].key, style: const TextStyle(fontSize: 8, fontWeight: FontWeight.bold)),
+                    );
+                  }
+                  return const SizedBox();
+                },
+              ),
+            ),
+          ),
+          borderData: FlBorderData(show: false),
+          barGroups: sortedRegions.asMap().entries.map((e) {
+            return BarChartGroupData(
+              x: e.key,
+              barRods: [
+                BarChartRodData(
+                  toY: e.value.value.toDouble(),
+                  color: NexusTheme.indigo500,
+                  width: 20,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ],
+            );
+          }).toList(),
+        ),
+      ),
     );
   }
   
@@ -933,6 +1143,10 @@ class _ReportingScreenState extends State<ReportingScreen> {
           reportType: reportType,
           startDate: startDate,
           endDate: endDate,
+
+
+
+          
         );
       }
 
@@ -980,4 +1194,181 @@ class _ReportingScreenState extends State<ReportingScreen> {
         );
       }
     }
-  }}
+  }
+}
+
+class _CollapsibleOrderRow extends StatefulWidget {
+  final Order order;
+  final bool isEven;
+
+  const _CollapsibleOrderRow({required this.order, required this.isEven});
+
+  @override
+  State<_CollapsibleOrderRow> createState() => _CollapsibleOrderRowState();
+}
+
+class _CollapsibleOrderRowState extends State<_CollapsibleOrderRow> {
+  bool _isExpanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        InkWell(
+          onTap: () => setState(() => _isExpanded = !_isExpanded),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            color: widget.isEven ? Colors.white : NexusTheme.slate50.withOpacity(0.5),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 50,
+                  child: Row(
+                    children: [
+                      AnimatedRotation(
+                        turns: _isExpanded ? 0.25 : 0,
+                        duration: const Duration(milliseconds: 200),
+                        child: Icon(Icons.chevron_right, size: 14, color: NexusTheme.slate400),
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          widget.order.id,
+                          style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: NexusTheme.slate900, height: 1.1),
+                          softWrap: true,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                SizedBox(
+                  width: 130,
+                  child: Text(
+                    widget.order.customerName,
+                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: NexusTheme.slate700, height: 1.1),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                SizedBox(
+                  width: 90,
+                  child: _buildStatusChip(widget.order.status),
+                ),
+                SizedBox(
+                  width: 90,
+                  child: Text(
+                    '₹${NumberFormat('#,##,###').format(widget.order.total)}',
+                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: NexusTheme.slate900),
+                    textAlign: TextAlign.right,
+                  ),
+                ),
+                SizedBox(
+                  width: 90,
+                  child: Text(
+                    DateFormat('dd/MM/yy').format(widget.order.createdAt),
+                    style: const TextStyle(fontSize: 10, color: NexusTheme.slate500),
+                    textAlign: TextAlign.right,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        AnimatedCrossFade(
+          firstChild: const SizedBox(width: double.infinity),
+          secondChild: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: NexusTheme.slate50,
+              border: Border(
+                top: BorderSide(color: NexusTheme.slate200),
+                bottom: BorderSide(color: NexusTheme.slate200),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('ORDER ITEMS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: NexusTheme.slate500, letterSpacing: 1)),
+                const SizedBox(height: 8),
+                ...widget.order.items.map((item) => Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('${item.name} x ${item.quantity}', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                      Text('₹${NumberFormat('#,##,###').format(item.price * item.quantity)}', style: const TextStyle(fontSize: 11)),
+                    ],
+                  ),
+                )).toList(),
+                const Divider(),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('TOTAL', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 12)),
+                    Text('₹${NumberFormat('#,##,###').format(widget.order.total)}', 
+                      style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 12, color: NexusTheme.emerald600)),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          crossFadeState: _isExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+          duration: const Duration(milliseconds: 300),
+          sizeCurve: Curves.easeInOut,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStatusChip(String status) {
+    Color bgColor;
+    Color textColor;
+    
+    switch (status.toLowerCase()) {
+      case 'pending':
+        bgColor = Colors.orange.withOpacity(0.1);
+        textColor = Colors.orange.shade700;
+        break;
+      case 'approved':
+        bgColor = Colors.blue.withOpacity(0.1);
+        textColor = Colors.blue.shade700;
+        break;
+      case 'in transit':
+        bgColor = Colors.purple.withOpacity(0.1);
+        textColor = Colors.purple.shade700;
+        break;
+      case 'delivered':
+        bgColor = Colors.green.withOpacity(0.1);
+        textColor = Colors.green.shade700;
+        break;
+      case 'cancelled':
+        bgColor = Colors.red.withOpacity(0.1);
+        textColor = Colors.red.shade700;
+        break;
+      default:
+        bgColor = NexusTheme.slate100;
+        textColor = NexusTheme.slate600;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        status.toUpperCase(),
+        style: TextStyle(
+          fontSize: 9,
+          fontWeight: FontWeight.w900,
+          color: textColor,
+          letterSpacing: 0.5,
+        ),
+        textAlign: TextAlign.center,
+      ),
+    );
+  }
+}

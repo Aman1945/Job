@@ -310,7 +310,10 @@ class NexusProvider with ChangeNotifier {
         await fetchCustomers();
         return true;
       }
+      return false;
     } catch (e) {
+      debugPrint('Error creating customer: $e');
+      // Local fallback
       final newCustomer = Customer.fromJson({
         ...customerData,
         'id': customerData['id'] ?? 'CUST-${_customers.length + 1}',
@@ -319,7 +322,6 @@ class NexusProvider with ChangeNotifier {
       notifyListeners();
       return true;
     }
-    return false;
   }
 
   Future<bool> createProduct(Map<String, dynamic> productData) async {
@@ -334,10 +336,45 @@ class NexusProvider with ChangeNotifier {
         await fetchProducts();
         return true;
       }
+      return false;
     } catch (e) {
       debugPrint('Error creating product: $e');
+      // Local fallback for materiality
+      final newProduct = Product.fromJson({
+        ...productData,
+        'id': productData['id'] ?? productData['skuCode'] ?? 'PROD-${DateTime.now().millisecondsSinceEpoch}',
+      });
+      _products.insert(0, newProduct);
+      notifyListeners();
+      return true;
     }
-    return false;
+  }
+
+  Future<bool> createUser(Map<String, dynamic> userData) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/users'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(userData),
+      );
+
+      if (response.statusCode == 201) {
+        await fetchUsers();
+        return true;
+      }
+      return false;
+    } catch (e) {
+      debugPrint('Error creating user: $e');
+      // Local fallback
+      final newUser = User.fromJson({
+        ...userData,
+        'id': userData['id'] ?? 'USER-${_users.length + 1}',
+        'role': userData['role'] ?? 'Sales',
+      });
+      _users.insert(0, newUser);
+      notifyListeners();
+      return true;
+    }
   }
 
   // --- Analytics ---

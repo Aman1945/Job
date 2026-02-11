@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:nexus_oms_mobile/models/models.dart';
 import 'package:nexus_oms_mobile/screens/live_missions_screen.dart';
 import 'package:nexus_oms_mobile/screens/executive_pulse_screen.dart';
 import 'package:provider/provider.dart';
@@ -109,11 +110,8 @@ class DashboardScreen extends StatelessWidget {
                 _buildActionList(context, isMobile),
                 
                 const SizedBox(height: 32),
-                const _SectionTitle(title: 'ENTERPRISE TERMINALS'),
-                const SizedBox(height: 16),
-                
                 // Utility Cards - 2 Rows (2 cards per row)
-                _buildUtilityGrid(context, isMobile),
+                _buildUtilityGrid(context, isMobile, user?.role),
               ],
             ),
           );
@@ -179,7 +177,7 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildUtilityGrid(BuildContext context, bool isMobile) {
+  Widget _buildUtilityGrid(BuildContext context, bool isMobile, UserRole? role) {
     final utilities = [
       {'l': 'Procurement', 'i': Icons.shopping_bag_outlined, 's': const ProcurementScreen()},
       {'l': 'Intelligence', 'i': Icons.insights, 's': const AnalyticsScreen()},

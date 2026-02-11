@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../utils/theme.dart';
 import 'package:dropdown_button2/dropdown_button2.dart';
 
-class AdvancedFiltersWidget extends StatelessWidget {
+class AdvancedFiltersWidget extends StatefulWidget {
   final List<String> selectedCategories;
   final List<String> selectedRegions;
   final List<String> selectedSalespersons;
@@ -27,11 +27,16 @@ class AdvancedFiltersWidget extends StatelessWidget {
   });
 
   @override
+  State<AdvancedFiltersWidget> createState() => _AdvancedFiltersWidgetState();
+}
+
+class _AdvancedFiltersWidgetState extends State<AdvancedFiltersWidget> {
+  @override
   Widget build(BuildContext context) {
-    final totalFilters = selectedCategories.length + 
-                        selectedRegions.length + 
-                        selectedSalespersons.length + 
-                        selectedStatuses.length;
+    final totalFilters = widget.selectedCategories.length + 
+                        widget.selectedRegions.length + 
+                        widget.selectedSalespersons.length + 
+                        widget.selectedStatuses.length;
 
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
@@ -77,7 +82,7 @@ class AdvancedFiltersWidget extends StatelessWidget {
               ),
               if (totalFilters > 0)
                 TextButton.icon(
-                  onPressed: onClearAll,
+                  onPressed: widget.onClearAll,
                   icon: const Icon(Icons.clear_all, size: 14),
                   label: const Text('CLEAR', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900)),
                   style: TextButton.styleFrom(
@@ -89,7 +94,6 @@ class AdvancedFiltersWidget extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           
-          // Horizontal Scrollable Filter Dropdowns
           SizedBox(
             height: 42,
             child: ListView(
@@ -99,8 +103,8 @@ class AdvancedFiltersWidget extends StatelessWidget {
                   'Category',
                   Icons.category,
                   ['Electronics', 'Grocery', 'Fashion', 'Home & Kitchen', 'Sports'],
-                  selectedCategories,
-                  onCategoriesChanged,
+                  widget.selectedCategories,
+                  widget.onCategoriesChanged,
                   NexusTheme.indigo600,
                 ),
                 const SizedBox(width: 8),
@@ -108,8 +112,8 @@ class AdvancedFiltersWidget extends StatelessWidget {
                   'Region',
                   Icons.location_on,
                   ['North', 'South', 'East', 'West', 'Central'],
-                  selectedRegions,
-                  onRegionsChanged,
+                  widget.selectedRegions,
+                  widget.onRegionsChanged,
                   NexusTheme.emerald600,
                 ),
                 const SizedBox(width: 8),
@@ -117,8 +121,8 @@ class AdvancedFiltersWidget extends StatelessWidget {
                   'Salesperson',
                   Icons.person,
                   ['Animesh Jamuar', 'Rahul Sharma', 'Priya Singh', 'Amit Kumar'],
-                  selectedSalespersons,
-                  onSalespersonsChanged,
+                  widget.selectedSalespersons,
+                  widget.onSalespersonsChanged,
                   NexusTheme.blue600,
                 ),
                 const SizedBox(width: 8),
@@ -126,25 +130,24 @@ class AdvancedFiltersWidget extends StatelessWidget {
                   'Status',
                   Icons.check_circle,
                   ['Pending', 'Approved', 'In Transit', 'Delivered', 'Cancelled'],
-                  selectedStatuses,
-                  onStatusesChanged,
+                  widget.selectedStatuses,
+                  widget.onStatusesChanged,
                   NexusTheme.purple600,
                 ),
               ],
             ),
           ),
           
-          // Selected Filter Tags with Individual Removal (Side "Cut" buttons)
           if (totalFilters > 0) ...[
             const SizedBox(height: 16),
             Wrap(
               spacing: 8,
               runSpacing: 8,
               children: [
-                ..._buildFilterTags(selectedCategories, onCategoriesChanged, NexusTheme.indigo600),
-                ..._buildFilterTags(selectedRegions, onRegionsChanged, NexusTheme.emerald600),
-                ..._buildFilterTags(selectedSalespersons, onSalespersonsChanged, NexusTheme.blue600),
-                ..._buildFilterTags(selectedStatuses, onStatusesChanged, NexusTheme.purple600),
+                ..._buildFilterTags(widget.selectedCategories, widget.onCategoriesChanged, NexusTheme.indigo600),
+                ..._buildFilterTags(widget.selectedRegions, widget.onRegionsChanged, NexusTheme.emerald600),
+                ..._buildFilterTags(widget.selectedSalespersons, widget.onSalespersonsChanged, NexusTheme.blue600),
+                ..._buildFilterTags(widget.selectedStatuses, widget.onStatusesChanged, NexusTheme.purple600),
               ],
             ),
           ],
@@ -201,38 +204,43 @@ class AdvancedFiltersWidget extends StatelessWidget {
         items: options.map((item) {
           return DropdownMenuItem<String>(
             value: item,
-            // Disable default onTap to handle multi-select logic manually
             enabled: false,
             child: StatefulBuilder(
               builder: (context, menuSetState) {
-                final isSelected = selectedValues.contains(item);
+                // IMPORTANT: We use the local list to track state while the menu is open
+                final bool isSelected = selectedValues.contains(item);
+                
                 return InkWell(
                   onTap: () {
-                    final newList = List<String>.from(selectedValues);
                     if (isSelected) {
-                      newList.remove(item);
+                      selectedValues.remove(item);
                     } else {
-                      newList.add(item);
+                      selectedValues.add(item);
                     }
-                    onChanged(newList);
+                    
+                    // Notify parent with a copy to ensure it triggers its own logic
+                    onChanged(List<String>.from(selectedValues));
+                    
+                    // Immediate UI update for the menu item
                     menuSetState(() {});
                   },
                   child: Container(
-                    height: double.infinity,
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     child: Row(
                       children: [
-                        if (isSelected)
-                          Icon(Icons.check_box_rounded, color: color)
-                        else
-                          const Icon(Icons.check_box_outline_blank_rounded),
-                        const SizedBox(width: 16),
+                        Icon(
+                          isSelected ? Icons.check_box_rounded : Icons.check_box_outline_blank_rounded,
+                          color: isSelected ? color : NexusTheme.slate400,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 12),
                         Expanded(
                           child: Text(
                             item,
                             style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                              fontSize: 13,
+                              fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
                               color: isSelected ? color : NexusTheme.slate800,
                             ),
                           ),
@@ -245,7 +253,7 @@ class AdvancedFiltersWidget extends StatelessWidget {
             ),
           );
         }).toList(),
-        onChanged: (value) {}, // Handled by inner InkWell
+        onChanged: (value) {},
         dropdownStyleData: DropdownStyleData(
           maxHeight: 300,
           width: 250,

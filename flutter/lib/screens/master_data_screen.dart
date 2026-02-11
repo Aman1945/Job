@@ -507,138 +507,170 @@ class _MasterDataScreenState extends State<MasterDataScreen> {
   }
 
   void _showMasterForm(BuildContext context, {dynamic initialData}) {
+    final provider = Provider.of<NexusProvider>(context, listen: false);
+    final Map<String, TextEditingController> controllers = {};
+    
+    List<String> fields = [];
+    if (_selectedTab == 'CUSTOMER MASTER') {
+      fields = ['ID', 'NAME', 'ADDRESS', 'CITY', 'LIMIT'];
+    } else if (_selectedTab == 'MATERIAL MASTER') {
+      fields = ['SKU CODE', 'NAME', 'PRICE', 'CATEGORY', 'STOCK'];
+    } else {
+      fields = ['NAME', 'EMAIL', 'ROLE', 'PASSWORD'];
+    }
+
+    // Initialize controllers with initialData if available
+    for (var f in fields) {
+      String value = '';
+      if (initialData != null) {
+        if (_selectedTab == 'USER MASTER' && initialData is User) {
+          if (f == 'NAME') value = initialData.name;
+          if (f == 'EMAIL') value = initialData.id;
+          if (f == 'ROLE') value = initialData.role.label;
+        } else if (_selectedTab == 'CUSTOMER MASTER' && initialData is Customer) {
+          if (f == 'ID') value = initialData.id;
+          if (f == 'NAME') value = initialData.name;
+          if (f == 'ADDRESS') value = initialData.address;
+          if (f == 'CITY') value = initialData.city;
+          if (f == 'LIMIT') value = initialData.limit.toString();
+        } else if (_selectedTab == 'MATERIAL MASTER' && initialData is Product) {
+          if (f == 'SKU CODE') value = initialData.skuCode;
+          if (f == 'NAME') value = initialData.name;
+          if (f == 'PRICE') value = initialData.price.toString();
+          if (f == 'CATEGORY') value = initialData.category;
+          if (f == 'STOCK') value = initialData.stock.toString();
+        }
+      }
+      controllers[f] = TextEditingController(text: value);
+    }
+
     showDialog(
       context: context,
       barrierColor: Colors.black.withOpacity(0.5),
-      builder: (context) => Dialog(
-        backgroundColor: Colors.white,
-        insetPadding: const EdgeInsets.all(20),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(32)),
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          bool isFormLoading = false;
+          
+          return Dialog(
+            backgroundColor: Colors.white,
+            insetPadding: const EdgeInsets.all(20),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(32)),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(32),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Master',
-                    style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w900,
-                      color: Color(0xFF0F172A),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        initialData == null ? 'Add New Entry' : 'Edit Entry',
+                        style: const TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.w900,
+                          color: Color(0xFF0F172A),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close, color: Color(0xFF0F172A), size: 28),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 32),
+                  Flexible(
+                    child: SingleChildScrollView(
+                      child: Column(
+                        children: fields.map((f) => Padding(
+                          padding: const EdgeInsets.only(bottom: 24),
+                          child: TextField(
+                            controller: controllers[f],
+                            style: const TextStyle(color: Color(0xFF0F172A), fontWeight: FontWeight.bold, fontSize: 14),
+                            decoration: InputDecoration(
+                              labelText: f.toUpperCase(),
+                              labelStyle: const TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.w900, fontSize: 10, letterSpacing: 1),
+                              floatingLabelBehavior: FloatingLabelBehavior.always,
+                              enabledBorder: OutlineInputBorder(borderSide: const BorderSide(color: Color(0xFF0F172A), width: 1.5), borderRadius: BorderRadius.circular(16)),
+                              focusedBorder: OutlineInputBorder(borderSide: const BorderSide(color: Color(0xFF6366F1), width: 2), borderRadius: BorderRadius.circular(16)),
+                              filled: true,
+                              fillColor: const Color(0xFFF8FAFC),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+                            ),
+                          ),
+                        )).toList(),
+                      ),
                     ),
                   ),
-                  IconButton(
-                    icon: const Icon(
-                      Icons.close,
-                      color: Color(0xFF0F172A),
-                      size: 28,
+                  const SizedBox(height: 32),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 56,
+                    child: ElevatedButton(
+                      onPressed: isFormLoading ? null : () async {
+                        setDialogState(() => isFormLoading = true);
+                        bool success = false;
+                        
+                        try {
+                          if (_selectedTab == 'USER MASTER') {
+                            success = await provider.createUser({
+                              'name': controllers['NAME']!.text,
+                              'id': controllers['EMAIL']!.text,
+                              'role': controllers['ROLE']!.text,
+                              'password': controllers['PASSWORD']!.text,
+                            });
+                          } else if (_selectedTab == 'CUSTOMER MASTER') {
+                            success = await provider.createCustomer({
+                              'id': controllers['ID']!.text,
+                              'name': controllers['NAME']!.text,
+                              'address': controllers['ADDRESS']!.text,
+                              'city': controllers['CITY']!.text,
+                              'limit': double.tryParse(controllers['LIMIT']!.text) ?? 1500000,
+                            });
+                          } else if (_selectedTab == 'MATERIAL MASTER') {
+                            success = await provider.createProduct({
+                              'skuCode': controllers['SKU CODE']!.text,
+                              'name': controllers['NAME']!.text,
+                              'price': double.tryParse(controllers['PRICE']!.text) ?? 0.0,
+                              'category': controllers['CATEGORY']!.text,
+                              'stock': int.tryParse(controllers['STOCK']!.text) ?? 0,
+                            });
+                          }
+                          
+                          if (success && context.mounted) {
+                            Navigator.pop(context);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Successfully saved to Master!'), backgroundColor: Colors.green),
+                            );
+                          }
+                        } catch (e) {
+                           if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+                            );
+                          }
+                        } finally {
+                          if (context.mounted) setDialogState(() => isFormLoading = false);
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF0F172A),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        elevation: 0,
+                      ),
+                      child: isFormLoading 
+                        ? const CircularProgressIndicator(color: Colors.white)
+                        : const Text('SAVE TO MASTER', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1)),
                     ),
-                    onPressed: () => Navigator.pop(context),
                   ),
                 ],
               ),
-              const SizedBox(height: 32),
-              Flexible(
-                child: SingleChildScrollView(child: _buildFormFieldsLayout()),
-              ),
-              const SizedBox(height: 32),
-              SizedBox(
-                width: double.infinity,
-                height: 56,
-                child: ElevatedButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF0F172A),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    elevation: 0,
-                  ),
-                  child: const Text(
-                    'SAVE TO MASTER',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 1,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFormFieldsLayout() {
-    List<String> fields = [];
-    switch (_selectedTab) {
-      case 'CUSTOMER MASTER':
-        fields = [
-          'ID',
-          'NAME',
-          'SALES MANAGER',
-          'EMPLOYEE RESPONSIBLE',
-          'STATUS',
-          'DISTRIBUTIONCHANNEL',
-        ];
-        break;
-      case 'MATERIAL MASTER':
-        fields = [
-          'PRODUCTCODE',
-          'PRODUCT NAME',
-          'MRP / PRICE',
-          'GST%',
-          'HSNCODE',
-        ];
-        break;
-      case 'USER MASTER':
-      default:
-        fields = ['NAME', 'EMAIL', 'ROLE', 'PASSWORD'];
-    }
-
-    return Column(
-      children: fields
-          .map(
-            (f) => Padding(
-              padding: const EdgeInsets.only(bottom: 24),
-              child: TextField(
-                style: const TextStyle(
-                  color: Color(0xFF0F172A),
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                ),
-                decoration: InputDecoration(
-                  labelText: f.toUpperCase(),
-                  labelStyle: const TextStyle(
-                    color: Color(0xFF64748B),
-                    fontWeight: FontWeight.w900,
-                    fontSize: 10,
-                    letterSpacing: 1,
-                  ),
-                  floatingLabelBehavior: FloatingLabelBehavior.always,
-                  enabledBorder: OutlineInputBorder(
-                    borderSide: const BorderSide(color: Color(0xFF0F172A), width: 1.5),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderSide: const BorderSide(color: Color(0xFF6366F1), width: 2),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  filled: true,
-                  fillColor: const Color(0xFFF8FAFC),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-                ),
-              ),
             ),
-          )
-          .toList(),
+          );
+        },
+      ),
     );
   }
 }

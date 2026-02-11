@@ -549,6 +549,7 @@ class _LogisticsHubScreenState extends State<LogisticsHubScreen> {
         child: Container(
           height: 48,
           decoration: BoxDecoration(
+            // ignore: deprecated_member_use
             color: isSelected ? NexusTheme.emerald500 : Colors.white.withOpacity(0.03),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: isSelected ? NexusTheme.emerald400 : Colors.white.withOpacity(0.05)),

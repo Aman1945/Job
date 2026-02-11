@@ -209,11 +209,17 @@ class _ProcurementScreenState extends State<ProcurementScreen> {
         title: Row(
           children: [
             Text(item.id, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: NexusTheme.indigo600)),
-            const SizedBox(width: 12),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(color: statusColor.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
-              child: Text(item.status.toUpperCase(), style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: statusColor)),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(color: statusColor.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+                child: Text(
+                  item.status.toUpperCase(),
+                  style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: statusColor),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
             ),
           ],
         ),

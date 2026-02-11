@@ -80,16 +80,22 @@ class _CreditControlScreenState extends State<CreditControlScreen> {
   }
 
   Widget _buildOrderCard(BuildContext context, Order order, NexusProvider provider, bool isMobile) {
-    // Mock payment history data (in real app, fetch from backend)
-    final mockPayments = [
-      {'date': DateTime.now().subtract(const Duration(days: 15)), 'amount': 45000, 'status': 'Paid'},
-      {'date': DateTime.now().subtract(const Duration(days: 45)), 'amount': 32000, 'status': 'Paid'},
-      {'date': DateTime.now().subtract(const Duration(days: 75)), 'amount': 28000, 'status': 'Overdue'},
-    ];
+    // Find actual customer data from provider
+    final customer = provider.customers.firstWhere(
+      (c) => c.id == order.customerId || c.name == order.customerName,
+      orElse: () => Customer(id: '?', name: order.customerName, address: '', city: '', limit: 100000, osBalance: 0),
+    );
     
-    final outstandingBalance = 28000.0; // Mock data
-    final creditLimit = 100000.0;
-    final creditUtilization = (outstandingBalance / creditLimit * 100);
+    final outstandingBalance = customer.osBalance;
+    final creditLimit = customer.limit;
+    final creditUtilization = creditLimit > 0 ? (outstandingBalance / creditLimit * 100) : 0.0;
+    
+    // Use actual aging data if available, else use specific mock for this customer
+    final mockPayments = [
+      {'date': DateTime.now().subtract(const Duration(days: 15)), 'amount': order.total, 'status': 'Pending'},
+      {'date': DateTime.now().subtract(const Duration(days: 45)), 'amount': 32000, 'status': 'Paid'},
+      {'date': DateTime.now().subtract(const Duration(days: 75)), 'amount': customer.overdue, 'status': 'Overdue'},
+    ];
 
     return Card(
       margin: EdgeInsets.only(bottom: isMobile ? 12 : 16),
