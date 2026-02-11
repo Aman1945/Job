@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../utils/theme.dart';
+import 'package:dropdown_button2/dropdown_button2.dart';
 
 class AdvancedFiltersWidget extends StatelessWidget {
   final List<String> selectedCategories;
@@ -38,7 +39,7 @@ class AdvancedFiltersWidget extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: NexusTheme.slate200),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10)],
+        boxShadow: [BoxShadow(color: Colors.black.withAlpha(8), blurRadius: 10)],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -88,14 +89,13 @@ class AdvancedFiltersWidget extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           
-          // Horizontal Scrollable Filter Chips
+          // Horizontal Scrollable Filter Dropdowns
           SizedBox(
             height: 42,
             child: ListView(
               scrollDirection: Axis.horizontal,
               children: [
-                _buildDropdownFilterChip(
-                  context,
+                _buildLibraryDropdown(
                   'Category',
                   Icons.category,
                   ['Electronics', 'Grocery', 'Fashion', 'Home & Kitchen', 'Sports'],
@@ -104,8 +104,7 @@ class AdvancedFiltersWidget extends StatelessWidget {
                   NexusTheme.indigo600,
                 ),
                 const SizedBox(width: 8),
-                _buildDropdownFilterChip(
-                  context,
+                _buildLibraryDropdown(
                   'Region',
                   Icons.location_on,
                   ['North', 'South', 'East', 'West', 'Central'],
@@ -114,8 +113,7 @@ class AdvancedFiltersWidget extends StatelessWidget {
                   NexusTheme.emerald600,
                 ),
                 const SizedBox(width: 8),
-                _buildDropdownFilterChip(
-                  context,
+                _buildLibraryDropdown(
                   'Salesperson',
                   Icons.person,
                   ['Animesh Jamuar', 'Rahul Sharma', 'Priya Singh', 'Amit Kumar'],
@@ -124,8 +122,7 @@ class AdvancedFiltersWidget extends StatelessWidget {
                   NexusTheme.blue600,
                 ),
                 const SizedBox(width: 8),
-                _buildDropdownFilterChip(
-                  context,
+                _buildLibraryDropdown(
                   'Status',
                   Icons.check_circle,
                   ['Pending', 'Approved', 'In Transit', 'Delivered', 'Cancelled'],
@@ -136,13 +133,27 @@ class AdvancedFiltersWidget extends StatelessWidget {
               ],
             ),
           ),
+          
+          // Selected Filter Tags with Individual Removal (Side "Cut" buttons)
+          if (totalFilters > 0) ...[
+            const SizedBox(height: 16),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                ..._buildFilterTags(selectedCategories, onCategoriesChanged, NexusTheme.indigo600),
+                ..._buildFilterTags(selectedRegions, onRegionsChanged, NexusTheme.emerald600),
+                ..._buildFilterTags(selectedSalespersons, onSalespersonsChanged, NexusTheme.blue600),
+                ..._buildFilterTags(selectedStatuses, onStatusesChanged, NexusTheme.purple600),
+              ],
+            ),
+          ],
         ],
       ),
     );
   }
 
-  Widget _buildDropdownFilterChip(
-    BuildContext context,
+  Widget _buildLibraryDropdown(
     String label,
     IconData icon,
     List<String> options,
@@ -151,231 +162,140 @@ class AdvancedFiltersWidget extends StatelessWidget {
     Color color,
   ) {
     final hasSelection = selectedValues.isNotEmpty;
-    
-    return InkWell(
-      onTap: () => _showFilterDialog(context, label, icon, options, selectedValues, onChanged, color),
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: hasSelection ? color.withOpacity(0.1) : NexusTheme.slate50,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: hasSelection ? color : NexusTheme.slate200,
-            width: hasSelection ? 2 : 1,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 16, color: hasSelection ? color : NexusTheme.slate400),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: hasSelection ? color : NexusTheme.slate600,
-              ),
+
+    return DropdownButtonHideUnderline(
+      child: DropdownButton2<String>(
+        isExpanded: true,
+        customButton: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: hasSelection ? color.withAlpha(25) : NexusTheme.slate50,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: hasSelection ? color : NexusTheme.slate200,
+              width: hasSelection ? 2 : 1,
             ),
-            if (hasSelection) ...[
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 16, color: hasSelection ? color : NexusTheme.slate400),
               const SizedBox(width: 6),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: color,
-                  borderRadius: BorderRadius.circular(8),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: hasSelection ? color : NexusTheme.slate600,
                 ),
-                child: Text(
-                  '${selectedValues.length}',
-                  style: const TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w900,
-                    color: Colors.white,
-                  ),
-                ),
+              ),
+              const SizedBox(width: 4),
+              Icon(
+                Icons.arrow_drop_down,
+                size: 18,
+                color: hasSelection ? color : NexusTheme.slate400,
               ),
             ],
-            const SizedBox(width: 4),
-            Icon(
-              Icons.arrow_drop_down,
-              size: 18,
-              color: hasSelection ? color : NexusTheme.slate400,
+          ),
+        ),
+        items: options.map((item) {
+          return DropdownMenuItem<String>(
+            value: item,
+            // Disable default onTap to handle multi-select logic manually
+            enabled: false,
+            child: StatefulBuilder(
+              builder: (context, menuSetState) {
+                final isSelected = selectedValues.contains(item);
+                return InkWell(
+                  onTap: () {
+                    final newList = List<String>.from(selectedValues);
+                    if (isSelected) {
+                      newList.remove(item);
+                    } else {
+                      newList.add(item);
+                    }
+                    onChanged(newList);
+                    menuSetState(() {});
+                  },
+                  child: Container(
+                    height: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Row(
+                      children: [
+                        if (isSelected)
+                          Icon(Icons.check_box_rounded, color: color)
+                        else
+                          const Icon(Icons.check_box_outline_blank_rounded),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Text(
+                            item,
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                              color: isSelected ? color : NexusTheme.slate800,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
             ),
-          ],
+          );
+        }).toList(),
+        onChanged: (value) {}, // Handled by inner InkWell
+        dropdownStyleData: DropdownStyleData(
+          maxHeight: 300,
+          width: 250,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            color: Colors.white,
+          ),
+          offset: const Offset(0, -8),
+          scrollbarTheme: ScrollbarThemeData(
+            radius: const Radius.circular(40),
+            thickness: WidgetStateProperty.all(6),
+            thumbVisibility: WidgetStateProperty.all(true),
+          ),
+        ),
+        menuItemStyleData: const MenuItemStyleData(
+          height: 48,
+          padding: EdgeInsets.zero,
         ),
       ),
     );
   }
 
-  void _showFilterDialog(
-    BuildContext context,
-    String title,
-    IconData icon,
-    List<String> options,
-    List<String> selectedValues,
-    Function(List<String>) onChanged,
-    Color color,
-  ) {
-    showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) {
-          return AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            title: Row(
-              children: [
-                Icon(icon, color: color, size: 24),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'Select $title',
-                    style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18),
-                  ),
-                ),
-                if (selectedValues.isNotEmpty)
-                  TextButton(
-                    onPressed: () {
-                      setState(() {
-                        onChanged([]);
-                      });
-                    },
-                    child: const Text('CLEAR ALL', style: TextStyle(fontSize: 11)),
-                  ),
-              ],
+  List<Widget> _buildFilterTags(List<String> selections, Function(List<String>) onChanged, Color color) {
+    return selections.map((value) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: color.withAlpha(25),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: color, width: 1.5),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              value,
+              style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: color),
             ),
-            content: SizedBox(
-              width: 350,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Selected values as removable chips
-                  if (selectedValues.isNotEmpty) ...[
-                    const Text(
-                      'SELECTED:',
-                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: NexusTheme.slate400),
-                    ),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      children: selectedValues.map((value) {
-                        return Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: color.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: color, width: 1.5),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                value,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                  color: color,
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              InkWell(
-                                onTap: () {
-                                  setState(() {
-                                    final newList = List<String>.from(selectedValues);
-                                    newList.remove(value);
-                                    onChanged(newList);
-                                  });
-                                },
-                                child: Icon(
-                                  Icons.close,
-                                  size: 16,
-                                  color: color,
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                    const SizedBox(height: 16),
-                    const Divider(),
-                    const SizedBox(height: 12),
-                  ],
-                  
-                  // Dropdown list of options
-                  const Text(
-                    'SELECT OPTIONS:',
-                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: NexusTheme.slate400),
-                  ),
-                  const SizedBox(height: 8),
-                  Container(
-                    constraints: const BoxConstraints(maxHeight: 250),
-                    child: SingleChildScrollView(
-                      child: Column(
-                        children: options.map((option) {
-                          final isSelected = selectedValues.contains(option);
-                          return InkWell(
-                            onTap: () {
-                              setState(() {
-                                final newList = List<String>.from(selectedValues);
-                                if (isSelected) {
-                                  newList.remove(option);
-                                } else {
-                                  newList.add(option);
-                                }
-                                onChanged(newList);
-                              });
-                            },
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                              margin: const EdgeInsets.only(bottom: 4),
-                              decoration: BoxDecoration(
-                                color: isSelected ? color.withOpacity(0.05) : Colors.transparent,
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(
-                                  color: isSelected ? color.withOpacity(0.3) : NexusTheme.slate200,
-                                ),
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    isSelected ? Icons.check_box : Icons.check_box_outline_blank,
-                                    color: isSelected ? color : NexusTheme.slate400,
-                                    size: 20,
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Text(
-                                      option,
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                                        color: isSelected ? color : NexusTheme.slate700,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        }).toList(),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+            const SizedBox(width: 6),
+            InkWell(
+              onTap: () {
+                final newList = List<String>.from(selections);
+                newList.remove(value);
+                onChanged(newList);
+              },
+              child: Icon(Icons.close, size: 14, color: color),
             ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('DONE'),
-              ),
-            ],
-          );
-        },
-      ),
-    );
+          ],
+        ),
+      );
+    }).toList();
   }
 }
