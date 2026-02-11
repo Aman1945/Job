@@ -27,6 +27,12 @@ const orderSchema = new mongoose.Schema({
         status: { type: String },
         timestamp: { type: Date, default: Date.now }
     }],
+    logistics: {
+        deliveryAgentId: { type: String },
+        vehicleNo: { type: String },
+        vehicleProvider: { type: String },
+        distanceKm: { type: Number }
+    },
     createdAt: { type: Date, default: Date.now }
 }, { timestamps: true });
 
