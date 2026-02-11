@@ -42,10 +42,18 @@ class _LogisticsHubScreenState extends State<LogisticsHubScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        title: const Text('LOGISTICS HUB', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: NexusTheme.slate900, letterSpacing: 1)),
+        centerTitle: false,
+        titleSpacing: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: NexusTheme.slate900),
           onPressed: () => Navigator.pop(context),
+        ),
+        title: Row(
+          children: [
+            const Text('LOGISTICS HUB', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: NexusTheme.slate900, letterSpacing: 1)),
+            const SizedBox(width: 20),
+            _buildStatusTabs(pendingOrders.length, activeShipments.length),
+          ],
         ),
       ),
       body: LayoutBuilder(
@@ -55,48 +63,8 @@ class _LogisticsHubScreenState extends State<LogisticsHubScreen> {
           return SingleChildScrollView(
             child: Column(
               children: [
-                // Header Section
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                  child: isMobile 
-                    ? Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Logistics Hub',
-                            style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: NexusTheme.slate900, letterSpacing: -0.5),
-                          ),
-                          const Text(
-                            'Assign fleet & vehicles',
-                            style: TextStyle(fontSize: 13, color: NexusTheme.slate400, fontWeight: FontWeight.w500),
-                          ),
-                          const SizedBox(height: 16),
-                          _buildStatusTabs(pendingOrders.length, activeShipments.length),
-                        ],
-                      )
-                    : Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Logistics Hub (Fleet Loading)',
-                                style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: NexusTheme.slate900, letterSpacing: -0.5),
-                              ),
-                              const Text(
-                                'Assign delivery agents and vehicles to invoiced missions',
-                                style: TextStyle(fontSize: 13, color: NexusTheme.slate400, fontWeight: FontWeight.w500),
-                              ),
-                            ],
-                          ),
-                          _buildStatusTabs(pendingOrders.length, activeShipments.length),
-                        ],
-                      ),
-                ),
-                
-                const SizedBox(height: 32),
-                
+                const SizedBox(height: 20),
+
                 // Search Bar
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24.0),
