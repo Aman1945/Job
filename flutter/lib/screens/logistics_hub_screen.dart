@@ -374,7 +374,7 @@ class _LogisticsHubScreenState extends State<LogisticsHubScreen> {
           ),
           title: Row(
             children: [
-              Text(order.id, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: Color(0xFF6366F1), fontSelectionBaseline: TextBaseline.alphabetic)),
+              Text(order.id, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: Color(0xFF6366F1))),
               const SizedBox(width: 12),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
