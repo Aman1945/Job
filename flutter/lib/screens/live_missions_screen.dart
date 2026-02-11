@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/nexus_provider.dart';
@@ -14,6 +15,25 @@ class LiveMissionsScreen extends StatefulWidget {
 class _LiveMissionsScreenState extends State<LiveMissionsScreen> {
   Order? _selectedOrder;
   final TextEditingController _noteController = TextEditingController();
+  Timer? _refreshTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    // Set up auto-sync every 5 seconds
+    _refreshTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
+      if (mounted && _selectedOrder == null) {
+        Provider.of<NexusProvider>(context, listen: false).fetchOrders();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    _noteController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -301,6 +321,15 @@ class _LiveMissionsScreenState extends State<LiveMissionsScreen> {
                               style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: Color(0xFF6366F1))
                             ),
                             const SizedBox(width: 8),
+                            if (order.isSTN == true)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(color: const Color(0xFF6366F1), borderRadius: BorderRadius.circular(6)),
+                                child: const Text('STN', 
+                                  style: TextStyle(fontSize: 7, fontWeight: FontWeight.w900, color: Colors.white)
+                                ),
+                              ),
+                            const SizedBox(width: 8),
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                               decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(6)),
@@ -329,7 +358,9 @@ class _LiveMissionsScreenState extends State<LiveMissionsScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const Text('JOURNEY PROGRESS', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: Color(0xFF94A3B8), letterSpacing: 1)),
-                  const Text('10% - ON TRACK', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: Color(0xFF6366F1))),
+                  Text('${(_calculateProgress(order.status) * 100).toInt()}% - ${order.status == 'On Hold' ? 'PAUSED' : 'ON TRACK'}', 
+                    style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: order.status == 'On Hold' ? Colors.orange : const Color(0xFF6366F1))
+                  ),
                 ],
               ),
               const SizedBox(height: 12),
@@ -339,10 +370,10 @@ class _LiveMissionsScreenState extends State<LiveMissionsScreen> {
                 decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(4)),
                 child: FractionallySizedBox(
                   alignment: Alignment.centerLeft,
-                  widthFactor: 0.1,
+                  widthFactor: _calculateProgress(order.status),
                   child: Container(
                     decoration: BoxDecoration(
-                      color: const Color(0xFF6366F1),
+                      color: order.status == 'On Hold' ? Colors.orange : const Color(0xFF6366F1),
                       borderRadius: BorderRadius.circular(4),
                     ),
                   ),
@@ -767,5 +798,21 @@ class _LiveMissionsScreenState extends State<LiveMissionsScreen> {
         ],
       ),
     );
+  }
+
+  double _calculateProgress(String status) {
+    switch (status) {
+      case 'Pending Credit Approval': return 0.1;
+      case 'On Hold': return 0.1;
+      case 'Pending WH Selection': return 0.25;
+      case 'Pending Packing': return 0.4;
+      case 'Cost Added': return 0.55;
+      case 'Pending Invoicing': return 0.7;
+      case 'Ready for Dispatch': return 0.85;
+      case 'Out for Delivery': return 0.95;
+      case 'Delivered': return 1.0;
+      case 'In Transit': return 0.5; // For STNs
+      default: return 0.1;
+    }
   }
 }

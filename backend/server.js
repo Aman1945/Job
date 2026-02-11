@@ -44,6 +44,35 @@ const Customer = require('./models/Customer');
 const Product = require('./models/Product');
 const Order = require('./models/Order');
 
+// Use MongoDB as the primary database
+const useMongoDB = true;
+
+// Helper functions for local JSON data (fallback)
+const getData = (collection) => {
+    const filePath = path.join(__dirname, 'data', `${collection}.json`);
+    try {
+        if (!fs.existsSync(filePath)) return [];
+        return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    } catch (e) {
+        console.error(`Error reading ${collection}:`, e);
+        return [];
+    }
+};
+
+const saveData = (collection, data) => {
+    const dataDir = path.join(__dirname, 'data');
+    if (!fs.existsSync(dataDir)) {
+        fs.mkdirSync(dataDir, { recursive: true });
+    }
+    const filePath = path.join(dataDir, `${collection}.json`);
+    try {
+        fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
+    } catch (e) {
+        console.error(`Error saving ${collection}:`, e);
+    }
+};
+
+
 // ==================== HOME ROUTE ====================
 app.get('/', (req, res) => {
     res.send(`

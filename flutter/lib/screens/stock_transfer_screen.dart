@@ -336,18 +336,41 @@ class _StockTransferScreenState extends State<StockTransferScreen> {
   }
 
   Widget _buildQtyInput(int index, int qty) {
-      return Container(
-          height: 44,
-          decoration: BoxDecoration(color: const Color(0xFF334155), borderRadius: BorderRadius.circular(12)),
-          child: TextFormField(
-              initialValue: qty.toString(),
-              textAlign: TextAlign.center,
-              keyboardType: TextInputType.number,
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
-              onChanged: (val) => transferItems[index]['quantity'] = int.tryParse(val) ?? 1,
-              decoration: const InputDecoration(border: InputBorder.none, contentPadding: EdgeInsets.zero),
+    return Container(
+      height: 44,
+      decoration: BoxDecoration(color: const Color(0xFF334155), borderRadius: BorderRadius.circular(12)),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          IconButton(
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+            icon: const Icon(Icons.remove, color: Colors.white, size: 16),
+            onPressed: () {
+              if (qty > 1) {
+                setState(() => transferItems[index]['quantity'] = qty - 1);
+              }
+            },
           ),
-      );
+          SizedBox(
+            width: 30,
+            child: Text(
+              qty.toString(),
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+            ),
+          ),
+          IconButton(
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+            icon: const Icon(Icons.add, color: Colors.white, size: 16),
+            onPressed: () {
+              setState(() => transferItems[index]['quantity'] = qty + 1);
+            },
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildEmptyState() {

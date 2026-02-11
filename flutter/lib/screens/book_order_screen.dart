@@ -362,15 +362,36 @@ class _BookOrderScreenState extends State<BookOrderScreen> {
     return Container(
       height: 40,
       decoration: BoxDecoration(color: const Color(0xFF334155), borderRadius: BorderRadius.circular(8)),
-      child: TextFormField(
-        initialValue: qty.toString(),
-        textAlign: TextAlign.center,
-        keyboardType: TextInputType.number,
-        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        onChanged: (val) {
-          setState(() => cartItems[index]['quantity'] = int.tryParse(val) ?? 1);
-        },
-        decoration: const InputDecoration(border: InputBorder.none),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          IconButton(
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+            icon: const Icon(Icons.remove, color: Colors.white, size: 16),
+            onPressed: () {
+              if (qty > 1) {
+                setState(() => cartItems[index]['quantity'] = qty - 1);
+              }
+            },
+          ),
+          SizedBox(
+            width: 30,
+            child: Text(
+              qty.toString(),
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+            ),
+          ),
+          IconButton(
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+            icon: const Icon(Icons.add, color: Colors.white, size: 16),
+            onPressed: () {
+              setState(() => cartItems[index]['quantity'] = qty + 1);
+            },
+          ),
+        ],
       ),
     );
   }

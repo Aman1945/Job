@@ -97,20 +97,23 @@ class OrderItem {
   final String name;
   final int quantity;
   final double price;
+  final String? unit;
 
   OrderItem({
     required this.skuCode,
     required this.name,
     required this.quantity,
     required this.price,
+    this.unit,
   });
 
   factory OrderItem.fromJson(Map<String, dynamic> json) {
     return OrderItem(
       skuCode: json['skuCode'] ?? '',
-      name: json['name'] ?? '',
+      name: json['name'] ?? json['productName'] ?? '',
       quantity: json['quantity'] ?? 0,
       price: (json['price'] ?? 0).toDouble(),
+      unit: json['unit'],
     );
   }
 
@@ -120,6 +123,7 @@ class OrderItem {
       'name': name,
       'quantity': quantity,
       'price': price,
+      if (unit != null) 'unit': unit,
     };
   }
 }
