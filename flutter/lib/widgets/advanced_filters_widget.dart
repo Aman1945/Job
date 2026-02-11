@@ -219,53 +219,162 @@ class AdvancedFiltersWidget extends StatelessWidget {
   ) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Row(
-          children: [
-            Icon(icon, color: color, size: 24),
-            const SizedBox(width: 12),
-            Text(
-              'Select $title',
-              style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: Row(
+              children: [
+                Icon(icon, color: color, size: 24),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Select $title',
+                    style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18),
+                  ),
+                ),
+                if (selectedValues.isNotEmpty)
+                  TextButton(
+                    onPressed: () {
+                      setState(() {
+                        onChanged([]);
+                      });
+                    },
+                    child: const Text('CLEAR ALL', style: TextStyle(fontSize: 11)),
+                  ),
+              ],
             ),
-          ],
-        ),
-        content: SizedBox(
-          width: 300,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: options.map((option) {
-              final isSelected = selectedValues.contains(option);
-              return CheckboxListTile(
-                value: isSelected,
-                onChanged: (bool? value) {
-                  final newList = List<String>.from(selectedValues);
-                  if (value == true) {
-                    newList.add(option);
-                  } else {
-                    newList.remove(option);
-                  }
-                  onChanged(newList);
-                  Navigator.pop(context);
-                  // Reopen dialog to show updated selection
-                  Future.delayed(const Duration(milliseconds: 100), () {
-                    _showFilterDialog(context, title, icon, options, newList, onChanged, color);
-                  });
-                },
-                title: Text(option, style: const TextStyle(fontSize: 14)),
-                activeColor: color,
-                dense: true,
-              );
-            }).toList(),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('DONE'),
-          ),
-        ],
+            content: SizedBox(
+              width: 350,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Selected values as removable chips
+                  if (selectedValues.isNotEmpty) ...[
+                    const Text(
+                      'SELECTED:',
+                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: NexusTheme.slate400),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: selectedValues.map((value) {
+                        return Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: color.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: color, width: 1.5),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                value,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: color,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              InkWell(
+                                onTap: () {
+                                  setState(() {
+                                    final newList = List<String>.from(selectedValues);
+                                    newList.remove(value);
+                                    onChanged(newList);
+                                  });
+                                },
+                                child: Icon(
+                                  Icons.close,
+                                  size: 16,
+                                  color: color,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 16),
+                    const Divider(),
+                    const SizedBox(height: 12),
+                  ],
+                  
+                  // Dropdown list of options
+                  const Text(
+                    'SELECT OPTIONS:',
+                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: NexusTheme.slate400),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    constraints: const BoxConstraints(maxHeight: 250),
+                    child: SingleChildScrollView(
+                      child: Column(
+                        children: options.map((option) {
+                          final isSelected = selectedValues.contains(option);
+                          return InkWell(
+                            onTap: () {
+                              setState(() {
+                                final newList = List<String>.from(selectedValues);
+                                if (isSelected) {
+                                  newList.remove(option);
+                                } else {
+                                  newList.add(option);
+                                }
+                                onChanged(newList);
+                              });
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                              margin: const EdgeInsets.only(bottom: 4),
+                              decoration: BoxDecoration(
+                                color: isSelected ? color.withOpacity(0.05) : Colors.transparent,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: isSelected ? color.withOpacity(0.3) : NexusTheme.slate200,
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    isSelected ? Icons.check_box : Icons.check_box_outline_blank,
+                                    color: isSelected ? color : NexusTheme.slate400,
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      option,
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                                        color: isSelected ? color : NexusTheme.slate700,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('DONE'),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
