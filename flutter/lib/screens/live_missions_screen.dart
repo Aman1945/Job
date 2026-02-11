@@ -157,13 +157,7 @@ class _LiveMissionsScreenState extends State<LiveMissionsScreen> {
                     style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF94A3B8), letterSpacing: 0.5)
                   ),
                 ),
-                Row(
-                  children: [
-                    Container(width: 6, height: 6, decoration: const BoxDecoration(color: Color(0xFF10B981), shape: BoxShape.circle)),
-                    const SizedBox(width: 8),
-                    const Text('AUTO-SYNC: 5S', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: Color(0xFF94A3B8))),
-                  ],
-                ),
+                _buildLiveSignal(),
               ],
             ),
           ),
@@ -342,6 +336,10 @@ class _LiveMissionsScreenState extends State<LiveMissionsScreen> {
                         const SizedBox(height: 8),
                         Text(order.customerName.toUpperCase(), 
                           style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: Color(0xFF0F172A), letterSpacing: -0.5)
+                        ),
+                        const SizedBox(height: 2),
+                        Text(order.partnerType ?? 'Distributor', 
+                          style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF94A3B8), letterSpacing: 0.5)
                         ),
                       ],
                     ),
@@ -564,15 +562,17 @@ class _LiveMissionsScreenState extends State<LiveMissionsScreen> {
           const SizedBox(height: 24),
           Text(order.id, style: const TextStyle(fontSize: 48, fontWeight: FontWeight.w900, color: Color(0xFF0F172A), letterSpacing: -2)),
           const SizedBox(height: 8),
-          Row(
+          Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text(order.customerName.toUpperCase(), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF94A3B8))),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 8),
-                child: Text('•', style: TextStyle(color: Color(0xFFCBD5E1))),
+              Text(order.customerName.toUpperCase(), 
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF94A3B8))
               ),
-              Text(order.partnerType ?? 'Distributor', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: Color(0xFF0F172A))),
+              const SizedBox(height: 4),
+              Text(order.partnerType ?? 'Distributor', 
+                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: Color(0xFF0F172A))
+              ),
             ],
           ),
           const SizedBox(height: 40),
@@ -817,5 +817,58 @@ class _LiveMissionsScreenState extends State<LiveMissionsScreen> {
       case 'In Transit': return 0.5; // For STNs
       default: return 0.1;
     }
+  }
+  Widget _buildLiveSignal() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFF10B981).withOpacity(0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFF10B981).withOpacity(0.2)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _PulseCircle(),
+          const SizedBox(width: 8),
+          const Text('LIVE SIGNAL ACQUIRED', 
+            style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: Color(0xFF065F46), letterSpacing: 1)
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PulseCircle extends StatefulWidget {
+  @override
+  _PulseCircleState createState() => _PulseCircleState();
+}
+
+class _PulseCircleState extends State<_PulseCircle> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(vsync: this, duration: const Duration(seconds: 1))..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: _controller,
+      child: Container(
+        width: 8,
+        height: 8,
+        decoration: const BoxDecoration(color: Color(0xFF10B981), shape: BoxShape.circle),
+      ),
+    );
   }
 }
