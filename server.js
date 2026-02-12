@@ -69,7 +69,7 @@ app.use(cors(corsOptions));
 // Rate Limiting - General API
 const apiLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100, // 100 requests per window
+    max: 500, // 500 requests per window (Relaxed for dev)
     message: {
         success: false,
         message: 'Too many requests from this IP, please try again later.'
@@ -96,6 +96,12 @@ app.use('/api', apiLimiter);
 app.use(bodyParser.json({ limit: '50mb' }));
 app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
 app.use('/uploads', express.static('uploads'));
+
+// Request Logger
+app.use((req, res, next) => {
+    console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+    next();
+});
 
 // Multer configuration for file uploads
 const storage = multer.diskStorage({
