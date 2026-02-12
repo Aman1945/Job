@@ -62,7 +62,14 @@ class _PMSScreenState extends State<PMSScreen> {
           _isLoading = false;
         });
       } else {
-        throw Exception('Failed to load performance data from server');
+        String serverError = '';
+        if (pmsResponse.statusCode != 200) {
+          serverError += 'PMS API Error (${pmsResponse.statusCode}): ${pmsResponse.body}\n';
+        }
+        if (leaderboardResponse.statusCode != 200) {
+          serverError += 'Leaderboard API Error (${leaderboardResponse.statusCode}): ${leaderboardResponse.body}';
+        }
+        throw Exception(serverError);
       }
     } catch (e) {
       if (!mounted) return;

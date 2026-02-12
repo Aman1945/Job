@@ -32,7 +32,6 @@ class DashboardScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // USE AUTH PROVIDER FOR USER DATA
     final auth = Provider.of<AuthProvider>(context);
     final nexusProvider = Provider.of<NexusProvider>(context);
     
@@ -118,7 +117,7 @@ class DashboardScreen extends StatelessWidget {
                   _buildActionList(context, isMobile),
                   
                   const SizedBox(height: 32),
-                  _buildUtilityGrid(context, isMobile, user?.role.toString()),
+                  _buildUtilityGrid(context, isMobile),
                 ],
               ),
             );
@@ -153,12 +152,21 @@ class DashboardScreen extends StatelessWidget {
 
   Widget _buildActionList(BuildContext context, bool isMobile) {
     final actions = [
+      {'label': '0. EXECUTIVE PULSE', 'icon': Icons.query_stats, 'color': NexusTheme.emerald600, 'screen': const ExecutivePulseScreen()},
       {'label': '1. LIVE MISSIONS', 'icon': Icons.radar, 'color': NexusTheme.indigo600, 'screen': const LiveMissionsScreen()},
+      {'label': '1.1 ORDER ARCHIVE', 'icon': Icons.history, 'color': NexusTheme.blue600, 'screen': const OrderArchiveScreen()},
+      {'label': '0. NEW CUSTOMER', 'icon': Icons.person_add_outlined, 'color': Colors.indigo, 'screen': const NewCustomerScreen()},
+      {'label': '0.5 CREATE SKU MASTER', 'icon': Icons.post_add_rounded, 'color': NexusTheme.amber500, 'screen': const AddProductScreen()},
       {'label': '1. BOOK ORDER', 'icon': Icons.add_shopping_cart, 'color': NexusTheme.emerald700, 'screen': const BookOrderScreen()},
+      {'label': '1.2 STOCK TRANSFER', 'icon': Icons.sync_alt, 'color': NexusTheme.slate600, 'screen': const StockTransferScreen()},
+      {'label': '1.5 LIVE ORDERS', 'icon': Icons.pending_actions, 'color': Colors.cyan, 'screen': const LiveOrdersScreen()},
       {'label': '2. CREDIT CONTROL', 'icon': Icons.bolt, 'color': Colors.orange, 'screen': const CreditControlScreen()},
+      {'label': '2.5 WH ASSIGN', 'icon': Icons.home_work_outlined, 'color': Colors.teal, 'screen': const WarehouseSelectionScreen()},
       {'label': '3. WAREHOUSE', 'icon': Icons.inventory_2_outlined, 'color': Colors.blueGrey, 'screen': const WarehouseInventoryScreen()},
+      {'label': '4. LOGISTICS COST', 'icon': Icons.currency_rupee, 'color': Colors.deepPurple, 'screen': const LogisticsCostScreen()},
       {'label': '5. INVOICING', 'icon': Icons.receipt_long, 'color': Colors.blue, 'screen': const InvoicingScreen()},
       {'label': '6. LOGISTICS HUB', 'icon': Icons.explore_outlined, 'color': Colors.purple, 'screen': const LogisticsHubScreen()},
+      {'label': '7. EXECUTION', 'icon': Icons.local_shipping_outlined, 'color': Colors.redAccent, 'screen': const DeliveryExecutionScreen()},
     ];
 
     return Column(
@@ -175,11 +183,13 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildUtilityGrid(BuildContext context, bool isMobile, String? role) {
+  Widget _buildUtilityGrid(BuildContext context, bool isMobile) {
     final utilities = [
       {'l': 'PMS Performance', 'i': Icons.emoji_events, 's': const PMSScreen()},
       {'l': 'Intelligence', 'i': Icons.insights, 's': const AnalyticsScreen()},
+      {'l': 'Procurement', 'i': Icons.shopping_bag_outlined, 's': const ProcurementScreen()},
       {'l': 'Reporting', 'i': Icons.assessment, 's': const ReportingScreen()},
+      {'l': 'Sales Hub', 'i': Icons.storefront, 's': const SalesHubScreen()},
       {'l': 'Master Data', 'i': Icons.terminal, 's': const MasterDataScreen()},
     ];
 
