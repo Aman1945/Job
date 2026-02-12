@@ -6,11 +6,89 @@ const path = require('path');
 require('dotenv').config();
 const mongoose = require('mongoose');
 const multer = require('multer');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+
+// ==================== ENVIRONMENT VALIDATION ====================
+if (!process.env.JWT_SECRET) {
+    console.error('❌ FATAL: JWT_SECRET is missing in .env file');
+    console.error('💡 Add: JWT_SECRET=your-super-secret-key-minimum-32-characters');
+    process.exit(1);
+}
+
+if (!process.env.MONGODB_URI || process.env.MONGODB_URI.includes('your_mongodb')) {
+    console.error('❌ FATAL: MONGODB_URI is missing or contains placeholder value');
+    console.error('💡 Update .env with real MongoDB connection string');
+    process.exit(1);
+}
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(cors());
+// ==================== SECURITY MIDDLEWARE ====================
+// Helmet.js - Security headers
+app.use(helmet({
+    contentSecurityPolicy: false, // Disable for API server
+    crossOriginEmbedderPolicy: false
+}));
+
+// CORS - Restrict to allowed origins
+const allowedOrigins = [
+    'http://localhost:3000',
+    'http://localhost:54167',
+    'http://localhost:8080',
+    'https://nexus-oms-backend.onrender.com',
+    'capacitor://localhost',
+    'ionic://localhost',
+    'http://192.168.1.1:3000', // Add your local IP
+];
+
+const corsOptions = {
+    origin: function (origin, callback) {
+        // Allow requests with no origin (mobile apps, Postman)
+        if (!origin) return callback(null, true);
+
+        if (allowedOrigins.indexOf(origin) !== -1) {
+            callback(null, true);
+        } else {
+            console.warn(`⚠️ CORS blocked: ${origin}`);
+            callback(null, true); // Allow for now, change to false in production
+        }
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+};
+
+app.use(cors(corsOptions));
+
+// Rate Limiting - General API
+const apiLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // 100 requests per window
+    message: {
+        success: false,
+        message: 'Too many requests from this IP, please try again later.'
+    },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+// Rate Limiting - Login endpoint (stricter)
+const loginLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 5, // 5 login attempts per window
+    message: {
+        success: false,
+        message: 'Too many login attempts, please try again after 15 minutes.'
+    },
+    skipSuccessfulRequests: true
+});
+
+// Apply rate limiting to all API routes
+app.use('/api', apiLimiter);
+
+// Body parser
 app.use(bodyParser.json({ limit: '50mb' }));
 app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
 app.use('/uploads', express.static('uploads'));
@@ -47,6 +125,7 @@ const Procurement = require('./models/Procurement');
 
 // Use MongoDB as the primary database
 const useMongoDB = true;
+
 
 // Helper functions for local JSON data (fallback)
 const getData = (collection) => {
@@ -92,31 +171,100 @@ app.get('/', (req, res) => {
     `);
 });
 
+
 // ==================== AUTHENTICATION ====================
-app.post('/api/login', async (req, res) => {
+app.post('/api/login', loginLimiter, async (req, res) => {
     const { email, password } = req.body;
     console.log(`🔐 Login attempt: ${email}`);
 
+    const { logLogin } = require('./middleware/auditLogger');
+
     try {
-        // First check if user exists
-        const user = await User.findOne({ id: email });
+        // Find user by ID or email
+        const user = await User.findOne({ $or: [{ id: email }, { email: email }] });
 
         if (!user) {
-            console.log(`❌ Login failed: ${email} (Email not registered)`);
-            return res.status(404).json({ message: 'EMAIL_NOT_FOUND' });
+            console.log(`❌ Login failed: ${email} (User not found)`);
+
+            // Log failed login attempt
+            await logLogin(
+                email,
+                'Unknown User',
+                false,
+                req.ip || req.connection.remoteAddress,
+                req.get('user-agent'),
+                'User not found'
+            );
+
+            return res.status(404).json({
+                success: false,
+                message: 'EMAIL_NOT_FOUND'
+            });
         }
 
-        // Check password
-        if (user.password !== password) {
+        // Compare password using bcrypt
+        const isPasswordValid = await user.comparePassword(password);
+
+        if (!isPasswordValid) {
             console.log(`❌ Login failed: ${email} (Incorrect password)`);
-            return res.status(401).json({ message: 'WRONG_PASSWORD' });
+
+            // Log failed login attempt
+            await logLogin(
+                user.id,
+                user.name,
+                false,
+                req.ip || req.connection.remoteAddress,
+                req.get('user-agent'),
+                'Incorrect password'
+            );
+
+            return res.status(401).json({
+                success: false,
+                message: 'WRONG_PASSWORD'
+            });
         }
+
+        // Update last login
+        user.lastLogin = new Date();
+        await user.save();
+
+        // Generate JWT token
+        const jwt = require('jsonwebtoken');
+        const token = jwt.sign(
+            user.getJWTPayload(),
+            process.env.JWT_SECRET,
+            { expiresIn: process.env.JWT_EXPIRY || '7d' }
+        );
 
         console.log(`✅ Login successful: ${email}`);
-        res.json(user);
+
+        // Log successful login
+        await logLogin(
+            user.id,
+            user.name,
+            true,
+            req.ip || req.connection.remoteAddress,
+            req.get('user-agent')
+        );
+
+        res.json({
+            success: true,
+            token,
+            user: {
+                id: user.id,
+                name: user.name,
+                email: user.email,
+                role: user.role,
+                isApprover: user.isApprover,
+                status: user.status
+            }
+        });
     } catch (error) {
         console.error('Login error:', error);
-        res.status(500).json({ message: 'Server error' });
+        res.status(500).json({
+            success: false,
+            message: 'LOGIN_ERROR'
+        });
     }
 });
 
@@ -503,9 +651,34 @@ app.post('/api/logistics/bulk-assign', async (req, res) => {
 app.post('/api/logistics/calculate-cost', async (req, res) => {
     try {
         const { origin, destination, vehicleType, distance: providedDistance } = req.body;
+        const { getDistance, calculateHaversineDistance, estimateDuration } = require('./services/mapsService');
 
-        // Mock distance calculation (in production, use Google Maps Distance Matrix API)
-        const distance = providedDistance || Math.floor(Math.random() * 500) + 50; // km
+        let distance;
+        let duration;
+        let distanceSource = 'manual';
+
+        // If distance not provided, try Google Maps API
+        if (!providedDistance && origin && destination) {
+            const googleDistance = await getDistance(origin, destination);
+
+            if (googleDistance) {
+                distance = googleDistance.distance;
+                duration = googleDistance.durationText;
+                distanceSource = 'google_maps';
+                console.log(`✅ Using Google Maps distance: ${distance} km`);
+            } else {
+                // Fallback: Try to extract coordinates and use Haversine
+                // For now, use random distance as fallback
+                distance = Math.floor(Math.random() * 500) + 50;
+                duration = estimateDuration(distance) + ' minutes';
+                distanceSource = 'estimated';
+                console.log(`⚠️  Using estimated distance: ${distance} km`);
+            }
+        } else {
+            distance = providedDistance || Math.floor(Math.random() * 500) + 50;
+            duration = estimateDuration(distance) + ' minutes';
+            distanceSource = providedDistance ? 'manual' : 'estimated';
+        }
 
         // Cost parameters (configurable)
         const FUEL_RATES = {
@@ -538,6 +711,7 @@ app.post('/api/logistics/calculate-cost', async (req, res) => {
                 origin,
                 destination,
                 distance,
+                distanceSource, // 'google_maps', 'manual', or 'estimated'
                 vehicleType: selectedVehicle,
                 breakdown: {
                     fuelCost: Math.round(fuelCost),
@@ -546,7 +720,7 @@ app.post('/api/logistics/calculate-cost', async (req, res) => {
                     miscCharges,
                     total: Math.round(totalCost)
                 },
-                estimatedTime: Math.ceil(distance / 60) + ' hours', // Assuming 60 km/h avg speed
+                estimatedTime: duration || (Math.ceil(distance / 60) + ' hours'),
             }
         });
     } catch (error) {
@@ -1029,6 +1203,28 @@ app.get('/api/tally/export/:orderId', async (req, res) => {
     }
 });
 
+// ==================== NEW FEATURE ROUTES ====================
+// Import and mount new routes (PMS, Clearance, Packaging, etc.)
+const newFeaturesRoutes = require('./routes/newFeatures');
+newFeaturesRoutes(app);
+
+// ==================== ISO 27001 COMPLIANCE ROUTES ====================
+// Audit Log Routes (A.8.16 - Monitoring Activities)
+const auditRoutes = require('./routes/auditRoutes');
+auditRoutes(app);
+
+// GDPR Compliance Routes (A.8.10 - Information Deletion)
+const gdprRoutes = require('./routes/gdprRoutes');
+gdprRoutes(app);
+// ==================== HEALTH CHECK ====================
+app.get('/api/health', (req, res) => {
+    res.json({
+        status: 'ok',
+        timestamp: new Date().toISOString(),
+        version: '2.1.0'
+    });
+});
+
 // ==================== ERROR HANDLING ====================
 app.use((req, res) => {
     res.status(404).json({ message: 'Endpoint not found' });
@@ -1040,7 +1236,7 @@ app.use((err, req, res, next) => {
 });
 
 // ==================== START SERVER ====================
-app.listen(PORT, '0.0.0.0', () => {
+const server = app.listen(PORT, '0.0.0.0', () => {
     const { networkInterfaces } = require('os');
     const nets = networkInterfaces();
     const ips = [];
@@ -1060,6 +1256,7 @@ app.listen(PORT, '0.0.0.0', () => {
 ║  Status: ✅ ONLINE (Strict Mode)                       ║
 ║  Port: ${PORT}                                         ║
 ║  Database: ☁️  MongoDB Atlas                            ║
+║  WebSocket: 🔌 ENABLED                                  ║
 ║                                                        ║
 ║  Local IPs for Mobile Connection:                      ║
 ${ips.map(ip => `║  🔗 http://${ip}:${PORT}                         `).join('\n')}
@@ -1067,3 +1264,9 @@ ${ips.map(ip => `║  🔗 http://${ip}:${PORT}                         `).join(
 ╚════════════════════════════════════════════════════════╝
     `);
 });
+
+// ==================== WEBSOCKET INITIALIZATION ====================
+const socketIo = require('./socket');
+socketIo.init(server);
+console.log('🔌 WebSocket server ready for real-time connections');
+

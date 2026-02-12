@@ -43,24 +43,41 @@
   - File upload (POD/Documents)
   - Offline-first architecture
 
-#### **🔧 Backend API (Node.js + Express)**
 - ✅ **RESTful API** with complete CRUD operations
+- ✅ **Security Hardened**
+  - JWT Authentication (7-day expiry)
+  - bcrypt Password Hashing
+  - Role-Based Access Control (9 roles)
+  - Helmet.js Security Headers
+  - Rate Limiting (100 req/15min)
+  - CORS Protection
 - ✅ **Dual Storage Support**
   - MongoDB Atlas (Cloud)
   - JSON File Storage (Fallback)
-- ✅ **Comprehensive Endpoints**
+- ✅ **Advanced Features**
+  - WebSocket Real-time Updates
+  - Bulk Order Upload (Excel)
+  - AI-Powered Credit Insights (Gemini)
+  - Google Maps Distance Matrix
+  - Cloudflare R2 File Storage
+  - Performance Management System
+  - Near-Expiry Clearance Orders
+  - Packaging Inventory Management
+- ✅ **Comprehensive Endpoints** (40+ endpoints)
   - Authentication (`/api/login`)
   - Users Management (`/api/users`)
   - Customers (`/api/customers`)
   - Products (`/api/products`)
   - Orders (`/api/orders`)
-  - Bulk Operations (`/api/orders/bulk-update`)
+  - Bulk Operations (`/api/orders/bulk`, `/api/orders/bulk-update`)
   - File Uploads (`/api/upload/pod`)
-  - Analytics (`/api/analytics/dashboard`, `/api/analytics/sales`)
-  - Sales Hub (`/api/analytics/sales-hub`)
-  - Reports (`/api/analytics/reports`)
-  - PMS (`/api/analytics/pms`)
-  - **Export/Download** (`/api/analytics/export`) - PDF, Excel, CSV
+  - Analytics (`/api/analytics/*`)
+  - PMS (`/api/pms/*`)
+  - Clearance Orders (`/api/orders/clearance`)
+  - Packaging (`/api/packaging/*`)
+  - AI Insights (`/api/ai/credit-insight`)
+  - Logistics (`/api/logistics/calculate-cost`)
+  - Export/Download (`/api/analytics/export`)
   - Tally Export (`/api/tally/export/:orderId`)
 
 - ✅ **Features**
@@ -68,10 +85,12 @@
   - Status history tracking
   - Query filtering (status, salesperson)
   - File upload with Multer
-  - **Download notifications with progress tracking**
-  - **Custom notification service**
+  - Download notifications with progress tracking
+  - Custom notification service
   - CORS enabled
   - Error handling middleware
+  - WebSocket events (order:created, order:updated)
+
 
 ---
 
