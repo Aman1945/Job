@@ -1,18 +1,74 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/nexus_provider.dart';
+import '../providers/auth_provider.dart';
 import '../utils/theme.dart';
 import '../models/models.dart';
 import 'package:intl/intl.dart';
+import 'package:http/http.dart' as http;
 
-class OrderDetailsScreen extends StatelessWidget {
+class OrderDetailsScreen extends StatefulWidget {
   final Order order;
   const OrderDetailsScreen({super.key, required this.order});
 
   @override
+  State<OrderDetailsScreen> createState() => _OrderDetailsScreenState();
+}
+
+class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
+  String? _aiInsight;
+  bool _isInsightLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchAiInsight();
+  }
+
+  Future<void> _fetchAiInsight() async {
+    setState(() => _isInsightLoading = true);
+    try {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      const String serverAddress = 'nexus-oms-backend.onrender.com';
+      
+      final response = await http.post(
+        Uri.parse('https://$serverAddress/api/ai/credit-insight'),
+        headers: authProvider.authHeaders,
+        body: jsonEncode({
+          'customerId': widget.order.customerId,
+          'customerName': widget.order.customerName,
+          'orderValue': widget.order.total,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        setState(() {
+          _aiInsight = data['insight'];
+          _isInsightLoading = false;
+        });
+      } else {
+        setState(() {
+          _aiInsight = "No AI insight available at this moment.";
+          _isInsightLoading = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _aiInsight = "Failed to load AI Credit Insight.";
+        _isInsightLoading = false;
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final provider = Provider.of<NexusProvider>(context);
-    final customer = provider.customers.firstWhere((c) => c.id == order.customerId, orElse: () => Customer(id: '', name: 'Unknown', address: '', city: 'NA', status: 'Inactive'));
+    final customer = provider.customers.firstWhere(
+      (c) => c.id == widget.order.customerId, 
+      orElse: () => Customer(id: '', name: 'Unknown', address: '', city: 'NA', status: 'Inactive')
+    );
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
@@ -24,7 +80,7 @@ class OrderDetailsScreen extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.download, color: NexusTheme.indigo600),
             onPressed: () {
-              provider.downloadReport(type: 'Invoice ${order.id}', format: 'pdf');
+              provider.downloadReport(type: 'Invoice ${widget.order.id}', format: 'pdf');
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Downloading Invoice PDF...')),
               );
@@ -39,34 +95,85 @@ class OrderDetailsScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header Section
-            _buildOrderHeader(order),
+            _buildOrderHeader(widget.order),
             const SizedBox(height: 24),
 
-            // Credit Exposure Matrix Section
-            _buildSectionTitle('⚡ 2. Credit Exposure Matrix', 'FINANCIAL HEALTH REVIEW FOR ${order.customerName}'),
+            _buildSectionTitle('⚡ 2. Credit Exposure Matrix', 'FINANCIAL HEALTH REVIEW FOR ${widget.order.customerName}'),
             const SizedBox(height: 16),
             _buildCreditStatsGrid(customer),
             const SizedBox(height: 16),
             _buildAgingTable(customer),
             const SizedBox(height: 24),
 
-            // Action Panel
-            _buildActionPanel(context, order),
+            // AI CREDIT INSIGHT CARD
+            _buildSectionTitle('🤖 AI CREDIT INTELLIGENCE', 'GEMINI POWERED RISK ASSESSMENT'),
+            const SizedBox(height: 16),
+            _buildAiInsightCard(),
             const SizedBox(height: 24),
 
-            // Intelligence Insight Section
-            if (order.intelligenceInsight != null) ...[
-              _buildIntelligenceInsight(order.intelligenceInsight!),
-              const SizedBox(height: 24),
-            ],
+            _buildActionPanel(context, widget.order),
+            const SizedBox(height: 24),
 
-            // Workflow Trace Section
             _buildSectionTitle('MISSION WORKFLOW TRACE', ''),
             const SizedBox(height: 16),
-            _buildWorkflowTrace(order),
+            _buildWorkflowTrace(widget.order),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildAiInsightCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF6366F1), Color(0xFF4F46E5)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(32),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF6366F1).withOpacity(0.3),
+            blurRadius: 15,
+            offset: const Offset(0, 8),
+          )
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.psychology, color: Colors.white, size: 24),
+              const SizedBox(width: 12),
+              Text(
+                'AI RISK ASSESSMENT',
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.9),
+                  fontWeight: FontWeight.w900,
+                  fontSize: 10,
+                  letterSpacing: 1.2,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          if (_isInsightLoading)
+            const Center(child: CircularProgressIndicator(color: Colors.white))
+          else
+            Text(
+              _aiInsight ?? "Analyzing credit risk...",
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                height: 1.6,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -92,7 +199,7 @@ class OrderDetailsScreen extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               Text(order.id, style: const TextStyle(fontSize: 36, fontWeight: FontWeight.w900, letterSpacing: -1)),
-              Text('${order.customerName} • ${order.partnerType ?? "Distributor"}', style: const TextStyle(color: NexusTheme.slate400, fontWeight: FontWeight.bold, fontSize: 13)),
+              Text('${order.customerName} • Distributor', style: const TextStyle(color: NexusTheme.slate400, fontWeight: FontWeight.bold, fontSize: 13)),
             ],
           ),
           Column(
@@ -122,7 +229,7 @@ class OrderDetailsScreen extends StatelessWidget {
     return Row(
       children: [
         Expanded(
-          child: _buildStatCard('CURRENT STANDING', 'CRITICAL EXPOSURE (15+ DAYS)', const Color(0xFFF43F5E)),
+          child: _buildStatCard('CURRENT STANDING', 'CRITICAL EXPOSURE', const Color(0xFFF43F5E)),
         ),
         const SizedBox(width: 16),
         Expanded(
@@ -145,11 +252,7 @@ class OrderDetailsScreen extends StatelessWidget {
         children: [
           Row(
             children: [
-              Container(
-                padding: const EdgeInsets.all(4),
-                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-                child: const Icon(Icons.priority_high, color: Colors.white, size: 8),
-              ),
+              Container(padding: const EdgeInsets.all(4), decoration: BoxDecoration(color: color, shape: BoxShape.circle), child: const Icon(Icons.priority_high, color: Colors.white, size: 8)),
               const SizedBox(width: 8),
               Text(label, style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: color)),
             ],
@@ -163,11 +266,7 @@ class OrderDetailsScreen extends StatelessWidget {
 
   Widget _buildAgingTable(Customer customer) {
     return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(32),
-        border: Border.all(color: NexusTheme.slate200),
-      ),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(32), border: Border.all(color: NexusTheme.slate200)),
       clipBehavior: Clip.antiAlias,
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
@@ -175,21 +274,13 @@ class OrderDetailsScreen extends StatelessWidget {
           headingRowHeight: 40,
           columnSpacing: 20,
           headingRowColor: WidgetStateProperty.all(const Color(0xFF1E293B)),
-          columns: ['Days', 'Limit', 'O/s Bal', 'Overdue', '0 to 7', '7-15', '15-30', '30-45'].map((h) => DataColumn(label: Text(h.toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.w900)))).toList(),
+          columns: ['Days', 'Limit', 'O/s Bal', 'Overdue'].map((h) => DataColumn(label: Text(h.toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.w900)))).toList(),
           rows: [
             DataRow(cells: [
               const DataCell(Text('30 days', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold))),
               DataCell(Text('₹${(customer.limit/1000).toStringAsFixed(0)}K', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold))),
               DataCell(Text('₹${(customer.osBalance/1000).toStringAsFixed(0)}K', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold))),
               const DataCell(Text('₹0', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.red))),
-              const DataCell(Text('₹2L', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold))),
-              const DataCell(Text('₹3L', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold))),
-              DataCell(Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(color: Colors.pink.shade50, borderRadius: BorderRadius.circular(4)),
-                child: const Text('₹3.9L', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.pink)),
-              )),
-              const DataCell(Text('-')),
             ])
           ],
         ),
@@ -200,11 +291,7 @@ class OrderDetailsScreen extends StatelessWidget {
   Widget _buildActionPanel(BuildContext context, Order order) {
     return Container(
       padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(32),
-        border: Border.all(color: NexusTheme.slate200),
-      ),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(32), border: Border.all(color: NexusTheme.slate200)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -212,83 +299,41 @@ class OrderDetailsScreen extends StatelessWidget {
           const SizedBox(height: 12),
           Container(
             padding: const EdgeInsets.all(16),
-            height: 100,
+            height: 80,
+            width: double.infinity,
             decoration: BoxDecoration(color: const Color(0xFFF8F9FA), borderRadius: BorderRadius.circular(20)),
             child: const Text('Add internal verification notes...', style: TextStyle(color: NexusTheme.slate400, fontSize: 12)),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
           _buildActionButton(Icons.check_circle_outline, 'APPROVE ORDER', const Color(0xFF059669), () {
              Provider.of<NexusProvider>(context, listen: false).updateOrderStatus(order.id, 'Credit Approved');
              Navigator.pop(context);
           }),
-          const SizedBox(height: 12),
-          _buildActionButton(Icons.pause_circle_outline, 'PLACE ON HOLD', const Color(0xFFD97706), () {}),
-          const SizedBox(height: 12),
-          _buildActionButton(Icons.cancel_outlined, 'REJECT ORDER', const Color(0xFFE11D48), () {}, isOutline: true),
         ],
       ),
     );
   }
 
-  Widget _buildActionButton(IconData icon, String label, Color color, VoidCallback onTap, {bool isOutline = false}) {
+  Widget _buildActionButton(IconData icon, String label, Color color, VoidCallback onTap) {
     return InkWell(
       onTap: onTap,
       child: Container(
         height: 56,
-        decoration: BoxDecoration(
-          color: isOutline ? Colors.white : color,
-          borderRadius: BorderRadius.circular(24),
-          border: isOutline ? Border.all(color: color.withOpacity(0.2)) : null,
-        ),
+        decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(24)),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: isOutline ? color : Colors.white, size: 20),
+            Icon(icon, color: Colors.white, size: 20),
             const SizedBox(width: 12),
-            Text(label, style: TextStyle(color: isOutline ? color : Colors.white, fontWeight: FontWeight.w900, fontSize: 11, letterSpacing: 1)),
+            Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 11, letterSpacing: 1)),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildIntelligenceInsight(String insight) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: const Color(0xFF059669),
-        borderRadius: BorderRadius.circular(40),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Icon(Icons.info_outline, color: Colors.white, size: 20),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('INTELLIGENCE INSIGHT', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 9)),
-                const SizedBox(height: 8),
-                Text(insight, style: const TextStyle(color: Colors.white, fontSize: 13, height: 1.5, fontWeight: FontWeight.w600)),
-              ],
-            ),
-          )
-        ],
-      ),
-    );
-  }
-
   Widget _buildWorkflowTrace(Order order) {
-    final steps = [
-      'PENDING CREDIT APPROVAL',
-      'ON HOLD',
-      'PENDING WH SELECTION',
-      'PENDING PACKING',
-      'PENDING LOGISTICS',
-      'DELIVERED'
-    ];
-
+    final steps = ['PENDING CREDIT APPROVAL', 'CREDIT APPROVED', 'PENDING WH SELECTION', 'DELIVERED'];
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(32)),
@@ -298,41 +343,15 @@ class OrderDetailsScreen extends StatelessWidget {
         itemCount: steps.length,
         itemBuilder: (context, index) {
           bool isActive = order.status.toUpperCase() == steps[index];
-          return IntrinsicHeight(
-            child: Row(
-              children: [
-                Column(
-                  children: [
-                    Container(
-                      width: 24,
-                      height: 24,
-                      decoration: BoxDecoration(
-                        color: isActive ? const Color(0xFF059669).withOpacity(0.1) : const Color(0xFFF1F5F9),
-                        shape: BoxShape.circle,
-                        border: isActive ? Border.all(color: const Color(0xFF059669)) : null,
-                      ),
-                      child: isActive 
-                        ? const Icon(Icons.check, size: 14, color: Color(0xFF059669))
-                        : Center(child: Container(width: 6, height: 6, decoration: const BoxDecoration(color: Color(0xFFCBD5E1), shape: BoxShape.circle))),
-                    ),
-                    if (index < steps.length - 1)
-                      Expanded(child: Container(width: 1, color: const Color(0xFFF1F5F9))),
-                  ],
-                ),
-                const SizedBox(width: 16),
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 24),
-                  child: Text(
-                    steps[index],
-                    style: TextStyle(
-                      fontWeight: FontWeight.w900, 
-                      fontSize: 10, 
-                      color: isActive ? const Color(0xFF059669) : const Color(0xFFCBD5E1)
-                    ),
-                  ),
-                ),
-              ],
-            ),
+          return Row(
+            children: [
+              Icon(isActive ? Icons.check_circle : Icons.radio_button_unchecked, color: isActive ? Colors.green : Colors.grey, size: 20),
+              const SizedBox(width: 12),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Text(steps[index], style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10, color: isActive ? Colors.green : Colors.grey)),
+              ),
+            ],
           );
         },
       ),
