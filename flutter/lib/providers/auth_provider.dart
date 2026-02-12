@@ -29,7 +29,7 @@ class AuthProvider with ChangeNotifier {
   /// Auto-login on app start
   Future<void> tryAutoLogin() async {
     _isLoading = true;
-    notifyListeners();
+    Future.microtask(() => notifyListeners());
 
     try {
       // Read token from secure storage

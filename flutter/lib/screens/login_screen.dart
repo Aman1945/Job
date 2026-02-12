@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../providers/nexus_provider.dart';
+import '../providers/auth_provider.dart';
 import '../utils/theme.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -15,22 +15,33 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
 
   void _handleLogin() async {
-    final provider = Provider.of<NexusProvider>(context, listen: false);
+    // USE NEW AUTH PROVIDER
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    
     try {
-      await provider.login(_emailController.text, _passwordController.text);
+      final success = await authProvider.login(
+        _emailController.text.trim(), 
+        _passwordController.text.trim()
+      );
+      
+      // No need to navigate here! 
+      // main.dart's Consumer<AuthProvider> will automatically 
+      // switch to DashboardScreen when isAuthenticated becomes true.
+      
+      if (success) {
+        debugPrint('🎯 Login successful, navigation will trigger via main.dart');
+      }
     } catch (e) {
       if (!mounted) return;
       String error = e.toString().replaceFirst('Exception: ', '').trim();
       
       String displayMessage;
-      bool isTop = false;
-
-      if (error == 'EMAIL_NOT_FOUND') {
-        displayMessage = 'Email not registered. Please contact Admin';
-      } else if (error == 'WRONG_PASSWORD' || error == 'Invalid credentials') {
-        displayMessage = 'Password wrong';
+      if (error.contains('401') || error.contains('credentials')) {
+        displayMessage = 'Password or Email is incorrect';
+      } else if (error.contains('404')) {
+        displayMessage = 'User not found';
       } else {
-        displayMessage = error;
+        displayMessage = 'Server error. Please try again later.';
       }
 
       ScaffoldMessenger.of(context).clearSnackBars();
@@ -40,7 +51,7 @@ class _LoginScreenState extends State<LoginScreen> {
           backgroundColor: Colors.redAccent.shade700,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          margin: const EdgeInsets.all(20), // Always show at bottom
+          margin: const EdgeInsets.all(20),
         ),
       );
     }
@@ -61,7 +72,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 16),
                 Text(
                   'NEXUS OMS',
-                  style: Theme.of(context).textTheme.displayLarge?.copyWith(color: Colors.white),
+                  style: Theme.of(context).textTheme.displayLarge?.copyWith(color: Colors.white, fontSize: 32, fontWeight: FontWeight.w900),
                 ),
                 const SizedBox(height: 8),
                 Text(
@@ -72,6 +83,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 TextField(
                   controller: _emailController,
                   style: const TextStyle(color: Colors.white),
+                  keyboardType: TextInputType.emailAddress,
                   decoration: InputDecoration(
                     labelText: 'User ID / Email',
                     labelStyle: const TextStyle(color: NexusTheme.emerald300),
@@ -110,31 +122,23 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
                 const SizedBox(height: 24),
-                Consumer<NexusProvider>(
-                  builder: (context, provider, child) {
+                Consumer<AuthProvider>(
+                  builder: (context, auth, child) {
                     return SizedBox(
                       width: double.infinity,
-                      height: 50, // Slightly taller for better feel
+                      height: 56,
                       child: ElevatedButton(
-                        onPressed: provider.isLoading ? null : _handleLogin,
+                        onPressed: auth.isLoading ? null : _handleLogin,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: NexusTheme.emerald500,
                           foregroundColor: Colors.white,
                           disabledBackgroundColor: NexusTheme.emerald500.withOpacity(0.5),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                          elevation: provider.isLoading ? 0 : 10,
                         ),
-                        child: provider.isLoading
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  color: Colors.white,
-                                  strokeWidth: 2,
-                                ),
-                              )
+                        child: auth.isLoading
+                            ? const CircularProgressIndicator(color: Colors.white)
                             : const Text('AUTHENTICATE', 
-                                style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.5)),
+                                style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.5, fontSize: 13)),
                       ),
                     );
                   },
