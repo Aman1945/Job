@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
+import '../providers/nexus_provider.dart';
 import '../utils/theme.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -24,11 +25,9 @@ class _LoginScreenState extends State<LoginScreen> {
         _passwordController.text.trim()
       );
       
-      // No need to navigate here! 
-      // main.dart's Consumer<AuthProvider> will automatically 
-      // switch to DashboardScreen when isAuthenticated becomes true.
-      
-      if (success) {
+      if (success && mounted) {
+        // Trigger data refresh in NexusProvider
+        Provider.of<NexusProvider>(context, listen: false).refreshData();
         debugPrint('🎯 Login successful, navigation will trigger via main.dart');
       }
     } catch (e) {

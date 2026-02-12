@@ -57,6 +57,11 @@ class _NexusAppState extends State<NexusApp> {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     await authProvider.tryAutoLogin();
     
+    // If logged in, refresh all data
+    if (authProvider.isAuthenticated && mounted) {
+      Provider.of<NexusProvider>(context, listen: false).refreshData();
+    }
+    
     if (mounted) {
       setState(() => _isInitializing = false);
     }

@@ -41,13 +41,20 @@ class NexusProvider with ChangeNotifier {
     _isLoading = true;
     notifyListeners();
 
-    // Check for saved user session
+    // Check for saved user session (Legacy support - will eventually use AuthProvider)
     final prefs = await SharedPreferences.getInstance();
     final String? savedUser = prefs.getString('user_session');
     if (savedUser != null) {
       _currentUser = User.fromJson(jsonDecode(savedUser));
     }
 
+    await refreshData();
+    _isLoading = false;
+    notifyListeners();
+  }
+
+  /// Public method to refresh all data from server
+  Future<void> refreshData() async {
     await Future.wait([
       fetchUsers(),
       fetchCustomers(),
@@ -55,7 +62,6 @@ class NexusProvider with ChangeNotifier {
       fetchOrders(),
       fetchProcurementItems(),
     ]);
-    _isLoading = false;
     notifyListeners();
   }
 
