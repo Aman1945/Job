@@ -23,6 +23,10 @@ if (!process.env.MONGODB_URI || process.env.MONGODB_URI.includes('your_mongodb')
 }
 
 const app = express();
+
+// Trust proxy for Render/Load Balancers (Fixes ERR_ERL_UNEXPECTED_X_FORWARDED_FOR)
+app.set('trust proxy', 1);
+
 const PORT = process.env.PORT || 3000;
 
 // ==================== SECURITY MIDDLEWARE ====================
