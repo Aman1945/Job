@@ -1,3 +1,7 @@
 node_modules
 .env
 .DS_Store
+all_creds.txt
+uploads/
+scripts/migrate-passwords.log
+
