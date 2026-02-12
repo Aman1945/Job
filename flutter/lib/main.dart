@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'providers/nexus_provider.dart';
+import 'providers/auth_provider.dart';
 import 'screens/login_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/splash_screen.dart';
@@ -25,9 +26,9 @@ void main() async {
   await DownloaderService().initialize();
 
   runApp(
-
     MultiProvider(
       providers: [
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => NexusProvider()),
       ],
       child: const NexusApp(),
@@ -52,8 +53,10 @@ class _NexusAppState extends State<NexusApp> {
   }
 
   Future<void> _initializeApp() async {
-    // Wait for provider to initialize and check saved session
-    await Future.delayed(const Duration(milliseconds: 1500));
+    // Attempt auto-login
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    await authProvider.tryAutoLogin();
+    
     if (mounted) {
       setState(() => _isInitializing = false);
     }
@@ -72,14 +75,13 @@ class _NexusAppState extends State<NexusApp> {
         '/new-customer': (context) => const NewCustomerScreen(),
         '/book-order': (context) => const BookOrderScreen(),
       },
-      home: Consumer<NexusProvider>(
-        builder: (context, provider, child) {
-          // Only show splash during the absolute initial hardware/app boot
+      home: Consumer<AuthProvider>(
+        builder: (context, auth, child) {
           if (_isInitializing) {
             return const SplashScreen();
           }
           
-          if (provider.currentUser == null) {
+          if (!auth.isAuthenticated) {
             return LoginScreen();
           } else {
             return DashboardScreen();
