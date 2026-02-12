@@ -13,11 +13,16 @@ const userSchema = new mongoose.Schema({
             'Sales',
             'Credit Control',
             'Logistics',
+            'Logistics Team',
             'Warehouse',
+            'Warehouse/Packing',
             'Procurement',
+            'Procurement Team',
             'Procurement Head',
             'Billing',
-            'Delivery'
+            'Billing Team',
+            'Delivery',
+            'Delivery Team'
         ]
     },
     status: { type: String, default: 'Active', enum: ['Active', 'Inactive', 'Suspended'] },
