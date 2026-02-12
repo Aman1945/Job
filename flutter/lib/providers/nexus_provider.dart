@@ -109,11 +109,15 @@ class NexusProvider with ChangeNotifier {
 
   Future<void> fetchOrders() async {
     try {
-      final response = await http.get(Uri.parse('$_baseUrl/orders')).timeout(const Duration(seconds: 5));
+      debugPrint('🛰️ Fetching orders from: $_baseUrl/orders');
+      final response = await http.get(Uri.parse('$_baseUrl/orders')).timeout(const Duration(seconds: 30));
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
         _orders = data.map((json) => Order.fromJson(json)).toList();
+        debugPrint('✅ Fetched ${_orders.length} orders');
         notifyListeners();
+      } else {
+        debugPrint('❌ Orders API error: ${response.statusCode} - ${response.body}');
       }
     } catch (e) {
       debugPrint('Error fetching orders: $e');
@@ -122,10 +126,12 @@ class NexusProvider with ChangeNotifier {
 
   Future<void> fetchProducts() async {
     try {
-      final response = await http.get(Uri.parse('$_baseUrl/products')).timeout(const Duration(seconds: 5));
+      debugPrint('🛰️ Fetching products...');
+      final response = await http.get(Uri.parse('$_baseUrl/products')).timeout(const Duration(seconds: 30));
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
         _products = data.map((json) => Product.fromJson(json)).toList();
+        debugPrint('✅ Fetched ${_products.length} products');
         notifyListeners();
       }
     } catch (e) {
@@ -135,10 +141,12 @@ class NexusProvider with ChangeNotifier {
 
   Future<void> fetchCustomers() async {
     try {
-      final response = await http.get(Uri.parse('$_baseUrl/customers')).timeout(const Duration(seconds: 5));
+      debugPrint('🛰️ Fetching customers...');
+      final response = await http.get(Uri.parse('$_baseUrl/customers')).timeout(const Duration(seconds: 30));
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
         _customers = data.map((json) => Customer.fromJson(json)).toList();
+        debugPrint('✅ Fetched ${_customers.length} customers');
         notifyListeners();
       }
     } catch (e) {
@@ -148,10 +156,12 @@ class NexusProvider with ChangeNotifier {
 
   Future<void> fetchUsers() async {
     try {
-      final response = await http.get(Uri.parse('$_baseUrl/users')).timeout(const Duration(seconds: 5));
+      debugPrint('🛰️ Fetching users...');
+      final response = await http.get(Uri.parse('$_baseUrl/users')).timeout(const Duration(seconds: 30));
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
         _users = data.map((json) => User.fromJson(json)).toList();
+        debugPrint('✅ Fetched ${_users.length} users');
         notifyListeners();
       }
     } catch (e) {
