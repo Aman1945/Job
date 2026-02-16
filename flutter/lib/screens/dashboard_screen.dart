@@ -114,10 +114,12 @@ class DashboardScreen extends StatelessWidget {
                   const _SectionTitle(title: 'SUPPLY CHAIN LIFECYCLE'),
                   const SizedBox(height: 16),
                   
-                  _buildActionList(context, isMobile),
+                  _buildActionList(context, isMobile, user),
                   
                   const SizedBox(height: 32),
-                  _buildUtilityGrid(context, isMobile),
+                  const _SectionTitle(title: 'UTILITIES & SYSTEM HUB'),
+                  const SizedBox(height: 16),
+                  _buildUtilityGrid(context, isMobile, user),
                 ],
               ),
             );
@@ -150,70 +152,222 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildActionList(BuildContext context, bool isMobile) {
-    final actions = [
-      {'label': '0. EXECUTIVE PULSE', 'icon': Icons.query_stats, 'color': NexusTheme.emerald600, 'screen': const ExecutivePulseScreen()},
-      {'label': '1. LIVE MISSIONS', 'icon': Icons.radar, 'color': NexusTheme.indigo600, 'screen': const LiveMissionsScreen()},
-      {'label': '1.1 ORDER ARCHIVE', 'icon': Icons.history, 'color': NexusTheme.blue600, 'screen': const OrderArchiveScreen()},
-      {'label': '0. NEW CUSTOMER', 'icon': Icons.person_add_outlined, 'color': Colors.indigo, 'screen': const NewCustomerScreen()},
-      {'label': '0.5 CREATE SKU MASTER', 'icon': Icons.post_add_rounded, 'color': NexusTheme.amber500, 'screen': const AddProductScreen()},
-      {'label': '1. BOOK ORDER', 'icon': Icons.add_shopping_cart, 'color': NexusTheme.emerald700, 'screen': const BookOrderScreen()},
-      {'label': '1.2 STOCK TRANSFER', 'icon': Icons.sync_alt, 'color': NexusTheme.slate600, 'screen': const StockTransferScreen()},
-      {'label': '1.5 LIVE ORDERS', 'icon': Icons.pending_actions, 'color': Colors.cyan, 'screen': const LiveOrdersScreen()},
-      {'label': '2. CREDIT CONTROL', 'icon': Icons.bolt, 'color': Colors.orange, 'screen': const CreditControlScreen()},
-      {'label': '2.5 WH ASSIGN', 'icon': Icons.home_work_outlined, 'color': Colors.teal, 'screen': const WarehouseSelectionScreen()},
-      {'label': '3. WAREHOUSE', 'icon': Icons.inventory_2_outlined, 'color': Colors.blueGrey, 'screen': const WarehouseInventoryScreen()},
-      {'label': '4. LOGISTICS COST', 'icon': Icons.currency_rupee, 'color': Colors.deepPurple, 'screen': const LogisticsCostScreen()},
-      {'label': '5. INVOICING', 'icon': Icons.receipt_long, 'color': Colors.blue, 'screen': const InvoicingScreen()},
-      {'label': '6. LOGISTICS HUB', 'icon': Icons.explore_outlined, 'color': Colors.purple, 'screen': const LogisticsHubScreen()},
-      {'label': '7. EXECUTION', 'icon': Icons.local_shipping_outlined, 'color': Colors.redAccent, 'screen': const DeliveryExecutionScreen()},
+  Widget _buildActionList(BuildContext context, bool isMobile, User? user) {
+    if (user == null) return const SizedBox.shrink();
+
+    final List<Map<String, dynamic>> lifecycleStages = [
+      {
+        'stage': 'STAGE 0',
+        'label': 'Customer Onboarding',
+        'icon': Icons.person_add_alt_1_rounded,
+        'color': Colors.indigo,
+        'screen': const NewCustomerScreen(),
+        'roles': ['Admin', 'Sales']
+      },
+      {
+        'stage': 'STAGE 1',
+        'label': 'Order Booking',
+        'icon': Icons.shopping_bag_rounded,
+        'color': NexusTheme.emerald600,
+        'screen': const BookOrderScreen(),
+        'roles': ['Admin', 'Sales']
+      },
+      {
+        'stage': 'STAGE 2',
+        'label': 'Credit Control',
+        'icon': Icons.bolt_rounded,
+        'color': Colors.orange.shade700,
+        'screen': const CreditControlScreen(),
+        'roles': ['Admin', 'Credit Control']
+      },
+      {
+        'stage': 'STAGE 2.5',
+        'label': 'Warehouse Assignment',
+        'icon': Icons.home_work_rounded,
+        'color': Colors.teal,
+        'screen': const WarehouseSelectionScreen(),
+        'roles': ['Admin', 'WH Manager']
+      },
+      {
+        'stage': 'STAGE 3',
+        'label': 'Warehouse Fulfillment',
+        'icon': Icons.inventory_2_rounded,
+        'color': Colors.blueGrey,
+        'screen': const WarehouseInventoryScreen(),
+        'roles': ['Admin', 'Warehouse']
+      },
+      {
+        'stage': 'STAGE 3.5',
+        'label': 'Quality Control (QC)',
+        'icon': Icons.verified_user_rounded,
+        'color': Colors.green.shade700,
+        'screen': const LiveOrdersScreen(), // Simplified for now, can be specific QC screen
+        'roles': ['Admin', 'QC Head']
+      },
+      {
+        'stage': 'STAGE 4',
+        'label': 'Logistics Costing',
+        'icon': Icons.currency_rupee_rounded,
+        'color': Colors.deepPurple,
+        'screen': const LogisticsCostScreen(),
+        'roles': ['Admin', 'Logistics Lead', 'Logistics Team']
+      },
+      {
+        'stage': 'STAGE 5',
+        'label': 'Invoicing',
+        'icon': Icons.receipt_long_rounded,
+        'color': Colors.blue.shade700,
+        'screen': const InvoicingScreen(),
+        'roles': ['Admin', 'ATL Executive']
+      },
+      {
+        'stage': 'STAGE 6',
+        'label': 'Fleet Loading (Hub)',
+        'icon': Icons.local_shipping_rounded,
+        'color': Colors.purple.shade700,
+        'screen': const LogisticsHubScreen(),
+        'roles': ['Admin', 'Hub Lead']
+      },
+      {
+        'stage': 'STAGE 7',
+        'label': 'Delivery Execution',
+        'icon': Icons.task_alt_rounded,
+        'color': Colors.redAccent.shade700,
+        'screen': const DeliveryExecutionScreen(),
+        'roles': ['Admin', 'Delivery Team']
+      },
     ];
 
+    final filteredStages = lifecycleStages.where((s) => (s['roles'] as List).contains(user.role)).toList();
+
     return Column(
-      children: actions.map((action) => Padding(
-        padding: const EdgeInsets.only(bottom: 10),
-        child: _ActionCard(
-          label: action['label'] as String,
-          icon: action['icon'] as IconData,
-          color: action['color'] as Color,
-          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => action['screen'] as Widget)),
+      children: filteredStages.map((s) => Padding(
+        padding: const EdgeInsets.only(bottom: 16),
+        child: _LifecycleCard(
+          stage: s['stage'] as String,
+          label: s['label'] as String,
+          icon: s['icon'] as IconData,
+          color: s['color'] as Color,
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => s['screen'] as Widget)),
           isMobile: isMobile,
+          isActive: filteredStages.indexOf(s) == 0, // Highlight the first visible stage
         ),
       )).toList(),
     );
   }
 
-  Widget _buildUtilityGrid(BuildContext context, bool isMobile) {
-    final utilities = [
-      {'l': 'PMS Performance', 'i': Icons.emoji_events, 's': const PMSScreen()},
-      {'l': 'Intelligence', 'i': Icons.insights, 's': const AnalyticsScreen()},
-      {'l': 'Procurement', 'i': Icons.shopping_bag_outlined, 's': const ProcurementScreen()},
-      {'l': 'Reporting', 'i': Icons.assessment, 's': const ReportingScreen()},
-      {'l': 'Sales Hub', 'i': Icons.storefront, 's': const SalesHubScreen()},
-      {'l': 'Master Data', 'i': Icons.terminal, 's': const MasterDataScreen()},
+  Widget _buildUtilityGrid(BuildContext context, bool isMobile, User? user) {
+    if (user == null) return const SizedBox.shrink();
+
+    final allUtilities = [
+      {'l': 'Executive Pulse', 'i': Icons.query_stats, 's': const ExecutivePulseScreen(), 'roles': ['Admin', 'Sales']},
+      {'l': 'Live Missions', 'i': Icons.radar, 's': const LiveMissionsScreen(), 'roles': ['Admin', 'Sales']},
+      {'l': 'Stock Transfer', 'i': Icons.sync_alt, 's': const StockTransferScreen(), 'roles': ['Admin', 'Sales']},
+      {'l': 'SKU Master', 'i': Icons.post_add_rounded, 's': const AddProductScreen(), 'roles': ['Admin', 'Sales']},
+      {'l': 'Order Archive', 'i': Icons.history, 's': const OrderArchiveScreen(), 'roles': ['Admin', 'Sales']},
+      {'l': 'PMS Performance', 'i': Icons.emoji_events, 's': const PMSScreen(), 'roles': ['Admin', 'Sales']},
+      {'l': 'Intelligence', 'i': Icons.insights, 's': const AnalyticsScreen(), 'roles': ['Admin', 'Sales', 'Credit Control']},
+      {'l': 'Procurement', 'i': Icons.shopping_bag_outlined, 's': const ProcurementScreen(), 'roles': ['Admin']},
+      {'l': 'Master Data', 'i': Icons.terminal, 's': const MasterDataScreen(), 'roles': ['Admin']},
     ];
+
+    final filteredUtils = allUtilities.where((u) => (u['roles'] as List).contains(user.role)).toList();
 
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: isMobile ? 2 : 3,
         mainAxisSpacing: 12,
         crossAxisSpacing: 12,
         childAspectRatio: 2.2,
       ),
-      itemCount: utilities.length,
+      itemCount: filteredUtils.length,
       itemBuilder: (context, i) => InkWell(
-        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => utilities[i]['s'] as Widget)),
+        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => filteredUtils[i]['s'] as Widget)),
         borderRadius: BorderRadius.circular(16),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12),
-          decoration: BoxDecoration(color: NexusTheme.slate900, borderRadius: BorderRadius.circular(16)),
+          decoration: BoxDecoration(
+            color: NexusTheme.slate900, 
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 4, offset: const Offset(0, 2))],
+          ),
           child: Row(
             children: [
-              Icon(utilities[i]['i'] as IconData, color: NexusTheme.emerald400, size: 16),
-              const SizedBox(width: 8),
-              Flexible(child: Text((utilities[i]['l'] as String).toUpperCase(), style: const TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: Colors.white))),
+              Icon(filteredUtils[i]['i'] as IconData, color: NexusTheme.emerald400, size: 18),
+              const SizedBox(width: 10),
+              Flexible(child: Text((filteredUtils[i]['l'] as String).toUpperCase(), 
+                style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 0.5))),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _LifecycleCard extends StatelessWidget {
+  final String stage;
+  final String label;
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+  final bool isMobile;
+  final bool isActive;
+
+  const _LifecycleCard({
+    required this.stage,
+    required this.label,
+    required this.icon,
+    required this.color,
+    required this.onTap,
+    required this.isMobile,
+    this.isActive = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(24),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        padding: const EdgeInsets.all(4),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          gradient: isActive ? LinearGradient(colors: [color.withOpacity(0.5), color]) : null,
+          boxShadow: isActive ? [BoxShadow(color: color.withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 6))] : null,
+        ),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: isActive ? Colors.transparent : NexusTheme.slate200),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: Icon(icon, color: color, size: 28),
+              ),
+              const SizedBox(width: 20),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(stage, style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: color, letterSpacing: 1.2)),
+                    const SizedBox(height: 2),
+                    Text(label, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: NexusTheme.slate900)),
+                  ],
+                ),
+              ),
+              Icon(Icons.arrow_forward_ios_rounded, size: 16, color: isActive ? color : NexusTheme.slate300),
             ],
           ),
         ),
@@ -229,38 +383,6 @@ class _SectionTitle extends StatelessWidget {
   Widget build(BuildContext context) => Text(title, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: NexusTheme.slate400, letterSpacing: 1.5));
 }
 
-class _ActionCard extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  final Color color;
-  final VoidCallback onTap;
-  final bool isMobile;
-  const _ActionCard({required this.label, required this.icon, required this.color, required this.onTap, required this.isMobile});
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(
-          color: Colors.white, 
-          borderRadius: BorderRadius.circular(16), 
-          border: Border.all(color: NexusTheme.slate200), 
-        ),
-        child: Row(
-          children: [
-            Icon(icon, color: color, size: 22),
-            const SizedBox(width: 12),
-            Expanded(child: Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: NexusTheme.slate800))),
-            const Icon(Icons.arrow_forward_ios, size: 12, color: NexusTheme.slate300),
-          ],
-        ),
-      ),
-    );
-  }
-}
 
 Future<bool> _showExitDialog(BuildContext context) async {
   return await showDialog<bool>(
