@@ -465,6 +465,19 @@ app.patch('/api/orders/:id', async (req, res) => {
         const { id } = req.params;
         const updateData = { ...req.body };
 
+        // Logistics 15% Cost Alert Logic
+        if (updateData.logistics && updateData.logistics.shippingCost) {
+            const currentOrder = await Order.findOne({ id });
+            if (currentOrder) {
+                const costPercentage = (updateData.logistics.shippingCost / currentOrder.total) * 100;
+                if (costPercentage > 15) {
+                    updateData.logistics.highCostAlert = true;
+                    updateData.status = 'Pending Admin Review';
+                    console.log(`⚠️ High Cost Alert on ${id}: ${costPercentage.toFixed(2)}%`);
+                }
+            }
+        }
+
         // Add status history if status is being updated
         if (updateData.status) {
             const timestamp = new Date().toISOString();

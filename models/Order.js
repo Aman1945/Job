@@ -31,7 +31,9 @@ const orderSchema = new mongoose.Schema({
         deliveryAgentId: { type: String },
         vehicleNo: { type: String },
         vehicleProvider: { type: String },
-        distanceKm: { type: Number }
+        distanceKm: { type: Number },
+        shippingCost: { type: Number, default: 0 },
+        highCostAlert: { type: Boolean, default: false }
     },
     createdAt: { type: Date, default: Date.now }
 }, { timestamps: true });
