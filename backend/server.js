@@ -181,6 +181,29 @@ app.get('/', (req, res) => {
     `);
 });
 
+// ==================== HEALTH CHECK ====================
+app.get('/api/health', async (req, res) => {
+    try {
+        const dbStatus = mongoose.connection.readyState === 1 ? 'Connected' : 'Disconnected';
+        const orderCount = await Order.countDocuments();
+        const userCount = await User.countDocuments();
+        const productCount = await Product.countDocuments();
+
+        res.json({
+            status: 'OK',
+            database: dbStatus,
+            counts: {
+                orders: orderCount,
+                users: userCount,
+                products: productCount
+            },
+            serverTime: new Date().toISOString()
+        });
+    } catch (error) {
+        res.status(500).json({ status: 'ERROR', message: error.message });
+    }
+});
+
 
 // ==================== AUTHENTICATION ====================
 app.post('/api/login', loginLimiter, async (req, res) => {

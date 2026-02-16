@@ -7,10 +7,20 @@ import '../models/models.dart';
 import '../services/downloader_service.dart';
 
 class NexusProvider with ChangeNotifier {
-  // Production Render URL
-  static const String serverAddress = 'nexus-oms-backend.onrender.com';
-  final String _baseUrl = 'https://$serverAddress/api';
-  final String _socketUrl = 'https://$serverAddress';
+  // --- CONFIGURATION ---
+  // Default to Render production. Set to true ONLY when testing locally.
+  static const bool useLocalServer = false; 
+  static const String localIp = '10.0.2.2'; // Standard for Android Emulator
+  
+  static String get serverAddress {
+    if (useLocalServer) {
+      return '$localIp:3000'; 
+    }
+    return 'nexus-oms-backend.onrender.com';
+  }
+
+  String get _baseUrl => useLocalServer ? 'http://$serverAddress/api' : 'https://$serverAddress/api';
+  String get _socketUrl => useLocalServer ? 'http://$serverAddress' : 'https://$serverAddress';
   
   User? _currentUser;
 
