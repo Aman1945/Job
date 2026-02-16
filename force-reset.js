@@ -9,17 +9,17 @@ async function forceResetPasswords() {
         console.log('✅ Connected to MongoDB');
 
         const users = await User.find({});
-        console.log(`Force resetting ${users.length} users to "password123"...`);
+        console.log(`Force resetting ${users.length} users to "admin"...`);
 
         for (let user of users) {
             const salt = await bcrypt.genSalt(10);
-            const hashed = await bcrypt.hash('password123', salt);
+            const hashed = await bcrypt.hash('admin', salt);
 
             await User.updateOne({ _id: user._id }, { $set: { password: hashed } });
             console.log(`✅ Reset done: ${user.id}`);
         }
 
-        console.log('🚀 All passwords set to "password123" and hashed correctly.');
+        console.log('🚀 All passwords set to "admin" and hashed correctly.');
         process.exit(0);
     } catch (err) {
         console.error('❌ Error during reset:', err.message);
