@@ -194,7 +194,7 @@ class DashboardScreen extends StatelessWidget {
         'icon': Icons.inventory_2_rounded,
         'color': Colors.blueGrey,
         'screen': const WarehouseInventoryScreen(),
-        'roles': ['Admin', 'Warehouse']
+        'roles': ['Admin', 'Warehouse', 'WH House']
       },
       {
         'stage': 'STAGE 3.5',
@@ -218,7 +218,7 @@ class DashboardScreen extends StatelessWidget {
         'icon': Icons.receipt_long_rounded,
         'color': Colors.blue.shade700,
         'screen': const InvoicingScreen(),
-        'roles': ['Admin', 'ATL Executive']
+        'roles': ['Admin', 'ATL Executive', 'Billing']
       },
       {
         'stage': 'STAGE 6',

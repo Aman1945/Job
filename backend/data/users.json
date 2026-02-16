@@ -8,115 +8,267 @@
         "password": "password123"
     },
     {
-        "id": "sales@bigsams.in",
-        "name": "Sales Team",
-        "role": "Sales",
+        "id": "operations@bigsams.in",
+        "name": "Charlie DC",
+        "role": "WH House",
         "status": "Active",
         "isApprover": false,
         "password": "password123"
     },
     {
-        "id": "credit.team@bigsams.in",
-        "name": "Credit Control Team",
+        "id": "kunal.shah@bigsams.in",
+        "name": "Kunal Shah",
+        "role": "Admin",
+        "status": "Active",
+        "isApprover": true,
+        "password": "password123"
+    },
+    {
+        "id": "credit.control@bigsams.in",
+        "name": "Credit Control",
         "role": "Credit Control",
         "status": "Active",
         "isApprover": true,
         "password": "password123"
     },
     {
-        "id": "pranav@bigsams.in",
-        "name": "Pranav (WH Manager)",
-        "role": "WH Manager",
+        "id": "lavin.samtani@bigsams.in",
+        "name": "Lavin Samtani",
+        "role": "Admin",
+        "status": "Active",
+        "isApprover": false,
+        "password": "password123"
+    },
+    {
+        "id": "amit.sharma@bigsams.in",
+        "name": "Amit Sharma",
+        "role": "WH House",
+        "status": "Active",
+        "isApprover": false,
+        "password": "password123"
+    },
+    {
+        "id": "karanjit.singh@bigsams.in",
+        "name": "Karanjit Singh",
+        "role": "Sales",
+        "status": "Active",
+        "isApprover": false,
+        "password": "password123"
+    },
+    {
+        "id": "noreply@bigsams.in",
+        "name": "Admin",
+        "role": "Admin",
+        "status": "Active",
+        "isApprover": false,
+        "password": "password123"
+    },
+    {
+        "id": "logistics@bigsams.in",
+        "name": "Ketan",
+        "role": "Admin",
+        "status": "Active",
+        "isApprover": false,
+        "password": "password123"
+    },
+    {
+        "id": "dipak.veer@bigsams.in",
+        "name": "Dipak",
+        "role": "Admin",
+        "status": "Active",
+        "isApprover": false,
+        "password": "password123"
+    },
+    {
+        "id": "mumbai.store@bigsams.in",
+        "name": "Parsuram",
+        "role": "WH House",
+        "status": "Active",
+        "isApprover": false,
+        "password": "password123"
+    },
+    {
+        "id": "mithun.muddappa@bigsams.in",
+        "name": "Mmithun Muddappa",
+        "role": "Sales",
+        "status": "Active",
+        "isApprover": false,
+        "password": "password123"
+    },
+    {
+        "id": "sandeep.chavan@bigsams.in",
+        "name": "Sandeep Chavan",
+        "role": "Sales",
+        "status": "Active",
+        "isApprover": false,
+        "password": "password123"
+    },
+    {
+        "id": "sudip.das@bigsams.in",
+        "name": "Sudip Das",
+        "role": "Sales",
+        "status": "Active",
+        "isApprover": false,
+        "password": "password123"
+    },
+    {
+        "id": "rakesh.khare@bigsams.in",
+        "name": "Rakesh Khare",
+        "role": "Sales",
+        "status": "Active",
+        "isApprover": false,
+        "password": "password123"
+    },
+    {
+        "id": "anil.singh@bigsams.in",
+        "name": "Anil Singh",
+        "role": "Sales",
+        "status": "Active",
+        "isApprover": false,
+        "password": "password123"
+    },
+    {
+        "id": "bangalore.retail@bigsams.in",
+        "name": "Bangalore Retail",
+        "role": "Sales",
+        "status": "Active",
+        "isApprover": false,
+        "password": "password123"
+    },
+    {
+        "id": "prem.kumar@bigsams.in",
+        "name": "Prem Kumar",
+        "role": "Sales",
+        "status": "Active",
+        "isApprover": false,
+        "password": "password123"
+    },
+    {
+        "id": "abhijit.chavan@bigsams.in",
+        "name": "Abhijit Chavan",
+        "role": "Sales",
+        "status": "Active",
+        "isApprover": false,
+        "password": "password123"
+    },
+    {
+        "id": "dhananjay.sapkal@bigsams.in",
+        "name": "Dhananjay Sapkal",
+        "role": "Sales",
+        "status": "Active",
+        "isApprover": false,
+        "password": "password123"
+    },
+    {
+        "id": "manoj.gawas@bigsams.in",
+        "name": "Manoj Gawas",
+        "role": "Sales",
+        "status": "Active",
+        "isApprover": false,
+        "password": "password123"
+    },
+    {
+        "id": "sandesh.gonbare@bigsams.in",
+        "name": "Sandesh Gonbare",
+        "role": "Billing",
+        "status": "Active",
+        "isApprover": false,
+        "password": "password123"
+    },
+    {
+        "id": "nitin.kadam@bigsams.in",
+        "name": "Nitin Kadam",
+        "role": "Billing",
         "status": "Active",
         "isApprover": true,
         "password": "password123"
     },
     {
-        "id": "amit.kurla@bigsams.in",
-        "name": "Amit (Kurla)",
-        "role": "Warehouse",
+        "id": "Shravan.Deshawal@bigsams.in",
+        "name": "Shravan Deshawal",
+        "role": "Sales",
         "status": "Active",
         "isApprover": false,
         "password": "password123"
     },
     {
-        "id": "roshan.dp@bigsams.in",
-        "name": "Roshan (DP)",
-        "role": "Warehouse",
+        "id": "rajesh.suryavanshi@bigsams.in",
+        "name": "Rajesh Suryavanshi",
+        "role": "Billing",
         "status": "Active",
         "isApprover": false,
         "password": "password123"
     },
     {
-        "id": "amit.delhi@bigsams.in",
-        "name": "Amit Sharma (Delhi)",
-        "role": "Warehouse",
+        "id": "sandeep.dubey@bigsams.in",
+        "name": "Sandeep Dubey",
+        "role": "Sales",
         "status": "Active",
         "isApprover": false,
         "password": "password123"
     },
     {
-        "id": "arun.bng@bigsams.in",
-        "name": "Arun (BNG)",
-        "role": "Warehouse",
+        "id": "harendra.tiwari@bigsams.in",
+        "name": "Harendra Tiwari",
+        "role": "WH House",
         "status": "Active",
         "isApprover": false,
         "password": "password123"
     },
     {
-        "id": "dheeraj.qc@bigsams.in",
-        "name": "Dheeraj (QC Head)",
-        "role": "QC Head",
-        "status": "Active",
-        "isApprover": true,
-        "password": "password123"
-    },
-    {
-        "id": "pratish.dalvi@bigsams.in",
-        "name": "Pratish Dalvi",
-        "role": "Logistics Lead",
-        "status": "Active",
-        "isApprover": true,
-        "password": "password123"
-    },
-    {
-        "id": "animesh.log@bigsams.in",
-        "name": "Animesh (Logistics)",
-        "role": "Logistics Team",
+        "id": "dhiraj.kumar@bigsams.in",
+        "name": "Dhiraj Kumar",
+        "role": "Admin",
         "status": "Active",
         "isApprover": false,
         "password": "password123"
     },
     {
-        "id": "lawin@bigsams.in",
-        "name": "Lawin",
-        "role": "Logistics Team",
+        "id": "pradip.patil@bigsams.in",
+        "name": "Pradip Patil",
+        "role": "WH House",
         "status": "Active",
         "isApprover": false,
         "password": "password123"
     },
     {
-        "id": "sandesh.atl@bigsams.in",
-        "name": "Sandesh (ATL)",
-        "role": "ATL Executive",
+        "id": "qcom@bigsams.in",
+        "name": "Saud Qureshi",
+        "role": "Sales",
         "status": "Active",
         "isApprover": false,
         "password": "password123"
     },
     {
-        "id": "nitin.atl@bigsams.in",
-        "name": "Nitin (ATL)",
-        "role": "ATL Executive",
+        "id": "bangalore.store@bigsams.in",
+        "name": "Arun",
+        "role": "WH House",
         "status": "Active",
         "isApprover": false,
         "password": "password123"
     },
     {
-        "id": "sagar.hub@bigsams.in",
-        "name": "Sagar (Hub)",
-        "role": "Hub Lead",
+        "id": "sachin@delivery.in",
+        "name": "Sachin (A1)",
+        "role": "Delivery Team",
         "status": "Active",
-        "isApprover": true,
+        "isApprover": false,
+        "password": "password123"
+    },
+    {
+        "id": "mayur@delivery.in",
+        "name": "Mayur (A2)",
+        "role": "Delivery Team",
+        "status": "Active",
+        "isApprover": false,
+        "password": "password123"
+    },
+    {
+        "id": "sagar@delivery.in",
+        "name": "Sagar (A3)",
+        "role": "Delivery Team",
+        "status": "Active",
+        "isApprover": false,
         "password": "password123"
     }
 ]
