@@ -25,54 +25,72 @@ class Customer {
   final String name;
   final String address;
   final String city;
+  final String status;
+  final String? phone;
+  final String? email;
+  final String? gstNo;
+  final String? fssaiLicenseNo;
+  final String? panCard;
   final double limit;
   final double outstanding;
   final double overdue;
   final Map<String, double> agingBuckets;
+  final int? exposureDays;
   final String? salesManager;
   final String? distributionChannel;
   final String? customerClass;
   final String? location;
-  final String? gstNo;
-  final String? fssaiLicenseNo;
-  final String? panCard;
+  final List<CustomerAddress>? addresses;
 
   Customer({
     required this.id,
     required this.name,
     required this.address,
     this.city = '',
+    this.status = 'Active',
+    this.phone,
+    this.email,
+    this.gstNo,
+    this.fssaiLicenseNo,
+    this.panCard,
     this.limit = 1500000,
     this.outstanding = 0,
     this.overdue = 0,
     this.agingBuckets = const {},
+    this.exposureDays,
     this.salesManager,
     this.distributionChannel,
     this.customerClass,
     this.location,
-    this.gstNo,
-    this.fssaiLicenseNo,
-    this.panCard,
+    this.addresses,
   });
 
   factory Customer.fromJson(Map<String, dynamic> json) {
     return Customer(
       id: json['id'] ?? '',
       name: json['name'] ?? '',
-      address: json['address'] ?? '',
-      city: json['city'] ?? '',
+      address: json['address'] ?? json['location'] ?? 'Address not provided',
+      city: json['city'] ?? (json['address'] != null ? json['address'].split(',').last.trim() : 'NA'),
+      status: json['status'] ?? 'Active',
+      phone: json['phone'],
+      email: json['email'],
+      gstNo: json['gstNo'] ?? json['gst'] ?? json['gstNumber'],
+      fssaiLicenseNo: json['fssaiLicenseNo'] ?? json['fssai'],
+      panCard: json['panCard'] ?? json['pan'],
       limit: (json['limit'] ?? json['creditLimit'] ?? 1500000).toDouble(),
-      outstanding: (json['outstanding'] ?? 0).toDouble(),
+      outstanding: (json['outstanding'] ?? json['osBalance'] ?? 0).toDouble(),
       overdue: (json['overdue'] ?? 0).toDouble(),
-      agingBuckets: Map<String, double>.from(
-          (json['agingBuckets'] ?? {}).map((k, v) => MapEntry(k, v.toDouble()))),
+      agingBuckets: json['agingBuckets'] != null 
+          ? Map<String, double>.from((json['agingBuckets'] as Map).map((k, v) => MapEntry(k.toString(), (v as num).toDouble())))
+          : {},
+      exposureDays: json['exposureDays'],
       salesManager: json['salesManager'],
       distributionChannel: json['distributionChannel'],
       customerClass: json['customerClass'],
       location: json['location'],
-      gstNo: json['gstNo'] ?? json['gst'],
-      fssaiLicenseNo: json['fssaiLicenseNo'] ?? json['fssai'],
-      panCard: json['panCard'] ?? json['pan'],
+      addresses: json['addresses'] != null
+          ? (json['addresses'] as List).map((a) => CustomerAddress.fromJson(a)).toList()
+          : null,
     );
   }
 
@@ -82,17 +100,22 @@ class Customer {
       'name': name,
       'address': address,
       'city': city,
+      'status': status,
+      if (phone != null) 'phone': phone,
+      if (email != null) 'email': email,
+      if (gstNo != null) 'gstNo': gstNo,
+      if (fssaiLicenseNo != null) 'fssaiLicenseNo': fssaiLicenseNo,
+      if (panCard != null) 'panCard': panCard,
       'limit': limit,
       'outstanding': outstanding,
       'overdue': overdue,
       'agingBuckets': agingBuckets,
+      if (exposureDays != null) 'exposureDays': exposureDays,
       if (salesManager != null) 'salesManager': salesManager,
       if (distributionChannel != null) 'distributionChannel': distributionChannel,
       if (customerClass != null) 'customerClass': customerClass,
       if (location != null) 'location': location,
-      if (gstNo != null) 'gstNo': gstNo,
-      if (fssaiLicenseNo != null) 'fssaiLicenseNo': fssaiLicenseNo,
-      if (panCard != null) 'panCard': panCard,
+      if (addresses != null) 'addresses': addresses!.map((a) => a.toJson()).toList(),
     };
   }
 }
@@ -372,79 +395,6 @@ class LogisticsData {
   }
 }
 
-class Customer {
-  final String id;
-  final String name;
-  final String address;
-  final String city;
-  final String status;
-  final String? phone;
-  final String? email;
-  final String? gst;
-  final double limit;
-  final double osBalance;
-  final double overdue;
-  final int exposureDays;
-  final Map<String, dynamic>? agingData;
-  final List<CustomerAddress>? addresses; // Multi-address support
-
-  Customer({
-    required this.id,
-    required this.name,
-    required this.address,
-    required this.city,
-    this.status = 'Active',
-    this.phone,
-    this.email,
-    this.gst,
-    this.limit = 1500000,
-    this.osBalance = 890000,
-    this.overdue = 0,
-    this.exposureDays = 15,
-    this.agingData,
-    this.addresses,
-  });
-
-  factory Customer.fromJson(Map<String, dynamic> json) {
-    return Customer(
-      id: json['id'] ?? '',
-      name: json['name'] ?? '',
-      address: json['address'] ?? json['location'] ?? 'Address not provided',
-      city: json['city'] ?? (json['address'] != null ? json['address'].split(',').last.trim() : 'NA'),
-      status: json['status'] ?? 'Active',
-      phone: json['phone'],
-      email: json['email'],
-      gst: json['gst'] ?? json['gstNumber'],
-      limit: (json['limit'] ?? 1500000).toDouble(),
-      osBalance: (json['osBalance'] ?? 890000).toDouble(),
-      overdue: (json['overdue'] ?? 0).toDouble(),
-      exposureDays: json['exposureDays'] ?? 15,
-      agingData: json['agingData'],
-      addresses: json['addresses'] != null
-          ? (json['addresses'] as List).map((a) => CustomerAddress.fromJson(a)).toList()
-          : null,
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'name': name,
-      'address': address,
-      'city': city,
-      'status': status,
-      if (phone != null) 'phone': phone,
-      if (email != null) 'email': email,
-      if (gst != null) 'gst': gst,
-      'limit': limit,
-      'osBalance': osBalance,
-      'overdue': overdue,
-      'exposureDays': exposureDays,
-      if (agingData != null) 'agingData': agingData,
-      if (addresses != null) 'addresses': addresses!.map((a) => a.toJson()).toList(),
-    };
-  }
-}
 
 // Customer Address Model
 class CustomerAddress {
