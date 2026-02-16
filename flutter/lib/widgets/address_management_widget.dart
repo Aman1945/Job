@@ -84,41 +84,26 @@ class _AddressManagementWidgetState extends State<AddressManagementWidget> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 4,
-                  height: 24,
-                  decoration: BoxDecoration(
-                    color: NexusTheme.emerald500,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                const Text(
-                  'DELIVERY ADDRESSES',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w900,
-                    color: Color(0xFF1E293B),
-                    letterSpacing: 0.5,
-                  ),
-                ),
-              ],
-            ),
-            TextButton.icon(
-              onPressed: _addNewAddress,
-              icon: const Icon(Icons.add_location_alt, size: 18),
-              label: const Text('ADD ADDRESS'),
-              style: TextButton.styleFrom(
-                foregroundColor: NexusTheme.emerald600,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              ),
-            ),
-          ],
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final isNarrow = constraints.maxWidth < 400;
+            return isNarrow 
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildHeaderTitle(),
+                    const SizedBox(height: 8),
+                    _buildAddButton(),
+                  ],
+                )
+              : Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    _buildHeaderTitle(),
+                    _buildAddButton(),
+                  ],
+                );
+          },
         ),
         const SizedBox(height: 16),
         if (_addresses.isEmpty)
@@ -157,6 +142,43 @@ class _AddressManagementWidgetState extends State<AddressManagementWidget> {
     );
   }
 
+  Widget _buildHeaderTitle() {
+    return Row(
+      children: [
+        Container(
+          width: 4,
+          height: 24,
+          decoration: BoxDecoration(
+            color: NexusTheme.emerald500,
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+        const SizedBox(width: 12),
+        const Text(
+          'DELIVERY ADDRESSES',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w900,
+            color: Color(0xFF1E293B),
+            letterSpacing: 0.5,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAddButton() {
+    return TextButton.icon(
+      onPressed: _addNewAddress,
+      icon: const Icon(Icons.add_location_alt, size: 18),
+      label: const Text('ADD ADDRESS'),
+      style: TextButton.styleFrom(
+        foregroundColor: NexusTheme.emerald600,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      ),
+    );
+  }
+
   Widget _buildAddressCard(CustomerAddress address, int index) {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -175,9 +197,12 @@ class _AddressManagementWidgetState extends State<AddressManagementWidget> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                child: Row(
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
                   children: [
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -198,7 +223,6 @@ class _AddressManagementWidgetState extends State<AddressManagementWidget> {
                         ),
                       ),
                     ),
-                    const SizedBox(width: 8),
                     if (address.isDefault)
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -207,6 +231,7 @@ class _AddressManagementWidgetState extends State<AddressManagementWidget> {
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: const Row(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(Icons.star, size: 12, color: NexusTheme.amber600),
                             SizedBox(width: 4),
@@ -348,12 +373,25 @@ class _AddressDialogState extends State<_AddressDialog> {
                 const SizedBox(height: 16),
                 _buildTextField('Street Address', _streetController, 'Enter street address'),
                 const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(child: _buildTextField('City', _cityController, 'City')),
-                    const SizedBox(width: 12),
-                    Expanded(child: _buildTextField('State', _stateController, 'State')),
-                  ],
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    if (constraints.maxWidth < 300) {
+                      return Column(
+                        children: [
+                          _buildTextField('City', _cityController, 'City'),
+                          const SizedBox(height: 16),
+                          _buildTextField('State', _stateController, 'State'),
+                        ],
+                      );
+                    }
+                    return Row(
+                      children: [
+                        Expanded(child: _buildTextField('City', _cityController, 'City')),
+                        const SizedBox(width: 12),
+                        Expanded(child: _buildTextField('State', _stateController, 'State')),
+                      ],
+                    );
+                  },
                 ),
                 const SizedBox(height: 16),
                 _buildTextField('Pincode', _pincodeController, '000000'),

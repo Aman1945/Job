@@ -1,38 +1,27 @@
-# SCM Architecture Alignment & Model Synchronization
+# UI Refinement & SCM Dashboard Alignment
 
-We need to align our project with the professional standards found in the reference directory. This includes upgrading our data models and refining the Mission Lifecycle stages.
+This plan outlines the changes to streamline the dashboard lifecycle, improve user logout security with a confirmation dialog, and ensure the address management system is mobile-responsive.
 
 ## Proposed Changes
 
-### [Backend] Data Models
-#### [MODIFY] [User.js](file:///c:/Users/Dell/Desktop/NEW%20JOB/backend/models/User.js)
-- Add fields: `location`, `department1`, `department2`, `channel`, `whatsappNumber`, `grossMonthlySalary`.
+### 📱 Dashboard Customization
+**File:** [dashboard_screen.dart](file:///c:/Users/Dell/Desktop/NEW%20JOB/flutter/lib/screens/dashboard_screen.dart)
 
-#### [MODIFY] [Customer.js](file:///c:/Users/Dell/Desktop/NEW%20JOB/backend/models/Customer.js)
-- Sync fields from reference: `securityChqStatus`, `distributionChannel`, `customerClass`, `location`, `constitution`.
+- **Lifecycle Stage Removal:** Remove "STAGE 0: Customer Onboarding" and "STAGE 1: Order Booking" from the Supply Chain Lifecycle row to focus on operational fulfillment.
+- **Lifecycle Stage Visibility:** Ensure "STAGE 3: WH Assignment & Packing" and "STAGE 3.5: Quality Control (QC)" are visible for all operational roles (Admin, Sales, WH, QC) to improve context and understanding.
+- **Logout Confirmation:** Enhance the logout button to trigger a standard OK/Cancel confirmation dialog to prevent accidental logouts.
 
-#### [MODIFY] [Product.js](file:///c:/Users/Dell/Desktop/NEW%20JOB/backend/models/Product.js)
-- Ensure all fields like `specie`, `productWeight`, `mrp`, `hsnCode`, `gst` are fully supported.
+### 🏠 Address Management Response
+**File:** [address_management_widget.dart](file:///c:/Users/Dell/Desktop/NEW%20JOB/flutter/lib/widgets/address_management_widget.dart)
 
----
-
-### [Flutter] Models & UI
-#### [MODIFY] [models.dart](file:///c:/Users/Dell/Desktop/NEW%20JOB/flutter/lib/models/models.dart)
-- Update Dart classes to match backend changes.
-- Update `UserRole` enum if necessary.
-
-#### [MODIFY] [dashboard_screen.dart](file:///c:/Users/Dell/Desktop/NEW%20JOB/flutter/lib/screens/dashboard_screen.dart)
-- Update Stage 3.5 to its own `QualityControlScreen` instead of `LiveOrdersScreen`.
-- Refine Stage 4 cost alert logic.
-
----
+- **Mobile Optimization:** 
+    - Adjust the header `Row` to handle wrapping on small screens.
+    - Refactor the `_AddressDialog` to use a vertical layout for City/State fields on mobile or a more flexible wrapping logic.
+    - Improve the `_buildAddressCard` layout to ensure labels and tags don't overlap on narrow displays.
 
 ## Verification Plan
 
-### Automated Tests
-- Run `node migrate.js` to ensure the new schema doesn't break data seeding.
-- Run `flutter analyze` to ensure no model mismatches.
-
 ### Manual Verification
-1. Login as a user with `location: North` and verify the dashboard filters accordingly.
-2. Create a test order with logistics cost > 15% and verify the "High Cost Alert".
+- **Dashboard:** Login as different users (Sales, Admin) and verify that "Customer Onboarding" and "Order Booking" are gone from the row, while WH and QC stages are visible.
+- **Logout:** Click the logout icon and verify that a confirmation popup appears. Test both "CANCEL" and "LOGOUT" (OK) action.
+- **Address:** Open the "New Customer" screen on a narrow simulation/device and test adding/editing addresses. Ensure fields are easy to tap and read.

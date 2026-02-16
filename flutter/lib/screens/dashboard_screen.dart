@@ -64,7 +64,10 @@ class DashboardScreen extends StatelessWidget {
           ),
           actions: [
             IconButton(
-              onPressed: () => auth.logout(), 
+              onPressed: () async {
+                final result = await _showLogoutDialog(context);
+                if (result) auth.logout();
+              }, 
               icon: const Icon(Icons.logout, color: Colors.grey),
               tooltip: 'Logout',
             ),
@@ -158,22 +161,6 @@ class DashboardScreen extends StatelessWidget {
 
     final List<Map<String, dynamic>> lifecycleStages = [
       {
-        'stage': 'STAGE 0',
-        'label': 'Customer Onboarding',
-        'icon': Icons.person_add_alt_1_rounded,
-        'color': Colors.indigo,
-        'screen': const NewCustomerScreen(),
-        'roles': ['Admin', 'Sales']
-      },
-      {
-        'stage': 'STAGE 1',
-        'label': 'Order Booking',
-        'icon': Icons.shopping_bag_rounded,
-        'color': NexusTheme.emerald600,
-        'screen': const BookOrderScreen(),
-        'roles': ['Admin', 'Sales']
-      },
-      {
         'stage': 'STAGE 2',
         'label': 'Credit Control',
         'icon': Icons.bolt_rounded,
@@ -182,27 +169,19 @@ class DashboardScreen extends StatelessWidget {
         'roles': ['Admin', 'Credit Control']
       },
       {
-        'stage': 'STAGE 2.5',
-        'label': 'Warehouse Assignment',
-        'icon': Icons.home_work_rounded,
-        'color': Colors.teal,
-        'screen': const WarehouseSelectionScreen(),
-        'roles': ['Admin', 'WH Manager']
-      },
-      {
         'stage': 'STAGE 3',
-        'label': 'Warehouse Fulfillment',
+        'label': 'WH Assignment & Packing',
         'icon': Icons.inventory_2_rounded,
-        'color': Colors.blueGrey,
+        'color': Colors.teal,
         'screen': const WarehouseInventoryScreen(),
-        'roles': ['Admin', 'Warehouse', 'WH House']
+        'roles': ['Admin', 'Warehouse', 'WH House', 'WH Manager']
       },
       {
         'stage': 'STAGE 3.5',
         'label': 'Quality Control (QC)',
         'icon': Icons.verified_user_rounded,
         'color': Colors.green.shade700,
-        'screen': const LiveOrdersScreen(), // Simplified for now, can be specific QC screen
+        'screen': const LiveOrdersScreen(), 
         'roles': ['Admin', 'QC Head']
       },
       {
@@ -390,6 +369,21 @@ class _SectionTitle extends StatelessWidget {
   Widget build(BuildContext context) => Text(title, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: NexusTheme.slate400, letterSpacing: 1.5));
 }
 
+
+Future<bool> _showLogoutDialog(BuildContext context) async {
+  return await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      title: const Text('Confirm Logout', style: TextStyle(fontWeight: FontWeight.w900)),
+      content: const Text('Are you sure you want to log out of NexusOMS?'),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('CANCEL')),
+        TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('LOGOUT', style: TextStyle(color: Colors.red))),
+      ],
+    ),
+  ) ?? false;
+}
 
 Future<bool> _showExitDialog(BuildContext context) async {
   return await showDialog<bool>(
