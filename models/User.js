@@ -13,10 +13,12 @@ const userSchema = new mongoose.Schema({
             'Sales',
             'Credit Control',
             'WH Manager',
+            'WH House',
             'Warehouse',
             'QC Head',
             'Logistics Lead',
             'Logistics Team',
+            'Billing',
             'ATL Executive',
             'Hub Lead',
             'Delivery Team'
