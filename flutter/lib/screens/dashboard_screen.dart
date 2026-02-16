@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/nexus_provider.dart';
 import '../providers/auth_provider.dart';
+import '../models/models.dart';
 import '../utils/theme.dart';
 import '../widgets/nexus_components.dart';
 import 'order_archive_screen.dart';
@@ -238,7 +239,7 @@ class DashboardScreen extends StatelessWidget {
       },
     ];
 
-    final filteredStages = lifecycleStages.where((s) => (s['roles'] as List).contains(user.role)).toList();
+    final filteredStages = lifecycleStages.where((s) => (s['roles'] as List).contains(user.role.label)).toList();
 
     return Column(
       children: filteredStages.map((s) => Padding(
@@ -271,7 +272,7 @@ class DashboardScreen extends StatelessWidget {
       {'l': 'Master Data', 'i': Icons.terminal, 's': const MasterDataScreen(), 'roles': ['Admin']},
     ];
 
-    final filteredUtils = allUtilities.where((u) => (u['roles'] as List).contains(user.role)).toList();
+    final filteredUtils = allUtilities.where((u) => (u['roles'] as List).contains(user.role.label)).toList();
 
     return GridView.builder(
       shrinkWrap: true,
