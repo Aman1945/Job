@@ -516,7 +516,7 @@ class _MasterDataScreenState extends State<MasterDataScreen> {
     } else if (_selectedTab == 'MATERIAL MASTER') {
       fields = ['SKU CODE', 'NAME', 'PRICE', 'CATEGORY', 'STOCK'];
     } else {
-      fields = ['NAME', 'EMAIL', 'ROLE', 'PASSWORD'];
+      fields = ['NAME', 'EMAIL', 'ROLE', 'PASSWORD', 'LOCATION', 'DEPARTMENT 1', 'DEPARTMENT 2', 'CHANNEL', 'WHATSAPP', 'SALARY'];
     }
 
     // Initialize controllers with initialData if available
@@ -527,6 +527,11 @@ class _MasterDataScreenState extends State<MasterDataScreen> {
           if (f == 'NAME') value = initialData.name;
           if (f == 'EMAIL') value = initialData.id;
           if (f == 'ROLE') value = initialData.role.label;
+          if (f == 'LOCATION') value = initialData.location;
+          if (f == 'DEPARTMENT 1') value = initialData.department1 ?? '';
+          if (f == 'DEPARTMENT 2') value = initialData.department2 ?? '';
+          if (f == 'CHANNEL') value = initialData.channel ?? '';
+          if (f == 'WHATSAPP') value = initialData.whatsappNumber ?? '';
         } else if (_selectedTab == 'CUSTOMER MASTER' && initialData is Customer) {
           if (f == 'ID') value = initialData.id;
           if (f == 'NAME') value = initialData.name;
@@ -619,6 +624,11 @@ class _MasterDataScreenState extends State<MasterDataScreen> {
                               'id': controllers['EMAIL']!.text,
                               'role': controllers['ROLE']!.text,
                               'password': controllers['PASSWORD']!.text,
+                              'location': controllers['LOCATION']!.text,
+                              'department1': controllers['DEPARTMENT 1']!.text,
+                              'department2': controllers['DEPARTMENT 2']!.text,
+                              'channel': controllers['CHANNEL']!.text,
+                              'whatsappNumber': controllers['WHATSAPP']!.text,
                             });
                           } else if (_selectedTab == 'CUSTOMER MASTER') {
                             success = await provider.createCustomer({

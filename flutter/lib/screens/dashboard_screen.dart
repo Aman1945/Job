@@ -239,7 +239,13 @@ class DashboardScreen extends StatelessWidget {
       },
     ];
 
-    final filteredStages = lifecycleStages.where((s) => (s['roles'] as List).contains(user.role.label)).toList();
+    // Filter stages based on role AND potentially location/department
+    final filteredStages = lifecycleStages.where((s) {
+      final roleMatch = (s['roles'] as List).contains(user.role.label);
+      // Logic for location filtering can be added here
+      // For example: if (user.location != 'Pan India' && s['location'] != null) return roleMatch && s['location'] == user.location;
+      return roleMatch;
+    }).toList();
 
     return Column(
       children: filteredStages.map((s) => Padding(

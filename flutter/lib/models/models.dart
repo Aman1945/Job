@@ -20,17 +20,104 @@ enum UserRole {
   }
 }
 
+class Customer {
+  final String id;
+  final String name;
+  final String address;
+  final String city;
+  final double limit;
+  final double outstanding;
+  final double overdue;
+  final Map<String, double> agingBuckets;
+  final String? salesManager;
+  final String? distributionChannel;
+  final String? customerClass;
+  final String? location;
+  final String? gstNo;
+  final String? fssaiLicenseNo;
+  final String? panCard;
+
+  Customer({
+    required this.id,
+    required this.name,
+    required this.address,
+    this.city = '',
+    this.limit = 1500000,
+    this.outstanding = 0,
+    this.overdue = 0,
+    this.agingBuckets = const {},
+    this.salesManager,
+    this.distributionChannel,
+    this.customerClass,
+    this.location,
+    this.gstNo,
+    this.fssaiLicenseNo,
+    this.panCard,
+  });
+
+  factory Customer.fromJson(Map<String, dynamic> json) {
+    return Customer(
+      id: json['id'] ?? '',
+      name: json['name'] ?? '',
+      address: json['address'] ?? '',
+      city: json['city'] ?? '',
+      limit: (json['limit'] ?? json['creditLimit'] ?? 1500000).toDouble(),
+      outstanding: (json['outstanding'] ?? 0).toDouble(),
+      overdue: (json['overdue'] ?? 0).toDouble(),
+      agingBuckets: Map<String, double>.from(
+          (json['agingBuckets'] ?? {}).map((k, v) => MapEntry(k, v.toDouble()))),
+      salesManager: json['salesManager'],
+      distributionChannel: json['distributionChannel'],
+      customerClass: json['customerClass'],
+      location: json['location'],
+      gstNo: json['gstNo'] ?? json['gst'],
+      fssaiLicenseNo: json['fssaiLicenseNo'] ?? json['fssai'],
+      panCard: json['panCard'] ?? json['pan'],
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'address': address,
+      'city': city,
+      'limit': limit,
+      'outstanding': outstanding,
+      'overdue': overdue,
+      'agingBuckets': agingBuckets,
+      if (salesManager != null) 'salesManager': salesManager,
+      if (distributionChannel != null) 'distributionChannel': distributionChannel,
+      if (customerClass != null) 'customerClass': customerClass,
+      if (location != null) 'location': location,
+      if (gstNo != null) 'gstNo': gstNo,
+      if (fssaiLicenseNo != null) 'fssaiLicenseNo': fssaiLicenseNo,
+      if (panCard != null) 'panCard': panCard,
+    };
+  }
+}
+
 class User {
   final String id;
   final String name;
   final UserRole role;
   final String? password;
+  final String location;
+  final String? department1;
+  final String? department2;
+  final String? channel;
+  final String? whatsappNumber;
 
   User({
     required this.id,
     required this.name,
     required this.role,
     this.password,
+    this.location = 'Pan India',
+    this.department1,
+    this.department2,
+    this.channel,
+    this.whatsappNumber,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -39,6 +126,11 @@ class User {
       name: json['name'] ?? '',
       role: UserRole.fromString(json['role'] ?? 'Sales'),
       password: json['password'],
+      location: json['location'] ?? 'Pan India',
+      department1: json['department1'],
+      department2: json['department2'],
+      channel: json['channel'],
+      whatsappNumber: json['whatsappNumber'],
     );
   }
 
@@ -47,6 +139,11 @@ class User {
       'id': id,
       'name': name,
       'role': role.label,
+      'location': location,
+      if (department1 != null) 'department1': department1,
+      if (department2 != null) 'department2': department2,
+      if (channel != null) 'channel': channel,
+      if (whatsappNumber != null) 'whatsappNumber': whatsappNumber,
       if (password != null) 'password': password,
     };
   }
@@ -59,6 +156,11 @@ class Product {
   final double price;
   final int stock;
   final String category;
+  final String? specie;
+  final String? productPacking;
+  final double? mrp;
+  final String? hsnCode;
+  final double? gst;
 
   Product({
     required this.id,
@@ -67,6 +169,11 @@ class Product {
     required this.price,
     required this.stock,
     required this.category,
+    this.specie,
+    this.productPacking,
+    this.mrp,
+    this.hsnCode,
+    this.gst,
   });
 
   factory Product.fromJson(Map<String, dynamic> json) {
@@ -77,6 +184,11 @@ class Product {
       price: (json['price'] ?? 0).toDouble(),
       stock: json['stock'] ?? 0,
       category: json['category'] ?? 'General',
+      specie: json['specie'],
+      productPacking: json['productPacking'],
+      mrp: (json['mrp'] ?? 0).toDouble(),
+      hsnCode: json['hsnCode'],
+      gst: (json['gst'] ?? 0).toDouble(),
     );
   }
 
@@ -88,6 +200,11 @@ class Product {
       'price': price,
       'stock': stock,
       'category': category,
+      if (specie != null) 'specie': specie,
+      if (productPacking != null) 'productPacking': productPacking,
+      if (mrp != null) 'mrp': mrp,
+      if (hsnCode != null) 'hsnCode': hsnCode,
+      if (gst != null) 'gst': gst,
     };
   }
 }

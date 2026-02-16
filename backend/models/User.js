@@ -28,11 +28,16 @@ const userSchema = new mongoose.Schema({
     isApprover: {
         type: Boolean,
         default: function () {
-            // Auto-set isApprover for specific roles
             return ['Admin', 'Credit Control', 'Procurement Head'].includes(this.role);
         }
     },
     password: { type: String, required: true },
+    location: { type: String, default: 'Pan India' },
+    department1: { type: String },
+    department2: { type: String },
+    channel: { type: String },
+    whatsappNumber: { type: String },
+    grossMonthlySalary: { type: Number, default: 0 },
     monthlyTarget: { type: Number, default: 0 },
     monthlyQtyTarget: { type: Number, default: 0 },
     lastLogin: { type: Date }
