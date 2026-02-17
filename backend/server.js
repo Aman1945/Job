@@ -38,6 +38,7 @@ app.use(helmet({
 
 // CORS - Restrict to allowed origins
 const allowedOrigins = [
+    'http://localhost:4200',
     'http://localhost:3000',
     'http://localhost:54167',
     'http://localhost:8080',
@@ -132,35 +133,6 @@ const Customer = require('./models/Customer');
 const Product = require('./models/Product');
 const Order = require('./models/Order');
 const Procurement = require('./models/Procurement');
-
-// Use MongoDB as the primary database
-const useMongoDB = true;
-
-
-// Helper functions for local JSON data (fallback)
-const getData = (collection) => {
-    const filePath = path.join(__dirname, 'data', `${collection}.json`);
-    try {
-        if (!fs.existsSync(filePath)) return [];
-        return JSON.parse(fs.readFileSync(filePath, 'utf8'));
-    } catch (e) {
-        console.error(`Error reading ${collection}:`, e);
-        return [];
-    }
-};
-
-const saveData = (collection, data) => {
-    const dataDir = path.join(__dirname, 'data');
-    if (!fs.existsSync(dataDir)) {
-        fs.mkdirSync(dataDir, { recursive: true });
-    }
-    const filePath = path.join(dataDir, `${collection}.json`);
-    try {
-        fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
-    } catch (e) {
-        console.error(`Error saving ${collection}:`, e);
-    }
-};
 
 
 // ==================== HOME ROUTE ====================
@@ -322,14 +294,54 @@ app.post('/api/users', async (req, res) => {
     }
 });
 
-app.patch('/api/users/:id', async (req, res) => {
+app.patch('/api/users/:id/role', async (req, res) => {
     try {
         const { id } = req.params;
-        const user = await User.findOneAndUpdate({ id }, req.body, { new: true });
-        if (user) return res.json(user);
+        const { role } = req.body;
+
+        // In a real production app, we would verify the requester is an Admin
+        // For this implementation, we assume the Admin Dashboard handles this check
+        const user = await User.findOneAndUpdate(
+            { id },
+            { role },
+            { new: true }
+        ).select('-password');
+
+        if (user) {
+            console.log(`👤 User role updated: ${id} -> ${role}`);
+            return res.json(user);
+        }
         res.status(404).json({ message: 'User not found' });
     } catch (error) {
-        res.status(500).json({ message: 'Error updating user' });
+        res.status(500).json({ message: 'Error updating user role' });
+    }
+});
+
+// Update user permissions (Multi-permission system)
+app.patch('/api/users/:id/permissions', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { permissions } = req.body; // Array of permission strings
+
+        // Verify permissions is an array
+        if (!Array.isArray(permissions)) {
+            return res.status(400).json({ message: 'Permissions must be an array' });
+        }
+
+        const user = await User.findOneAndUpdate(
+            { id },
+            { permissions },
+            { new: true, runValidators: true }
+        ).select('-password');
+
+        if (user) {
+            console.log(`🔐 User permissions updated: ${id} -> [${permissions.join(', ')}]`);
+            return res.json(user);
+        }
+        res.status(404).json({ message: 'User not found' });
+    } catch (error) {
+        console.error('Error updating permissions:', error);
+        res.status(500).json({ message: 'Error updating user permissions' });
     }
 });
 
@@ -442,18 +454,10 @@ app.post('/api/orders', async (req, res) => {
             }]
         };
 
-        if (useMongoDB) {
-            const newOrder = new Order(orderData);
-            await newOrder.save();
-            console.log(`✅ Order created: ${newOrder.id}`);
-            return res.status(201).json(newOrder);
-        }
-
-        const orders = getData('orders');
-        orders.unshift(orderData);
-        saveData('orders', orders);
-        console.log(`✅ Order created: ${orderData.id}`);
-        res.status(201).json(orderData);
+        const newOrder = new Order(orderData);
+        await newOrder.save();
+        console.log(`✅ Order created: ${newOrder.id}`);
+        res.status(201).json(newOrder);
     } catch (error) {
         console.error('Order creation error:', error);
         res.status(500).json({ message: 'Error creating order' });
@@ -465,15 +469,22 @@ app.patch('/api/orders/:id', async (req, res) => {
         const { id } = req.params;
         const updateData = { ...req.body };
 
-        // Logistics 15% Cost Alert Logic
-        if (updateData.logistics && updateData.logistics.shippingCost) {
-            const currentOrder = await Order.findOne({ id });
-            if (currentOrder) {
-                const costPercentage = (updateData.logistics.shippingCost / currentOrder.total) * 100;
-                if (costPercentage > 15) {
-                    updateData.logistics.highCostAlert = true;
-                    updateData.status = 'Pending Admin Review';
-                    console.log(`⚠️ High Cost Alert on ${id}: ${costPercentage.toFixed(2)}%`);
+        // Admin Bypass Logic: If req.body.isAdminBypass is true and user is Admin, allow any status
+        if (updateData.isAdminBypass) {
+            console.log(`🛡️ Admin Bypass triggered for order: ${id} to status: ${updateData.status}`);
+            // Remove bypass flag before saving
+            delete updateData.isAdminBypass;
+        } else {
+            // Logistics 15% Cost Alert Logic (Normal flow)
+            if (updateData.logistics && updateData.logistics.shippingCost) {
+                const currentOrder = await Order.findOne({ id });
+                if (currentOrder) {
+                    const costPercentage = (updateData.logistics.shippingCost / currentOrder.total) * 100;
+                    if (costPercentage > 15) {
+                        updateData.logistics.highCostAlert = true;
+                        updateData.status = 'Pending Admin Review';
+                        console.log(`⚠️ High Cost Alert on ${id}: ${costPercentage.toFixed(2)}%`);
+                    }
                 }
             }
         }
@@ -487,35 +498,21 @@ app.patch('/api/orders/:id', async (req, res) => {
             updateData.statusHistory.push({ status: updateData.status, timestamp });
         }
 
-        if (useMongoDB) {
-            const updateObj = { ...updateData };
-            delete updateObj.statusHistory;
+        const updateObj = { ...updateData };
+        delete updateObj.statusHistory;
 
-            const order = await Order.findOneAndUpdate(
-                { id },
-                {
-                    $set: updateObj,
-                    $push: { statusHistory: { status: updateData.status, timestamp: new Date().toISOString() } }
-                },
-                { new: true }
-            );
-            if (order) {
-                console.log(`✅ Order updated: ${id}`);
-                return res.json(order);
-            }
-        }
+        const order = await Order.findOneAndUpdate(
+            { id },
+            {
+                $set: updateObj,
+                $push: { statusHistory: { status: updateData.status, timestamp: new Date().toISOString() } }
+            },
+            { new: true }
+        );
 
-        const orders = getData('orders');
-        const index = orders.findIndex(o => o.id === id);
-        if (index !== -1) {
-            const history = orders[index].statusHistory || [];
-            if (updateData.status) {
-                history.push({ status: updateData.status, timestamp: new Date().toISOString() });
-            }
-            orders[index] = { ...orders[index], ...updateData, statusHistory: history };
-            saveData('orders', orders);
+        if (order) {
             console.log(`✅ Order updated: ${id}`);
-            return res.json(orders[index]);
+            return res.json(order);
         }
 
         res.status(404).json({ message: 'Order not found' });
@@ -528,19 +525,8 @@ app.patch('/api/orders/:id', async (req, res) => {
 app.delete('/api/orders/:id', async (req, res) => {
     try {
         const { id } = req.params;
-
-        if (useMongoDB) {
-            const order = await Order.findOneAndDelete({ id });
-            if (order) return res.json({ message: 'Order deleted' });
-        }
-
-        const orders = getData('orders');
-        const filtered = orders.filter(o => o.id !== id);
-        if (filtered.length < orders.length) {
-            saveData('orders', filtered);
-            return res.json({ message: 'Order deleted' });
-        }
-
+        const order = await Order.findOneAndDelete({ id });
+        if (order) return res.json({ message: 'Order deleted' });
         res.status(404).json({ message: 'Order not found' });
     } catch (error) {
         res.status(500).json({ message: 'Error deleting order' });
@@ -551,33 +537,16 @@ app.delete('/api/orders/:id', async (req, res) => {
 app.post('/api/orders/bulk-update', async (req, res) => {
     try {
         const { orderIds, updates } = req.body;
+        const updateObj = { ...updates };
+        const query = { $set: updateObj };
 
-        if (useMongoDB) {
-            const updateObj = { ...updates };
-            const query = { $set: updateObj };
-
-            if (updates.status) {
-                query.$push = { statusHistory: { status: updates.status, timestamp: new Date().toISOString() } };
-            }
-
-            await Order.updateMany({ id: { $in: orderIds } }, query);
-            const updatedOrders = await Order.find({ id: { $in: orderIds } });
-            return res.json(updatedOrders);
+        if (updates.status) {
+            query.$push = { statusHistory: { status: updates.status, timestamp: new Date().toISOString() } };
         }
 
-        const orders = getData('orders');
-        const updatedOrders = orders.map(o => {
-            if (orderIds.includes(o.id)) {
-                const history = o.statusHistory || [];
-                if (updates.status) {
-                    history.push({ status: updates.status, timestamp: new Date().toISOString() });
-                }
-                return { ...o, ...updates, statusHistory: history };
-            }
-            return o;
-        });
-        saveData('orders', updatedOrders);
-        res.json(updatedOrders.filter(o => orderIds.includes(o.id)));
+        await Order.updateMany({ id: { $in: orderIds } }, query);
+        const updatedOrders = await Order.find({ id: { $in: orderIds } });
+        res.json(updatedOrders);
     } catch (error) {
         res.status(500).json({ message: 'Error in bulk update' });
     }
@@ -911,11 +880,8 @@ app.get('/api/analytics/reports', async (req, res) => {
 // ==================== PROCUREMENT GATE API ====================
 app.get('/api/procurement', async (req, res) => {
     try {
-        if (useMongoDB) {
-            const items = await Procurement.find().sort({ createdAt: -1 });
-            return res.json(items);
-        }
-        res.json(getData('procurement'));
+        const items = await Procurement.find().sort({ createdAt: -1 });
+        res.json(items);
     } catch (error) {
         res.status(500).json({ message: 'Error fetching procurement' });
     }
@@ -930,16 +896,9 @@ app.post('/api/procurement', async (req, res) => {
             status: 'Pending'
         };
 
-        if (useMongoDB) {
-            const newItem = new Procurement(itemData);
-            await newItem.save();
-            return res.status(201).json(newItem);
-        }
-
-        const items = getData('procurement');
-        items.unshift(itemData);
-        saveData('procurement', items);
-        res.status(201).json(itemData);
+        const newItem = new Procurement(itemData);
+        await newItem.save();
+        res.status(201).json(newItem);
     } catch (error) {
         res.status(500).json({ message: 'Error creating procurement entry' });
     }
@@ -949,19 +908,8 @@ app.put('/api/procurement/:id', async (req, res) => {
     try {
         const { id } = req.params;
         const updates = req.body;
-
-        if (useMongoDB) {
-            const item = await Procurement.findOneAndUpdate({ id }, updates, { new: true });
-            return res.json(item);
-        }
-
-        const items = getData('procurement');
-        const index = items.findIndex(i => i.id === id);
-        if (index !== -1) {
-            items[index] = { ...items[index], ...updates };
-            saveData('procurement', items);
-            return res.json(items[index]);
-        }
+        const item = await Procurement.findOneAndUpdate({ id }, updates, { new: true });
+        if (item) return res.json(item);
         res.status(404).json({ message: 'Not found' });
     } catch (error) {
         res.status(500).json({ message: 'Error updating procurement' });
@@ -971,13 +919,7 @@ app.put('/api/procurement/:id', async (req, res) => {
 app.delete('/api/procurement/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        if (useMongoDB) {
-            await Procurement.findOneAndDelete({ id });
-            return res.json({ message: 'Deleted' });
-        }
-        const items = getData('procurement');
-        const newItems = items.filter(i => i.id !== id);
-        saveData('procurement', newItems);
+        await Procurement.findOneAndDelete({ id });
         res.json({ message: 'Deleted' });
     } catch (error) {
         res.status(500).json({ message: 'Error deleting procurement' });

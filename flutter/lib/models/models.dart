@@ -3,13 +3,18 @@
 enum UserRole {
   admin('Admin'),
   sales('Sales'),
-  finance('Credit Control'),
-  approver('Approving Authority'),
-  logistics('Logistics Team'),
-  billing('Billing Team'),
-  warehouse('Warehouse/Packing'),
-  delivery('Delivery Team'),
-  procurement('Procurement Team'),
+  creditControl('Credit Control'),
+  whManager('WH Manager'),
+  whHouse('WH House'),
+  warehouse('Warehouse'),
+  qcHead('QC Head'),
+  logisticsLead('Logistics Lead'),
+  logisticsTeam('Logistics Team'),
+  billing('Billing'),
+  atlExecutive('ATL Executive'),
+  hubLead('Hub Lead'),
+  deliveryTeam('Delivery Team'),
+  procurement('Procurement'),
   procurementHead('Procurement Head');
 
   final String label;
@@ -128,6 +133,7 @@ class User {
   final String? department2;
   final String? channel;
   final String? whatsappNumber;
+  final List<String> permissions;
 
   User({
     required this.id,
@@ -139,6 +145,7 @@ class User {
     this.department2,
     this.channel,
     this.whatsappNumber,
+    this.permissions = const [],
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -152,6 +159,7 @@ class User {
       department2: json['department2'],
       channel: json['channel'],
       whatsappNumber: json['whatsappNumber'],
+      permissions: (json['permissions'] as List?)?.map((e) => e.toString()).toList() ?? [],
     );
   }
 
@@ -165,6 +173,7 @@ class User {
       if (department2 != null) 'department2': department2,
       if (channel != null) 'channel': channel,
       if (whatsappNumber != null) 'whatsappNumber': whatsappNumber,
+      'permissions': permissions,
       if (password != null) 'password': password,
     };
   }
@@ -236,6 +245,10 @@ class OrderItem {
   final int quantity;
   final double price;
   final String? unit;
+  final String? batchNo;
+  final DateTime? expiryDate;
+  final DateTime? mfgDate;
+  final String? binLocation;
 
   OrderItem({
     required this.skuCode,
@@ -243,6 +256,10 @@ class OrderItem {
     required this.quantity,
     required this.price,
     this.unit,
+    this.batchNo,
+    this.expiryDate,
+    this.mfgDate,
+    this.binLocation,
   });
 
   factory OrderItem.fromJson(Map<String, dynamic> json) {
@@ -252,6 +269,10 @@ class OrderItem {
       quantity: json['quantity'] ?? 0,
       price: (json['price'] ?? 0).toDouble(),
       unit: json['unit'],
+      batchNo: json['batchNo'],
+      expiryDate: json['expiryDate'] != null ? DateTime.parse(json['expiryDate']) : null,
+      mfgDate: json['mfgDate'] != null ? DateTime.parse(json['mfgDate']) : null,
+      binLocation: json['binLocation'],
     );
   }
 
@@ -262,6 +283,10 @@ class OrderItem {
       'quantity': quantity,
       'price': price,
       if (unit != null) 'unit': unit,
+      if (batchNo != null) 'batchNo': batchNo,
+      if (expiryDate != null) 'expiryDate': expiryDate!.toIso8601String(),
+      if (mfgDate != null) 'mfgDate': mfgDate!.toIso8601String(),
+      if (binLocation != null) 'binLocation': binLocation,
     };
   }
 }
@@ -272,6 +297,8 @@ class Order {
   final String customerName;
   final String status;
   final double total;
+  final double? subTotal;
+  final double? gstAmount;
   final DateTime createdAt;
   final List<OrderItem> items;
   final String? salespersonId;
@@ -284,6 +311,10 @@ class Order {
   final String? destinationWarehouse;
   final String? remarks;
   final LogisticsData? logistics;
+  final Map<String, double>? taxBreakdown;
+  final double? discountAmount;
+  final double? netWeight;
+  final double? grossWeight;
 
   Order({
     required this.id,
@@ -291,6 +322,8 @@ class Order {
     required this.customerName,
     required this.status,
     required this.total,
+    this.subTotal,
+    this.gstAmount,
     required this.createdAt,
     required this.items,
     this.salespersonId,
@@ -303,6 +336,10 @@ class Order {
     this.destinationWarehouse,
     this.remarks,
     this.logistics,
+    this.taxBreakdown,
+    this.discountAmount,
+    this.netWeight,
+    this.grossWeight,
   });
 
   factory Order.fromJson(Map<String, dynamic> json) {
@@ -320,7 +357,9 @@ class Order {
       customerId: json['customerId'] ?? '',
       customerName: json['customerName'] ?? '',
       status: json['status'] ?? 'Pending',
-      total: json['total']?.toDouble() ?? calculatedTotal,
+      total: json['total']?.toDouble() ?? (calculatedTotal * 1.18), // Default to 18% GST if total missing
+      subTotal: json['subTotal']?.toDouble() ?? calculatedTotal,
+      gstAmount: json['gstAmount']?.toDouble() ?? (calculatedTotal * 0.18),
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'])
           : DateTime.now(),
@@ -335,6 +374,10 @@ class Order {
       destinationWarehouse: json['destinationWarehouse'],
       remarks: json['remarks'],
       logistics: json['logistics'] != null ? LogisticsData.fromJson(json['logistics']) : null,
+      taxBreakdown: (json['taxBreakdown'] as Map?)?.map((k, v) => MapEntry(k.toString(), (v as num).toDouble())),
+      discountAmount: (json['discountAmount'] as num?)?.toDouble(),
+      netWeight: (json['netWeight'] as num?)?.toDouble(),
+      grossWeight: (json['grossWeight'] as num?)?.toDouble(),
     );
   }
 
@@ -345,6 +388,8 @@ class Order {
       'customerName': customerName,
       'status': status,
       'total': total,
+      if (subTotal != null) 'subTotal': subTotal,
+      if (gstAmount != null) 'gstAmount': gstAmount,
       'createdAt': createdAt.toIso8601String(),
       'items': items.map((item) => item.toJson()).toList(),
       if (salespersonId != null) 'salespersonId': salespersonId,
@@ -357,6 +402,10 @@ class Order {
       if (destinationWarehouse != null) 'destinationWarehouse': destinationWarehouse,
       if (remarks != null) 'remarks': remarks,
       if (logistics != null) 'logistics': logistics!.toJson(),
+      if (taxBreakdown != null) 'taxBreakdown': taxBreakdown,
+      if (discountAmount != null) 'discountAmount': discountAmount,
+      if (netWeight != null) 'netWeight': netWeight,
+      if (grossWeight != null) 'grossWeight': grossWeight,
     };
   }
 }
@@ -366,12 +415,24 @@ class LogisticsData {
   final String? vehicleNo;
   final String? vehicleProvider;
   final double? distanceKm;
+  final String? manifestId;
+  final String? ewayBill;
+  final String? sealNo;
+  final DateTime? bookingDate;
+  final DateTime? expectedDeliveryDate;
+  final List<Map<String, dynamic>>? trackingHistory;
 
   LogisticsData({
     this.deliveryAgentId,
     this.vehicleNo,
     this.vehicleProvider,
     this.distanceKm,
+    this.manifestId,
+    this.ewayBill,
+    this.sealNo,
+    this.bookingDate,
+    this.expectedDeliveryDate,
+    this.trackingHistory,
   });
 
   factory LogisticsData.fromJson(Map<String, dynamic> json) {
@@ -380,6 +441,12 @@ class LogisticsData {
       vehicleNo: json['vehicleNo'],
       vehicleProvider: json['vehicleProvider'],
       distanceKm: (json['distanceKm'] as num?)?.toDouble(),
+      manifestId: json['manifestId'],
+      ewayBill: json['ewayBill'],
+      sealNo: json['sealNo'],
+      bookingDate: json['bookingDate'] != null ? DateTime.parse(json['bookingDate']) : null,
+      expectedDeliveryDate: json['expectedDeliveryDate'] != null ? DateTime.parse(json['expectedDeliveryDate']) : null,
+      trackingHistory: (json['trackingHistory'] as List?)?.map((e) => Map<String, dynamic>.from(e)).toList(),
     );
   }
 
@@ -389,6 +456,12 @@ class LogisticsData {
       if (vehicleNo != null) 'vehicleNo': vehicleNo,
       if (vehicleProvider != null) 'vehicleProvider': vehicleProvider,
       if (distanceKm != null) 'distanceKm': distanceKm,
+      if (manifestId != null) 'manifestId': manifestId,
+      if (ewayBill != null) 'ewayBill': ewayBill,
+      if (sealNo != null) 'sealNo': sealNo,
+      if (bookingDate != null) 'bookingDate': bookingDate!.toIso8601String(),
+      if (expectedDeliveryDate != null) 'expectedDeliveryDate': expectedDeliveryDate!.toIso8601String(),
+      if (trackingHistory != null) 'trackingHistory': trackingHistory,
     };
   }
 }

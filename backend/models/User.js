@@ -37,6 +37,25 @@ const userSchema = new mongoose.Schema({
     department2: { type: String },
     channel: { type: String },
     whatsappNumber: { type: String },
+    permissions: {
+        type: [String],
+        default: [],
+        enum: [
+            'view_orders',
+            'create_orders',
+            'approve_credit',
+            'manage_warehouse',
+            'quality_control',
+            'logistics_costing',
+            'invoicing',
+            'fleet_loading',
+            'delivery',
+            'procurement',
+            'admin_bypass',
+            'user_management',
+            'master_data'
+        ]
+    },
     grossMonthlySalary: { type: Number, default: 0 },
     monthlyTarget: { type: Number, default: 0 },
     monthlyQtyTarget: { type: Number, default: 0 },
