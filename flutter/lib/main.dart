@@ -14,16 +14,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'controllers/testdrive/drive_state_manager.dart';
 
 import 'services/downloader_service.dart';
-import 'dart:isolate';
-import 'dart:ui';
-import 'package:flutter_downloader/flutter_downloader.dart';
 
-// ⚠️ IMPORTANT: This MUST be a top-level function in main.dart for flutter_downloader to work
-@pragma('vm:entry-point')
-void downloadCallback(String id, int status, int progress) {
-  final SendPort? send = IsolateNameServer.lookupPortByName('downloader_port');
-  send?.send([id, status, progress]);
-}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -32,8 +23,8 @@ void main() async {
   await Hive.initFlutter();
   await DriveStateManager.init();
   
-  // Initialize Downloader - pass the top-level callback from main.dart
-  await DownloaderService().initialize(callback: downloadCallback);
+  // Initialize Downloader
+  await DownloaderService().initialize();
 
   runApp(
     MultiProvider(
