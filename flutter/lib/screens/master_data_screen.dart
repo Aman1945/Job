@@ -4,6 +4,7 @@ import '../providers/nexus_provider.dart';
 import '../utils/theme.dart';
 import '../models/models.dart';
 import '../widgets/nexus_components.dart';
+import 'package:file_picker/file_picker.dart';
 
 class MasterDataScreen extends StatefulWidget {
   const MasterDataScreen({super.key});
@@ -98,6 +99,15 @@ class _MasterDataScreenState extends State<MasterDataScreen> {
                         onTap: () => _showMasterForm(context),
                         isPrimary: true,
                       ),
+                      if (_selectedTab == 'CUSTOMER MASTER') ...[
+                        const SizedBox(width: 12),
+                        _buildActionButton(
+                          icon: Icons.upload_file,
+                          label: 'IMPORT EXCEL',
+                          onTap: () => _handleBulkImport(context),
+                          isPrimary: true,
+                        ),
+                      ],
                     ],
                   ),
                 ],
@@ -682,5 +692,30 @@ class _MasterDataScreenState extends State<MasterDataScreen> {
         },
       ),
     );
+  }
+
+  Future<void> _handleBulkImport(BuildContext context) async {
+    final provider = Provider.of<NexusProvider>(context, listen: false);
+    
+    FilePickerResult? result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['xlsx'],
+    );
+
+    if (result != null && result.files.single.path != null) {
+      setState(() => _isLoading = true);
+      final success = await provider.importCustomers(result.files.single.path!);
+      setState(() => _isLoading = false);
+      
+      if (success && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Bulk import completed successfully!'), backgroundColor: Colors.green),
+        );
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Bulk import failed. Please check the file format.'), backgroundColor: Colors.red),
+        );
+      }
+    }
   }
 }

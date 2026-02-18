@@ -628,5 +628,35 @@ class NexusProvider with ChangeNotifier {
     }
     return null;
   }
+
+  Future<bool> importCustomers(String filePath) async {
+    _isLoading = true;
+    notifyListeners();
+    try {
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('$_baseUrl/customers/bulk-import'),
+      );
+      
+      request.files.add(await http.MultipartFile.fromPath('file', filePath));
+      
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 200) {
+        await fetchCustomers();
+        return true;
+      } else {
+        debugPrint('Import error: ${response.statusCode} - ${response.body}');
+        return false;
+      }
+    } catch (e) {
+      debugPrint('Error importing customers: $e');
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
 }
 

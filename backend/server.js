@@ -561,6 +561,76 @@ app.delete('/api/orders/:id', async (req, res) => {
 });
 
 // ==================== BULK OPERATIONS ====================
+const ExcelJS = require('exceljs');
+
+app.post('/api/customers/bulk-import', upload.single('file'), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ message: 'No file uploaded' });
+        }
+
+        const workbook = new ExcelJS.Workbook();
+        await workbook.xlsx.readFile(req.file.path);
+        const worksheet = workbook.getWorksheet(1);
+
+        const customers = [];
+        worksheet.eachRow((row, rowNumber) => {
+            if (rowNumber === 1) return; // Skip header
+
+            const rowData = {
+                location: row.getCell(1).value,
+                salesManager: row.getCell(2).value,
+                customerClass: row.getCell(3).value,
+                employeeResponsible: row.getCell(4).value,
+                name: row.getCell(5).value,
+                id: row.getCell(6).value?.toString(),
+                securityChq: row.getCell(7).value || '-',
+                limit: parseFloat(row.getCell(8).value) || 0,
+                osBalance: parseFloat(row.getCell(9).value) || 0,
+                odAmt: parseFloat(row.getCell(10).value) || 0,
+                diffYesterdayToday: parseFloat(row.getCell(11).value) || 0,
+                agingBuckets: {
+                    "0 to 7": parseFloat(row.getCell(12).value) || 0,
+                    "7 to 15": parseFloat(row.getCell(13).value) || 0,
+                    "15 to 30": parseFloat(row.getCell(14).value) || 0,
+                    "30 to 45": parseFloat(row.getCell(15).value) || 0,
+                    "45 to 90": parseFloat(row.getCell(16).value) || 0,
+                    "90 to 120": parseFloat(row.getCell(17).value) || 0,
+                    "120 to 150": parseFloat(row.getCell(18).value) || 0,
+                    "150 to 180": parseFloat(row.getCell(19).value) || 0,
+                    ">180": parseFloat(row.getCell(20).value) || 0
+                }
+            };
+
+            if (rowData.id && rowData.name) {
+                customers.push(rowData);
+            }
+        });
+
+        // Bulk upsert logic
+        const bulkOps = customers.map(cust => ({
+            updateOne: {
+                filter: { id: cust.id },
+                update: { $set: cust },
+                upsert: true
+            }
+        }));
+
+        if (bulkOps.length > 0) {
+            await Customer.bulkWrite(bulkOps);
+        }
+
+        // Clean up uploaded file
+        fs.unlinkSync(req.file.path);
+
+        console.log(`🚀 Bulk imported ${customers.length} customers`);
+        res.json({ success: true, message: `Successfully imported ${customers.length} customers` });
+    } catch (error) {
+        console.error('Bulk import error:', error);
+        res.status(500).json({ message: 'Error processing Excel file', error: error.message });
+    }
+});
+
 app.post('/api/orders/bulk-update', async (req, res) => {
     try {
         const { orderIds, updates } = req.body;
