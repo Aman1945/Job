@@ -73,191 +73,438 @@ class _StepAssignmentScreenState extends State<StepAssignmentScreen> {
   }
 
   void _showStepUsersDialog(String stepLabel, Color stepColor, IconData stepIcon) {
-    // Build a map of userId -> access level for this step
+    // Build userId -> access map for this step
     Map<String, String> userAccessMap = {};
     for (final user in _users) {
       if (user.role.label == 'Admin') continue;
       userAccessMap[user.id] = user.stepAccess[stepLabel] ?? 'no';
     }
 
-    // Grouping logic for Zone segregation
-    Map<String, List<User>> groupedUsers = {
-      'NORTH': [],
-      'WEST': [],
-      'EAST': [],
-      'SOUTH': [],
-      'PAN INDIA': [],
-    };
-    
+    // Zone grouping
+    final zones = ['NORTH', 'WEST', 'EAST', 'SOUTH', 'PAN INDIA'];
+    Map<String, List<User>> groupedUsers = {for (var z in zones) z: []};
     for (var u in _users) {
       if (u.role.label == 'Admin') continue;
-      String z = u.zone.toUpperCase();
-      if (!groupedUsers.containsKey(z)) groupedUsers[u.zone] = [];
-      groupedUsers[z]!.add(u);
+      final z = u.zone.toUpperCase();
+      if (groupedUsers.containsKey(z)) {
+        groupedUsers[z]!.add(u);
+      } else {
+        groupedUsers[u.zone] = [u];
+      }
     }
+    final activeZones = zones.where((z) => (groupedUsers[z]?.isNotEmpty ?? false)).toList();
 
     showGeneralDialog(
       context: context,
       barrierDismissible: true,
       barrierLabel: '',
-      barrierColor: Colors.black.withOpacity(0.3),
-      transitionDuration: const Duration(milliseconds: 300),
+      barrierColor: Colors.black.withOpacity(0.35),
+      transitionDuration: const Duration(milliseconds: 380),
       pageBuilder: (ctx, anim1, anim2) => const SizedBox(),
       transitionBuilder: (ctx, anim1, anim2, child) {
-        return BackdropFilter(
-          filter: ColorFilter.mode(
-            Colors.white.withOpacity(0.1),
-            BlendMode.srcOver,
-          ),
-          child: FadeTransition(
-            opacity: anim1,
-            child: ScaleTransition(
-              scale: anim1,
-              child: AlertDialog(
-                backgroundColor: Colors.white.withOpacity(0.9),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-                title: Column(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(color: stepColor.withOpacity(0.1), shape: BoxShape.circle),
-                      child: Icon(stepIcon, color: stepColor, size: 32),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(stepLabel.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 1.2)),
-                    const SizedBox(height: 4),
-                    const Text('Configure zone-wise access control', style: TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.w500)),
-                  ],
-                ),
-                content: StatefulBuilder(
-                  builder: (ctx, setDialogState) {
-                    return SizedBox(
-                      width: double.maxFinite,
-                      height: 450,
-                      child: ListView(
-                        physics: const BouncingScrollPhysics(),
-                        children: groupedUsers.entries.where((e) => e.value.isNotEmpty).map((entry) {
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Padding(
-                                padding: const EdgeInsets.only(top: 16, bottom: 8, left: 4),
-                                child: Text(
-                                  entry.key,
-                                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Colors.blueGrey.shade700, letterSpacing: 1),
-                                ),
-                              ),
-                              ...entry.value.map((user) {
-                                final access = userAccessMap[user.id] ?? 'no';
-                                return Container(
-                                  margin: const EdgeInsets.only(bottom: 8),
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(16),
-                                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 4, offset: const Offset(0, 2))],
-                                    border: Border.all(
-                                      color: access == 'full' ? NexusTheme.emerald300 
-                                           : access == 'view' ? Colors.blue.shade200 
-                                           : Colors.grey.shade100,
-                                      width: 1.5,
+        final curved = CurvedAnimation(parent: anim1, curve: Curves.easeOutCubic);
+        return FadeTransition(
+          opacity: curved,
+          child: SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(0, 0.12),
+              end: Offset.zero,
+            ).animate(curved),
+            child: StatefulBuilder(
+              builder: (ctx, setDialogState) {
+                String selectedZone = activeZones.isNotEmpty ? activeZones[0] : '';
+                final zoneUsers = groupedUsers[selectedZone] ?? [];
+
+                // Helper: set all users in a zone to a given access level
+                void selectAllZone(String zone, String access) {
+                  setDialogState(() {
+                    for (final u in groupedUsers[zone] ?? []) {
+                      userAccessMap[u.id] = access;
+                    }
+                  });
+                }
+
+                return StatefulBuilder(
+                  builder: (ctx2, setZoneState) {
+                    final currentZoneUsers = groupedUsers[selectedZone] ?? [];
+                    return Dialog(
+                      backgroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+                      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // ── HEADER ──
+                          Container(
+                            padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+                              border: Border(bottom: BorderSide(color: Colors.grey.shade100)),
+                            ),
+                            child: Column(
+                              children: [
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(10),
+                                      decoration: BoxDecoration(
+                                        color: stepColor.withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(14),
+                                      ),
+                                      child: Icon(stepIcon, color: stepColor, size: 26),
                                     ),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      CircleAvatar(
-                                        radius: 14,
-                                        backgroundColor: access == 'full' ? NexusTheme.emerald500 
-                                                       : access == 'view' ? Colors.blue 
-                                                       : Colors.grey.shade200,
-                                        child: Text(user.name[0], style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                                    const SizedBox(width: 14),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            stepLabel.toUpperCase(),
+                                            style: const TextStyle(
+                                              fontFamily: 'Montserrat',
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w900,
+                                              color: Color(0xFF0F172A),
+                                              letterSpacing: 0.5,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            'Zone-wise access control',
+                                            style: TextStyle(
+                                              fontFamily: 'Montserrat',
+                                              fontSize: 10,
+                                              color: Colors.grey.shade500,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ],
                                       ),
-                                      const SizedBox(width: 10),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(user.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 11)),
-                                            Text(user.role.label, style: const TextStyle(fontSize: 8, color: Colors.grey)),
-                                          ],
-                                        ),
-                                      ),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                                    ),
+                                    GestureDetector(
+                                      onTap: () => Navigator.pop(ctx),
+                                      child: Container(
+                                        padding: const EdgeInsets.all(6),
                                         decoration: BoxDecoration(
-                                          color: Colors.grey.shade50,
-                                          borderRadius: BorderRadius.circular(8),
+                                          color: Colors.grey.shade100,
+                                          shape: BoxShape.circle,
                                         ),
-                                        child: DropdownButtonHideUnderline(
-                                          child: DropdownButton<String>(
-                                            value: access,
-                                            isDense: true,
-                                            icon: const Icon(Icons.arrow_drop_down, size: 16),
-                                            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900),
-                                            items: const [
-                                              DropdownMenuItem(value: 'full', child: Text('✅ FULL', style: TextStyle(color: Color(0xFF059669)))),
-                                              DropdownMenuItem(value: 'view', child: Text('👁️ VIEW', style: TextStyle(color: Color(0xFF2563EB)))),
-                                              DropdownMenuItem(value: 'no', child: Text('❌ NO', style: TextStyle(color: Color(0xFFDC2626)))),
-                                            ],
-                                            onChanged: (val) {
-                                              setDialogState(() {
-                                                userAccessMap[user.id] = val!;
-                                              });
-                                            },
+                                        child: const Icon(Icons.close, size: 16, color: Color(0xFF64748B)),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 16),
+                                // ── ZONE TABS ──
+                                SingleChildScrollView(
+                                  scrollDirection: Axis.horizontal,
+                                  child: Row(
+                                    children: activeZones.map((zone) {
+                                      final isSelected = zone == selectedZone;
+                                      return GestureDetector(
+                                        onTap: () => setZoneState(() => selectedZone = zone),
+                                        child: AnimatedContainer(
+                                          duration: const Duration(milliseconds: 200),
+                                          curve: Curves.easeOut,
+                                          margin: const EdgeInsets.only(right: 8),
+                                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                                          decoration: BoxDecoration(
+                                            color: isSelected ? const Color(0xFF0F172A) : Colors.grey.shade100,
+                                            borderRadius: BorderRadius.circular(20),
+                                          ),
+                                          child: Text(
+                                            zone,
+                                            style: TextStyle(
+                                              fontFamily: 'Montserrat',
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w800,
+                                              color: isSelected ? Colors.white : Colors.grey.shade600,
+                                              letterSpacing: 0.5,
+                                            ),
                                           ),
                                         ),
+                                      );
+                                    }).toList(),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          // ── SELECT ALL ROW ──
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
+                            child: Row(
+                              children: [
+                                Text(
+                                  '${currentZoneUsers.length} people',
+                                  style: TextStyle(
+                                    fontFamily: 'Montserrat',
+                                    fontSize: 10,
+                                    color: Colors.grey.shade500,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const Spacer(),
+                                _selectAllBtn('ALL FULL', const Color(0xFF059669), () => setZoneState(() => selectAllZone(selectedZone, 'full'))),
+                                const SizedBox(width: 6),
+                                _selectAllBtn('ALL VIEW', const Color(0xFF2563EB), () => setZoneState(() => selectAllZone(selectedZone, 'view'))),
+                                const SizedBox(width: 6),
+                                _selectAllBtn('CLEAR', Colors.grey.shade500, () => setZoneState(() => selectAllZone(selectedZone, 'no'))),
+                              ],
+                            ),
+                          ),
+
+                          // ── USER LIST ──
+                          ConstrainedBox(
+                            constraints: const BoxConstraints(maxHeight: 320),
+                            child: ListView.builder(
+                              shrinkWrap: true,
+                              physics: const BouncingScrollPhysics(),
+                              padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                              itemCount: currentZoneUsers.length,
+                              itemBuilder: (_, i) {
+                                final user = currentZoneUsers[i];
+                                final access = userAccessMap[user.id] ?? 'no';
+                                return TweenAnimationBuilder<double>(
+                                  key: ValueKey('${user.id}_$selectedZone'),
+                                  tween: Tween(begin: 0.0, end: 1.0),
+                                  duration: Duration(milliseconds: 180 + i * 40),
+                                  curve: Curves.easeOut,
+                                  builder: (_, v, child) => Opacity(
+                                    opacity: v,
+                                    child: Transform.translate(
+                                      offset: Offset(0, 12 * (1 - v)),
+                                      child: child,
+                                    ),
+                                  ),
+                                  child: Container(
+                                    margin: const EdgeInsets.only(bottom: 8),
+                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(16),
+                                      border: Border.all(
+                                        color: access == 'full'
+                                            ? const Color(0xFF10B981)
+                                            : access == 'view'
+                                                ? const Color(0xFF3B82F6)
+                                                : Colors.grey.shade200,
+                                        width: 1.5,
                                       ),
-                                    ],
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withOpacity(0.03),
+                                          blurRadius: 6,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        AnimatedContainer(
+                                          duration: const Duration(milliseconds: 200),
+                                          width: 34, height: 34,
+                                          decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            color: access == 'full'
+                                                ? const Color(0xFF10B981)
+                                                : access == 'view'
+                                                    ? const Color(0xFF3B82F6)
+                                                    : Colors.grey.shade200,
+                                          ),
+                                          child: Center(
+                                            child: Text(
+                                              user.name[0].toUpperCase(),
+                                              style: TextStyle(
+                                                fontFamily: 'Montserrat',
+                                                color: access == 'no' ? Colors.grey.shade500 : Colors.white,
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.w800,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                user.name,
+                                                style: const TextStyle(
+                                                  fontFamily: 'Montserrat',
+                                                  fontWeight: FontWeight.w700,
+                                                  fontSize: 12,
+                                                  color: Color(0xFF0F172A),
+                                                ),
+                                              ),
+                                              Text(
+                                                user.role.label,
+                                                style: TextStyle(
+                                                  fontFamily: 'Montserrat',
+                                                  fontSize: 9,
+                                                  color: Colors.grey.shade500,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        // Access toggle chips
+                                        Row(
+                                          children: ['full', 'view', 'no'].map((level) {
+                                            final isActive = access == level;
+                                            final color = level == 'full'
+                                                ? const Color(0xFF059669)
+                                                : level == 'view'
+                                                    ? const Color(0xFF2563EB)
+                                                    : Colors.grey.shade400;
+                                            final label = level == 'full' ? '✓ FULL' : level == 'view' ? '◉ VIEW' : '✕';
+                                            return GestureDetector(
+                                              onTap: () => setZoneState(() => userAccessMap[user.id] = level),
+                                              child: AnimatedContainer(
+                                                duration: const Duration(milliseconds: 180),
+                                                margin: const EdgeInsets.only(left: 4),
+                                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                                decoration: BoxDecoration(
+                                                  color: isActive ? color : Colors.grey.shade100,
+                                                  borderRadius: BorderRadius.circular(8),
+                                                ),
+                                                child: Text(
+                                                  label,
+                                                  style: TextStyle(
+                                                    fontFamily: 'Montserrat',
+                                                    fontSize: 8,
+                                                    fontWeight: FontWeight.w800,
+                                                    color: isActive ? Colors.white : Colors.grey.shade400,
+                                                  ),
+                                                ),
+                                              ),
+                                            );
+                                          }).toList(),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 );
-                              }).toList(),
-                            ],
-                          );
-                        }).toList(),
+                              },
+                            ),
+                          ),
+
+                          // ── ACTIONS ──
+                          Container(
+                            padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              border: Border(top: BorderSide(color: Colors.grey.shade100)),
+                              borderRadius: const BorderRadius.vertical(bottom: Radius.circular(28)),
+                            ),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: GestureDetector(
+                                    onTap: () => Navigator.pop(ctx),
+                                    child: Container(
+                                      height: 46,
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey.shade100,
+                                        borderRadius: BorderRadius.circular(14),
+                                      ),
+                                      child: const Center(
+                                        child: Text('CANCEL',
+                                            style: TextStyle(
+                                              fontFamily: 'Montserrat',
+                                              fontWeight: FontWeight.w800,
+                                              fontSize: 11,
+                                              color: Color(0xFF64748B),
+                                            )),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  flex: 2,
+                                  child: GestureDetector(
+                                    onTap: () async {
+                                      Navigator.pop(ctx);
+                                      for (final user in _users) {
+                                        if (user.role.label == 'Admin') continue;
+                                        final newAccess = userAccessMap[user.id] ?? 'no';
+                                        final oldAccess = user.stepAccess[stepLabel] ?? 'no';
+                                        if (newAccess != oldAccess) {
+                                          final updated = Map<String, String>.from(user.stepAccess);
+                                          updated[stepLabel] = newAccess;
+                                          await _updateStepAccess(user.id, updated);
+                                        }
+                                      }
+                                      if (mounted) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(
+                                            content: Text('✅ Access updated!'),
+                                            backgroundColor: Color(0xFF0F172A),
+                                            behavior: SnackBarBehavior.floating,
+                                          ),
+                                        );
+                                      }
+                                    },
+                                    child: Container(
+                                      height: 46,
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF0F172A),
+                                        borderRadius: BorderRadius.circular(14),
+                                      ),
+                                      child: const Center(
+                                        child: Text('SAVE CHANGES',
+                                            style: TextStyle(
+                                              fontFamily: 'Montserrat',
+                                              fontWeight: FontWeight.w900,
+                                              fontSize: 11,
+                                              color: Colors.white,
+                                              letterSpacing: 0.5,
+                                            )),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                     );
-                  }
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(ctx),
-                    child: const Text('CANCEL', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold, fontSize: 11)),
-                  ),
-                  ElevatedButton(
-                    onPressed: () async {
-                      Navigator.pop(ctx);
-                      for (final user in _users) {
-                        if (user.role.label == 'Admin') continue;
-                        final newAccess = userAccessMap[user.id] ?? 'no';
-                        final oldAccess = user.stepAccess[stepLabel] ?? 'no';
-                        
-                        if (newAccess != oldAccess) {
-                          Map<String, String> updated = Map.from(user.stepAccess);
-                          updated[stepLabel] = newAccess;
-                          await _updateStepAccess(user.id, updated);
-                        }
-                      }
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('✅ Access updated mapping to Zone!'), backgroundColor: Colors.black87),
-                        );
-                      }
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.black87,
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                    ),
-                    child: const Text('SAVE CHANGES', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 11)),
-                  ),
-                ],
-              ),
+                  },
+                );
+              },
             ),
           ),
         );
       },
+    );
+  }
+
+  Widget _selectAllBtn(String label, Color color, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: color.withOpacity(0.3)),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontFamily: 'Montserrat',
+            fontSize: 8,
+            fontWeight: FontWeight.w800,
+            color: color,
+          ),
+        ),
+      ),
     );
   }
 
