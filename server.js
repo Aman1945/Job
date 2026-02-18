@@ -563,6 +563,45 @@ app.delete('/api/orders/:id', async (req, res) => {
 // ==================== BULK OPERATIONS ====================
 const ExcelJS = require('exceljs');
 
+// Route to generate and download Excel template
+app.get('/api/customers/import-template', async (req, res) => {
+    try {
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet('Customer Import Template');
+
+        // Define Headers based on the 22-column structure
+        const headers = [
+            'Customer ID', 'Dist', 'Sales Manager', 'Class', 'Employee respons.',
+            'Customer Names', 'Credit Days', 'Credit Limit', 'Security Chq',
+            'Dist Channel', 'O/s Amt', 'OD Amt', 'Diffn btw ydy & tday',
+            '0 to 7', '7 to 15', '15 to 30', '30 to 45', '45 to 90',
+            '90 to 120', '120 to 150', '150 to 180', '>180'
+        ];
+
+        worksheet.addRow(headers);
+
+        // Styling for headers
+        const headerRow = worksheet.getRow(1);
+        headerRow.font = { bold: true, color: { argb: 'FFFFFF' } };
+        headerRow.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: '1E293B' }
+        };
+
+        const buffer = await workbook.xlsx.writeBuffer();
+
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', 'attachment; filename=Customer_Master_Template.xlsx');
+        res.setHeader('Content-Length', buffer.length);
+
+        res.send(buffer);
+    } catch (error) {
+        console.error('❌ Template Generation Error:', error);
+        res.status(500).json({ message: 'Error generating template' });
+    }
+});
+
 app.post('/api/customers/bulk-import', upload.single('file'), async (req, res) => {
     try {
         if (!req.file) {
@@ -572,37 +611,72 @@ app.post('/api/customers/bulk-import', upload.single('file'), async (req, res) =
         const workbook = new ExcelJS.Workbook();
         await workbook.xlsx.readFile(req.file.path);
         const worksheet = workbook.getWorksheet(1);
+        const headerRow = worksheet.getRow(1);
+        const colMap = {};
+
+        // Dynamic Header Detection
+        headerRow.eachCell((cell, colNumber) => {
+            const header = cell.value?.toString().trim().toLowerCase();
+            if (!header) return;
+
+            if (header.includes('customer id') || header.includes('customer code') || header.includes('id')) colMap.id = colNumber;
+            else if (header.includes('dist') && !header.includes('channel')) colMap.location = colNumber;
+            else if (header.includes('sales manager')) colMap.salesManager = colNumber;
+            else if (header.includes('class')) colMap.customerClass = colNumber;
+            else if (header.includes('employee respons')) colMap.employeeResponsible = colNumber;
+            else if (header.includes('customer name')) colMap.name = colNumber;
+            else if (header.includes('credit day')) colMap.exposureDays = colNumber;
+            else if (header.includes('credit limit') || header.includes('limit')) colMap.limit = colNumber;
+            else if (header.includes('security chq')) colMap.securityChq = colNumber;
+            else if (header.includes('dist channel')) colMap.distributionChannel = colNumber;
+            else if (header.includes('o/s amt') || header.includes('outstanding')) colMap.osBalance = colNumber;
+            else if (header.includes('od amt') || header.includes('overdue')) colMap.odAmt = colNumber;
+            else if (header.includes('diffn')) colMap.diffYesterdayToday = colNumber;
+            else if (header === '0 to 7') colMap.bucket0_7 = colNumber;
+            else if (header === '7 to 15') colMap.bucket7_15 = colNumber;
+            else if (header === '15 to 30') colMap.bucket15_30 = colNumber;
+            else if (header === '30 to 45') colMap.bucket30_45 = colNumber;
+            else if (header === '45 to 90') colMap.bucket45_90 = colNumber;
+            else if (header === '90 to 120') colMap.bucket90_120 = colNumber;
+            else if (header === '120 to 150') colMap.bucket120_150 = colNumber;
+            else if (header === '150 to 180') colMap.bucket150_180 = colNumber;
+            else if (header === '>180') colMap.bucketOver180 = colNumber;
+        });
 
         const customers = [];
         worksheet.eachRow((row, rowNumber) => {
             if (rowNumber === 1) return; // Skip header
 
             const rowData = {
-                location: row.getCell(1).value,
-                salesManager: row.getCell(2).value,
-                customerClass: row.getCell(3).value,
-                employeeResponsible: row.getCell(4).value,
-                name: row.getCell(5).value,
-                id: row.getCell(6).value?.toString(),
-                securityChq: row.getCell(7).value || '-',
-                limit: parseFloat(row.getCell(8).value) || 0,
-                osBalance: parseFloat(row.getCell(9).value) || 0,
-                odAmt: parseFloat(row.getCell(10).value) || 0,
-                diffYesterdayToday: parseFloat(row.getCell(11).value) || 0,
+                id: colMap.id ? row.getCell(colMap.id).value?.toString() : null,
+                name: colMap.name ? row.getCell(colMap.name).value?.toString() : null,
+                location: colMap.location ? row.getCell(colMap.location).value : null,
+                salesManager: colMap.salesManager ? row.getCell(colMap.salesManager).value : null,
+                customerClass: colMap.customerClass ? row.getCell(colMap.customerClass).value : null,
+                employeeResponsible: colMap.employeeResponsible ? row.getCell(colMap.employeeResponsible).value : null,
+                exposureDays: colMap.exposureDays ? (parseInt(row.getCell(colMap.exposureDays).value) || 15) : 15,
+                limit: colMap.limit ? (parseFloat(row.getCell(colMap.limit).value) || 0) : 0,
+                securityChq: colMap.securityChq ? (row.getCell(colMap.securityChq).value || '-') : '-',
+                distributionChannel: colMap.distributionChannel ? row.getCell(colMap.distributionChannel).value : null,
+                osBalance: colMap.osBalance ? (parseFloat(row.getCell(colMap.osBalance).value) || 0) : 0,
+                odAmt: colMap.odAmt ? (parseFloat(row.getCell(colMap.odAmt).value) || 0) : 0,
+                diffYesterdayToday: colMap.diffYesterdayToday ? (parseFloat(row.getCell(colMap.diffYesterdayToday).value) || 0) : 0,
                 agingBuckets: {
-                    "0 to 7": parseFloat(row.getCell(12).value) || 0,
-                    "7 to 15": parseFloat(row.getCell(13).value) || 0,
-                    "15 to 30": parseFloat(row.getCell(14).value) || 0,
-                    "30 to 45": parseFloat(row.getCell(15).value) || 0,
-                    "45 to 90": parseFloat(row.getCell(16).value) || 0,
-                    "90 to 120": parseFloat(row.getCell(17).value) || 0,
-                    "120 to 150": parseFloat(row.getCell(18).value) || 0,
-                    "150 to 180": parseFloat(row.getCell(19).value) || 0,
-                    ">180": parseFloat(row.getCell(20).value) || 0
+                    "0 to 7": colMap.bucket0_7 ? (parseFloat(row.getCell(colMap.bucket0_7).value) || 0) : 0,
+                    "7 to 15": colMap.bucket7_15 ? (parseFloat(row.getCell(colMap.bucket7_15).value) || 0) : 0,
+                    "15 to 30": colMap.bucket15_30 ? (parseFloat(row.getCell(colMap.bucket15_30).value) || 0) : 0,
+                    "30 to 45": colMap.bucket30_45 ? (parseFloat(row.getCell(colMap.bucket30_45).value) || 0) : 0,
+                    "45 to 90": colMap.bucket45_90 ? (parseFloat(row.getCell(colMap.bucket45_90).value) || 0) : 0,
+                    "90 to 120": colMap.bucket90_120 ? (parseFloat(row.getCell(colMap.bucket90_120).value) || 0) : 0,
+                    "120 to 150": colMap.bucket120_150 ? (parseFloat(row.getCell(colMap.bucket120_150).value) || 0) : 0,
+                    "150 to 180": colMap.bucket150_180 ? (parseFloat(row.getCell(colMap.bucket150_180).value) || 0) : 0,
+                    ">180": colMap.bucketOver180 ? (parseFloat(row.getCell(colMap.bucketOver180).value) || 0) : 0
                 }
             };
 
-            if (rowData.id && rowData.name) {
+            // Vital validation: require name and some form of ID
+            if (rowData.name) {
+                if (!rowData.id) rowData.id = rowData.name; // Fallback to name if ID missing
                 customers.push(rowData);
             }
         });
