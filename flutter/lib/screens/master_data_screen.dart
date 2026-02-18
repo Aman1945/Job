@@ -6,6 +6,10 @@ import '../utils/theme.dart';
 import '../models/models.dart';
 import '../widgets/nexus_components.dart';
 import 'package:file_picker/file_picker.dart';
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
+import 'package:open_file/open_file.dart';
+import 'package:excel/excel.dart' as xl;
 
 class MasterDataScreen extends StatefulWidget {
   const MasterDataScreen({super.key});
@@ -19,6 +23,10 @@ class _MasterDataScreenState extends State<MasterDataScreen> {
   bool _isLoading = false;
   late AuthProvider authProvider;
   late NexusProvider provider;
+
+  // Pagination
+  int _currentPage = 0;
+  static const int _pageSize = 10;
 
   @override
   Widget build(BuildContext context) {
@@ -88,7 +96,7 @@ class _MasterDataScreenState extends State<MasterDataScreen> {
 
                   const SizedBox(height: 24),
 
-                  Column(
+                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _buildActionButton(
@@ -108,21 +116,37 @@ class _MasterDataScreenState extends State<MasterDataScreen> {
                           fullWidth: true,
                         ),
                         const SizedBox(height: 12),
-                        _buildActionButton(
-                          icon: Icons.description_outlined,
-                          label: 'DOWNLOAD EXCEL FORMAT',
-                          onTap: () async {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('📥 Download starting... Check notification bar'),
-                                backgroundColor: NexusTheme.indigo500,
-                                behavior: SnackBarBehavior.floating,
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildActionButton(
+                                icon: Icons.description_outlined,
+                                label: 'DOWNLOAD FORMAT',
+                                onTap: () async {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('📥 Download starting...'),
+                                      backgroundColor: NexusTheme.indigo500,
+                                      behavior: SnackBarBehavior.floating,
+                                    ),
+                                  );
+                                  await provider.downloadCustomerTemplate();
+                                },
+                                isPrimary: false,
+                                fullWidth: true,
                               ),
-                            );
-                            await provider.downloadCustomerTemplate();
-                          },
-                          isPrimary: false,
-                          fullWidth: true,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: _buildActionButton(
+                                icon: Icons.download_rounded,
+                                label: 'EXPORT EXCEL',
+                                onTap: () => _exportCustomersToExcel(context),
+                                isPrimary: false,
+                                fullWidth: true,
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ],
@@ -457,23 +481,263 @@ class _MasterDataScreenState extends State<MasterDataScreen> {
 
   Widget _buildDataTable() {
     final provider = Provider.of<NexusProvider>(context);
+
+    // ── CUSTOMER MASTER: frozen column + horizontal scroll + pagination ──
+    if (_selectedTab == 'CUSTOMER MASTER') {
+      final customers = provider.customers;
+      if (customers.isEmpty) {
+        return const Padding(
+          padding: EdgeInsets.all(48),
+          child: Center(
+            child: Text('NO CUSTOMERS FOUND',
+                style: TextStyle(
+                    color: Color(0xFF94A3B8),
+                    fontWeight: FontWeight.w900,
+                    fontSize: 10,
+                    letterSpacing: 1)),
+          ),
+        );
+      }
+
+      final totalPages = (customers.length / _pageSize).ceil();
+      final start = _currentPage * _pageSize;
+      final end = (start + _pageSize).clamp(0, customers.length);
+      final pageItems = customers.sublist(start, end);
+
+      // Column definitions: label, width
+      final cols = [
+        ('Dist', 50.0), ('Class', 50.0), ('Cr.Days', 60.0),
+        ('Cr.Limit', 80.0), ('Sec.Chq', 70.0), ('O/s Amt', 80.0),
+        ('OD Amt', 70.0), ('0-7', 55.0), ('7-15', 55.0),
+        ('15-30', 55.0), ('30-45', 55.0), ('45-90', 60.0),
+        ('90-120', 65.0), ('120-150', 70.0), ('150-180', 70.0), ('>180', 55.0),
+      ];
+
+      Widget buildCell(String text, double width, {bool isHeader = false}) =>
+          SizedBox(
+            width: width,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+              child: Text(
+                text,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: isHeader ? 9 : 11,
+                  fontWeight: isHeader ? FontWeight.w900 : FontWeight.w500,
+                  color: isHeader ? const Color(0xFF94A3B8) : const Color(0xFF1E293B),
+                  letterSpacing: isHeader ? 0.8 : 0,
+                ),
+              ),
+            ),
+          );
+
+      final scrollCtrl = ScrollController();
+
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── TABLE ──
+          SizedBox(
+            height: (pageItems.length + 1) * 48.0 + 2,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // FROZEN: Customer Name column
+                Container(
+                  width: 130,
+                  decoration: const BoxDecoration(
+                    border: Border(
+                        right: BorderSide(color: Color(0xFFE2E8F0), width: 1)),
+                  ),
+                  child: Column(
+                    children: [
+                      // Header
+                      Container(
+                        height: 48,
+                        alignment: Alignment.centerLeft,
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFF8FAFC),
+                          border: Border(
+                              bottom: BorderSide(
+                                  color: Color(0xFFE2E8F0), width: 1)),
+                        ),
+                        child: const Text('CUSTOMER',
+                            style: TextStyle(
+                                fontSize: 9,
+                                fontWeight: FontWeight.w900,
+                                color: Color(0xFF94A3B8),
+                                letterSpacing: 0.8)),
+                      ),
+                      // Rows
+                      ...pageItems.map((c) => Container(
+                            height: 48,
+                            alignment: Alignment.centerLeft,
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            decoration: const BoxDecoration(
+                              border: Border(
+                                  bottom: BorderSide(
+                                      color: Color(0xFFF1F5F9), width: 1)),
+                            ),
+                            child: Text(
+                              c.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF1E293B)),
+                            ),
+                          )),
+                    ],
+                  ),
+                ),
+
+                // SCROLLABLE: rest of columns
+                Expanded(
+                  child: SingleChildScrollView(
+                    controller: scrollCtrl,
+                    scrollDirection: Axis.horizontal,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Header row
+                        Container(
+                          height: 48,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFFF8FAFC),
+                            border: Border(
+                                bottom: BorderSide(
+                                    color: Color(0xFFE2E8F0), width: 1)),
+                          ),
+                          child: Row(
+                            children: cols
+                                .map((c) => buildCell(c.$1, c.$2, isHeader: true))
+                                .toList(),
+                          ),
+                        ),
+                        // Data rows
+                        ...pageItems.map((c) {
+                          final ag = c.agingData;
+                          final vals = [
+                            c.location ?? '',
+                            c.customerClass ?? '',
+                            c.exposureDays.toString(),
+                            c.limit.toStringAsFixed(0),
+                            c.securityChq,
+                            c.osBalance.toStringAsFixed(0),
+                            c.odAmt.toStringAsFixed(0),
+                            (ag['0to7'] ?? ag['0 to 7'] ?? '').toString(),
+                            (ag['7to15'] ?? ag['7 to 15'] ?? '').toString(),
+                            (ag['15to30'] ?? ag['15 to 30'] ?? '').toString(),
+                            (ag['30to45'] ?? ag['30 to 45'] ?? '').toString(),
+                            (ag['45to90'] ?? ag['45 to 90'] ?? '').toString(),
+                            (ag['90to120'] ?? ag['90 to 120'] ?? '').toString(),
+                            (ag['120to150'] ?? ag['120 to 150'] ?? '').toString(),
+                            (ag['150to180'] ?? ag['150 to 180'] ?? '').toString(),
+                            (ag['>180'] ?? ag['above180'] ?? '').toString(),
+                          ];
+                          return Container(
+                            height: 48,
+                            decoration: const BoxDecoration(
+                              border: Border(
+                                  bottom: BorderSide(
+                                      color: Color(0xFFF1F5F9), width: 1)),
+                            ),
+                            child: Row(
+                              children: List.generate(
+                                cols.length,
+                                (i) => buildCell(vals[i], cols[i].$2),
+                              ),
+                            ),
+                          );
+                        }),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // ── PAGINATION ──
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 16, 12, 24),
+            child: Column(
+              children: [
+                Text(
+                  'Showing ${start + 1}–$end of ${customers.length} records',
+                  style: const TextStyle(
+                      fontSize: 10,
+                      color: Color(0xFF94A3B8),
+                      fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 12),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // Prev button
+                      _paginationBtn(
+                        icon: Icons.chevron_left,
+                        enabled: _currentPage > 0,
+                        onTap: () => setState(() => _currentPage--),
+                      ),
+                      const SizedBox(width: 4),
+                      // Page numbers
+                      ...List.generate(totalPages, (i) {
+                        if (totalPages <= 7 ||
+                            i == 0 ||
+                            i == totalPages - 1 ||
+                            (i - _currentPage).abs() <= 1) {
+                          return _pageNumBtn(i, i == _currentPage);
+                        } else if (i == 1 || i == totalPages - 2) {
+                          return const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 4),
+                            child: Text('...',
+                                style: TextStyle(
+                                    color: Color(0xFF94A3B8),
+                                    fontWeight: FontWeight.bold)),
+                          );
+                        }
+                        return const SizedBox.shrink();
+                      }),
+                      const SizedBox(width: 4),
+                      // Next button
+                      _paginationBtn(
+                        icon: Icons.chevron_right,
+                        enabled: _currentPage < totalPages - 1,
+                        onTap: () => setState(() => _currentPage++),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+    }
+
+    // ── OTHER TABS: simple list ──
     List<dynamic> items = [];
-    if (_selectedTab == 'USER MASTER')
-      items = provider.users;
-    else if (_selectedTab == 'CUSTOMER MASTER')
-      items = provider.customers;
-    else if (_selectedTab == 'MATERIAL MASTER')
-      items = provider.products;
+    if (_selectedTab == 'USER MASTER') items = provider.users;
+    else if (_selectedTab == 'MATERIAL MASTER') items = provider.products;
 
     if (items.isEmpty) {
       return Center(
-        child: Text(
-          'NO DATA IN $_selectedTab',
-          style: const TextStyle(
-            color: Color(0xFF94A3B8),
-            fontWeight: FontWeight.w900,
-            fontSize: 10,
-            letterSpacing: 1,
+        child: Padding(
+          padding: const EdgeInsets.all(48),
+          child: Text(
+            'NO DATA IN $_selectedTab',
+            style: const TextStyle(
+              color: Color(0xFF94A3B8),
+              fontWeight: FontWeight.w900,
+              fontSize: 10,
+              letterSpacing: 1,
+            ),
           ),
         ),
       );
@@ -490,16 +754,8 @@ class _MasterDataScreenState extends State<MasterDataScreen> {
         final item = items[index];
         String id = '';
         String name = '';
-        if (item is User) {
-          id = item.id;
-          name = item.name;
-        } else if (item is Customer) {
-          id = item.id;
-          name = item.name;
-        } else if (item is Product) {
-          id = item.id;
-          name = item.name;
-        }
+        if (item is User) { id = item.id; name = item.name; }
+        else if (item is Product) { id = item.id; name = item.name; }
 
         return InkWell(
           onTap: () => _showMasterForm(context, initialData: item),
@@ -507,34 +763,135 @@ class _MasterDataScreenState extends State<MasterDataScreen> {
             padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 8),
             child: Row(
               children: [
-                Expanded(
-                  flex: 1,
-                  child: Text(
-                    id,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF64748B),
-                    ),
-                  ),
-                ),
-                Expanded(
-                  flex: 3,
-                  child: Text(
-                    name,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w900,
-                      color: Color(0xFF1E293B),
-                    ),
-                  ),
-                ),
+                Expanded(flex: 1, child: Text(id,
+                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF64748B)))),
+                Expanded(flex: 3, child: Text(name,
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF1E293B)))),
               ],
             ),
           ),
         );
       },
     );
+  }
+
+  Widget _paginationBtn({required IconData icon, required bool enabled, required VoidCallback onTap}) {
+    return GestureDetector(
+      onTap: enabled ? onTap : null,
+      child: Container(
+        width: 32, height: 32,
+        decoration: BoxDecoration(
+          color: enabled ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(icon, size: 18,
+            color: enabled ? Colors.white : const Color(0xFFCBD5E1)),
+      ),
+    );
+  }
+
+  Widget _pageNumBtn(int page, bool isActive) {
+    return GestureDetector(
+      onTap: () => setState(() => _currentPage = page),
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 2),
+        width: 32, height: 32,
+        decoration: BoxDecoration(
+          color: isActive ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Center(
+          child: Text('${page + 1}',
+              style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w900,
+                  color: isActive ? Colors.white : const Color(0xFF64748B))),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _exportCustomersToExcel(BuildContext context) async {
+    final provider = Provider.of<NexusProvider>(context, listen: false);
+    final customers = provider.customers;
+    if (customers.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No customer data to export'), backgroundColor: Colors.orange),
+      );
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('📊 Preparing Excel export...'), backgroundColor: NexusTheme.indigo500, behavior: SnackBarBehavior.floating),
+    );
+
+    try {
+      final excel = xl.Excel.createExcel();
+      final sheet = excel['Customer Master'];
+
+      // Headers
+      final headers = [
+        'Customer ID', 'Customer Name', 'Dist', 'Sales Manager', 'Class',
+        'Employee Respons.', 'Credit Days', 'Credit Limit', 'Security Chq',
+        'Dist Channel', 'O/s Amt', 'OD Amt', 'Diffn btw ydy & tday',
+        '0 to 7', '7 to 15', '15 to 30', '30 to 45', '45 to 90',
+        '90 to 120', '120 to 150', '150 to 180', '>180'
+      ];
+      sheet.appendRow(headers.map((h) => xl.TextCellValue(h)).toList());
+
+      // Data rows
+      for (final c in customers) {
+        final ag = c.agingData;
+        sheet.appendRow([
+          xl.TextCellValue(c.id),
+          xl.TextCellValue(c.name),
+          xl.TextCellValue(c.location ?? ''),
+          xl.TextCellValue(c.salesManager ?? ''),
+          xl.TextCellValue(c.customerClass ?? ''),
+          xl.TextCellValue(c.employeeResponsible ?? ''),
+          xl.IntCellValue(c.exposureDays),
+          xl.DoubleCellValue(c.limit),
+          xl.TextCellValue(c.securityChq),
+          xl.TextCellValue(c.distributionChannel ?? ''),
+          xl.DoubleCellValue(c.osBalance),
+          xl.DoubleCellValue(c.odAmt),
+          xl.DoubleCellValue(c.diffYesterdayToday),
+          xl.DoubleCellValue((ag['0to7'] ?? ag['0 to 7'] ?? 0).toDouble()),
+          xl.DoubleCellValue((ag['7to15'] ?? ag['7 to 15'] ?? 0).toDouble()),
+          xl.DoubleCellValue((ag['15to30'] ?? ag['15 to 30'] ?? 0).toDouble()),
+          xl.DoubleCellValue((ag['30to45'] ?? ag['30 to 45'] ?? 0).toDouble()),
+          xl.DoubleCellValue((ag['45to90'] ?? ag['45 to 90'] ?? 0).toDouble()),
+          xl.DoubleCellValue((ag['90to120'] ?? ag['90 to 120'] ?? 0).toDouble()),
+          xl.DoubleCellValue((ag['120to150'] ?? ag['120 to 150'] ?? 0).toDouble()),
+          xl.DoubleCellValue((ag['150to180'] ?? ag['150 to 180'] ?? 0).toDouble()),
+          xl.DoubleCellValue((ag['>180'] ?? ag['above180'] ?? 0).toDouble()),
+        ]);
+      }
+
+      // Save file
+      final dir = await getExternalStorageDirectory();
+      final filePath = '${dir!.path}/Customer_Export_${DateTime.now().millisecondsSinceEpoch}.xlsx';
+      final fileBytes = excel.encode();
+      if (fileBytes != null) {
+        await File(filePath).writeAsBytes(fileBytes);
+        await OpenFile.open(filePath);
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('✅ Exported ${customers.length} customers!'),
+              backgroundColor: Colors.green,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('❌ Export failed: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
   }
 
   void _showMasterForm(BuildContext context, {dynamic initialData}) {
