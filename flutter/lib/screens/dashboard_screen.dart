@@ -167,96 +167,88 @@ class DashboardScreen extends StatelessWidget {
 
     final List<Map<String, dynamic>> lifecycleStages = [
       {
-        'stage': 'STAGE 0',
-        'label': 'New Customer',
-        'icon': Icons.person_add_rounded,
+        'stage': 'STAGE 1',
+        'label': 'Master Creation',
+        'icon': Icons.app_registration_rounded,
         'color': Colors.indigo,
         'screen': const NewCustomerScreen(),
         'roles': ['Admin', 'Sales']
       },
       {
-        'stage': 'STAGE 1',
-        'label': 'Book Order',
-        'icon': Icons.add_shopping_cart_rounded,
+        'stage': 'STAGE 2',
+        'label': 'Placed Order',
+        'icon': Icons.shopping_cart_checkout_rounded,
         'color': Colors.lightBlue,
         'screen': const BookOrderScreen(),
         'roles': ['Admin', 'Sales']
       },
       {
-        'stage': 'STAGE 1.1',
-        'label': 'Stock Transfer',
-        'icon': Icons.sync_alt_rounded,
-        'color': Colors.amber.shade800,
-        'screen': const StockTransferScreen(),
-        'roles': ['Admin', 'Sales']
-      },
-      {
-        'stage': 'STAGE 1.5',
-        'label': 'Clearance',
-        'icon': Icons.cleaning_services_rounded,
-        'color': Colors.blueGrey,
-        'screen': const LiveOrdersScreen(),
-        'roles': ['Admin', 'Sales']
-      },
-      {
-        'stage': 'STAGE 2',
-        'label': 'Credit Control',
-        'icon': Icons.bolt_rounded,
+        'stage': 'STAGE 3',
+        'label': 'Credit Approv.',
+        'icon': Icons.verified_rounded,
         'color': Colors.orange.shade700,
         'screen': const CreditControlScreen(),
         'roles': ['Admin', 'Credit Control']
       },
       {
-        'stage': 'STAGE 2.1',
-        'label': 'Credit Alerts',
-        'icon': Icons.warning_amber_rounded,
-        'color': Colors.red.shade700,
-        'screen': const CreditRiskScreen(),
-        'roles': ['Admin', 'Credit Control']
-      },
-      {
-        'stage': 'STAGE 3',
-        'label': 'Warehouse Operations', // Unified
+        'stage': 'STAGE 4',
+        'label': 'Warehouse',
         'icon': Icons.inventory_2_rounded,
         'color': Colors.brown.shade700,
         'screen': const WarehouseOpsScreen(),
-        'roles': ['Admin', 'Warehouse', 'WH House', 'WH Manager', 'Operations']
+        'roles': ['Admin', 'Warehouse', 'WH Manager']
       },
       {
-        'stage': 'STAGE 3.5',
-        'label': 'Quality Control (QC)',
+        'stage': 'STAGE 5',
+        'label': 'Packing',
+        'icon': Icons.inventory_rounded,
+        'color': Colors.amber.shade800,
+        'screen': const WarehouseOpsScreen(), // Usually part of warehouse ops
+        'roles': ['Admin', 'Warehouse']
+      },
+      {
+        'stage': 'STAGE 6',
+        'label': 'QC',
         'icon': Icons.verified_user_rounded,
         'color': Colors.green.shade700,
         'screen': const QualityControlScreen(),
         'roles': ['Admin', 'QC Head']
       },
       {
-        'stage': 'STAGE 4',
-        'label': 'Logistics Costing',
+        'stage': 'STAGE 7',
+        'label': 'Logistic Cost',
         'icon': Icons.currency_rupee_rounded,
         'color': Colors.deepPurple,
-        'screen': const LogisticsOpsScreen(), // Changed from LogisticsCostScreen to LogisticsOpsScreen
-        'roles': ['Admin', 'Logistics Lead', 'Logistics Team']
+        'screen': const LogisticsOpsScreen(),
+        'roles': ['Admin', 'Logistics Lead']
       },
       {
-        'stage': 'STAGE 5',
-        'label': 'Invoicing',
+        'stage': 'STAGE 8',
+        'label': 'Invoice',
         'icon': Icons.receipt_long_rounded,
         'color': Colors.blue.shade700,
         'screen': const InvoicingScreen(),
-        'roles': ['Admin', 'ATL Executive', 'Billing']
+        'roles': ['Admin', 'Billing', 'ATL Executive']
       },
       {
-        'stage': 'STAGE 6',
-        'label': 'Fleet Loading (Hub)',
+        'stage': 'STAGE 9',
+        'label': 'DA Assignment',
+        'icon': Icons.assignment_turned_in_rounded,
+        'color': Colors.blueGrey,
+        'screen': const InvoicingScreen(), // Mapping to existing screen for now
+        'roles': ['Admin', 'Billing']
+      },
+      {
+        'stage': 'STAGE 10',
+        'label': 'Loading',
         'icon': Icons.local_shipping_rounded,
         'color': Colors.purple.shade700,
         'screen': const LogisticsHubScreen(),
         'roles': ['Admin', 'Hub Lead']
       },
       {
-        'stage': 'STAGE 7',
-        'label': 'Delivery Execution',
+        'stage': 'STAGE 11',
+        'label': 'Delivery Ack',
         'icon': Icons.task_alt_rounded,
         'color': Colors.redAccent.shade700,
         'screen': const DeliveryExecutionScreen(),
@@ -273,11 +265,14 @@ class DashboardScreen extends StatelessWidget {
       if (role == 'Admin') return true;
 
       // ★ PRIORITY 1: If Admin has configured stepAccess, use it (3-level: full/view/no)
-      if (user.stepAccess.isNotEmpty) {
+      if (user.stepAccess.containsKey(s['label'])) {
         final access = user.stepAccess[s['label']] ?? 'no';
-        return access == 'full' || access == 'view'; // Show for both full & view, hide for 'no'
+        if (access != 'no') return true;
+        // If explicitly set to 'no', we return false even if role matches
+        if (access == 'no') return false;
       }
 
+      // ★ FALLBACK: Legacy hardcoded overrides (Keeping for safety)
       // 1. Invoicing row only for ATL Executives
       const atlExecutivesEmails = [
         'sandesh.gonbare@bigsams.in',
@@ -286,65 +281,22 @@ class DashboardScreen extends StatelessWidget {
         'dipashree.gawde@bigsams.in'
       ];
       if (atlExecutivesEmails.contains(email)) {
-        return s['label'] == 'Invoicing';
+        return s['label'] == 'Invoice';
       }
 
-      // 2. Pranav Override -> ONLY WH Assignment
-      if (email == 'pranav.manger@bigsams.in') {
-        return s['label'] == 'WH Assignment & Packing';
-      }
-
-      // 3. Dheeraj / QC Head Override -> ONLY QC
+      // 2. Dheeraj / QC Head Override -> ONLY QC
       if (email == 'dhiraj.kumar@bigsams.in' || email == 'quality@bigsams.in') {
-        return s['label'] == 'Quality Control (QC)';
+        return s['label'] == 'QC';
       }
 
-      // 4. Pratish Dalvi -> Logistics Costing & Hub
-      if (email == 'pratish.dalvi@bigsams.in') {
-        return s['label'] == 'Logistics Costing' || s['label'] == 'Fleet Loading (Hub)';
-      }
-
-      // 5. Sagar -> ONLY Fleet Loading (Hub)
+      // 3. Sagar -> ONLY Hub Loading
       if (email == 'sagar.delivery@bigsams.in') {
-        return s['label'] == 'Fleet Loading (Hub)';
+        return s['label'] == 'Loading';
       }
 
-      // 6. Lawin -> ONLY Logistics Managed (Renamed for him)
-      if (email == 'lavin.samtani@bigsams.in') {
-        if (s['label'] == 'Logistics Costing') {
-          s['label'] = 'Logistics Managed';
-          return true;
-        }
-        return false;
-      }
-
-      // 7. Operations Manager (operations@bigsams.in) - Warehouse Focus
-      if (email == 'operations@bigsams.in') {
-        // STRICTLY SHOW: Warehouse Operations, Logistics Costing, Fleet Loading (Hub)
-        // EXPLICITLY HIDE: Quality Control (QC) and all others
-        const allowedStages = [
-          'Warehouse Operations', 
-          'Logistics Costing', 
-          'Fleet Loading (Hub)'
-        ];
-        return allowedStages.contains(s['label']);
-      }
-
-      // 8. Credit Control specialists (Already done)
-      if (email == 'pawan.kumar@bigsams.in' || email == 'kshama.jaiswal@bigsams.in' || role == 'Credit Control' || email == 'credit.control@bigsams.in') {
-        return s['label'] == 'Credit Control' || s['label'] == 'Credit Alerts';
-      }
-
-      // 9. Creation stages (restricted to Sales/Admin)
-      const creationStages = ['New Customer', 'Book Order', 'Stock Transfer', 'Clearance'];
+      // 4. Creation stages (restricted to Sales/Admin)
+      const creationStages = ['Master Creation', 'Placed Order'];
       if (creationStages.contains(s['label'])) {
-        // STRICT: "New Customer" only for Sales team (and Admin)
-        if (s['label'] == 'New Customer') {
-           if (role == 'Admin') return true;
-           if (role == 'Sales') return true;
-           // Explicitly block for everyone else
-           return false;
-        }
         return (role == 'Sales' || role == 'Admin');
       }
 

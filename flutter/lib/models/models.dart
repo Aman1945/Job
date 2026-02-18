@@ -133,6 +133,7 @@ class User {
   final String? department2;
   final String? channel;
   final String? whatsappNumber;
+  final String zone;
   final List<String> permissions;
   final Map<String, String> stepAccess; // 3-level: 'full', 'view', 'no'
 
@@ -142,6 +143,7 @@ class User {
     required this.role,
     this.password,
     this.location = 'Pan India',
+    this.zone = 'PAN INDIA',
     this.department1,
     this.department2,
     this.channel,
@@ -157,6 +159,7 @@ class User {
       role: UserRole.fromString(json['role'] ?? 'Sales'),
       password: json['password'],
       location: json['location'] ?? 'Pan India',
+      zone: json['zone'] ?? 'PAN INDIA',
       department1: json['department1'],
       department2: json['department2'],
       channel: json['channel'],
@@ -172,6 +175,7 @@ class User {
       'name': name,
       'role': role.label,
       'location': location,
+      'zone': zone,
       if (department1 != null) 'department1': department1,
       if (department2 != null) 'department2': department2,
       if (channel != null) 'channel': channel,

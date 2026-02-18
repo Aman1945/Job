@@ -19,18 +19,17 @@ class _StepAssignmentScreenState extends State<StepAssignmentScreen> {
   bool _isLoading = true;
 
   final List<Map<String, dynamic>> _workflowSteps = [
-    {'label': 'New Customer', 'icon': Icons.person_add_rounded, 'color': Colors.indigo},
-    {'label': 'Book Order', 'icon': Icons.add_shopping_cart_rounded, 'color': Colors.lightBlue},
-    {'label': 'Stock Transfer', 'icon': Icons.sync_alt_rounded, 'color': Colors.amber},
-    {'label': 'Clearance', 'icon': Icons.cleaning_services_rounded, 'color': Colors.blueGrey},
-    {'label': 'Credit Control', 'icon': Icons.bolt_rounded, 'color': Colors.orange},
-    {'label': 'Credit Alerts', 'icon': Icons.warning_amber_rounded, 'color': Colors.red},
-    {'label': 'Warehouse Operations', 'icon': Icons.inventory_2_rounded, 'color': Colors.brown},
-    {'label': 'Quality Control (QC)', 'icon': Icons.verified_user_rounded, 'color': Colors.green},
-    {'label': 'Logistics Costing', 'icon': Icons.currency_rupee_rounded, 'color': Colors.deepPurple},
-    {'label': 'Invoicing', 'icon': Icons.receipt_long_rounded, 'color': Colors.blue},
-    {'label': 'Fleet Loading (Hub)', 'icon': Icons.local_shipping_rounded, 'color': Colors.purple},
-    {'label': 'Delivery Execution', 'icon': Icons.task_alt_rounded, 'color': Colors.redAccent},
+    {'label': 'Master Creation', 'icon': Icons.app_registration_rounded, 'color': Colors.indigo},
+    {'label': 'Placed Order', 'icon': Icons.shopping_cart_checkout_rounded, 'color': Colors.lightBlue},
+    {'label': 'Credit Approv.', 'icon': Icons.verified_rounded, 'color': Colors.orange},
+    {'label': 'Warehouse', 'icon': Icons.inventory_2_rounded, 'color': Colors.brown},
+    {'label': 'Packing', 'icon': Icons.inventory_rounded, 'color': Colors.amber},
+    {'label': 'QC', 'icon': Icons.verified_user_rounded, 'color': Colors.green},
+    {'label': 'Logistic Cost', 'icon': Icons.currency_rupee_rounded, 'color': Colors.deepPurple},
+    {'label': 'Invoice', 'icon': Icons.receipt_long_rounded, 'color': Colors.blue},
+    {'label': 'DA Assignment', 'icon': Icons.assignment_turned_in_rounded, 'color': Colors.blueGrey},
+    {'label': 'Loading', 'icon': Icons.local_shipping_rounded, 'color': Colors.purple},
+    {'label': 'Delivery Ack', 'icon': Icons.task_alt_rounded, 'color': Colors.redAccent},
   ];
 
   @override
@@ -81,125 +80,182 @@ class _StepAssignmentScreenState extends State<StepAssignmentScreen> {
       userAccessMap[user.id] = user.stepAccess[stepLabel] ?? 'no';
     }
 
-    showDialog(
+    // Grouping logic for Zone segregation
+    Map<String, List<User>> groupedUsers = {
+      'NORTH': [],
+      'WEST': [],
+      'EAST': [],
+      'SOUTH': [],
+      'PAN INDIA': [],
+    };
+    
+    for (var u in _users) {
+      if (u.role.label == 'Admin') continue;
+      String z = u.zone.toUpperCase();
+      if (!groupedUsers.containsKey(z)) groupedUsers[u.zone] = [];
+      groupedUsers[z]!.add(u);
+    }
+
+    showGeneralDialog(
       context: context,
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (ctx, setDialogState) {
-            return AlertDialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-              title: Column(
-                children: [
-                  Icon(stepIcon, color: stepColor, size: 32),
-                  const SizedBox(height: 8),
-                  Text(stepLabel.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 1)),
-                  const SizedBox(height: 4),
-                  const Text('Set access level for each user', style: TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.normal)),
-                ],
-              ),
-              content: SizedBox(
-                width: double.maxFinite,
-                height: 420,
-                child: ListView(
-                  children: _users.where((u) => u.role.label != 'Admin').map((user) {
-                    final access = userAccessMap[user.id] ?? 'no';
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 8),
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: access == 'full' ? const Color(0xFFECFDF5) 
-                             : access == 'view' ? const Color(0xFFEFF6FF) 
-                             : const Color(0xFFF8FAFC),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: access == 'full' ? NexusTheme.emerald300 
-                                                 : access == 'view' ? Colors.blue.shade200 
-                                                 : const Color(0xFFE2E8F0)),
-                      ),
-                      child: Row(
-                        children: [
-                          CircleAvatar(
-                            radius: 14,
-                            backgroundColor: access == 'full' ? NexusTheme.emerald500 
-                                           : access == 'view' ? Colors.blue 
-                                           : NexusTheme.slate300,
-                            child: Text(user.name[0], style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(user.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-                                Text(user.role.label, style: const TextStyle(fontSize: 9, color: Colors.grey)),
-                              ],
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 4),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: const Color(0xFFE2E8F0)),
-                            ),
-                            child: DropdownButtonHideUnderline(
-                              child: DropdownButton<String>(
-                                value: access,
-                                isDense: true,
-                                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900),
-                                items: const [
-                                  DropdownMenuItem(value: 'full', child: Text('✅ FULL', style: TextStyle(color: Color(0xFF059669), fontSize: 11, fontWeight: FontWeight.w900))),
-                                  DropdownMenuItem(value: 'view', child: Text('👁️ VIEW', style: TextStyle(color: Color(0xFF2563EB), fontSize: 11, fontWeight: FontWeight.w900))),
-                                  DropdownMenuItem(value: 'no', child: Text('❌ NO', style: TextStyle(color: Color(0xFFDC2626), fontSize: 11, fontWeight: FontWeight.w900))),
-                                ],
-                                onChanged: (val) {
-                                  setDialogState(() {
-                                    userAccessMap[user.id] = val!;
-                                  });
-                                },
+      barrierDismissible: true,
+      barrierLabel: '',
+      barrierColor: Colors.black.withOpacity(0.3),
+      transitionDuration: const Duration(milliseconds: 300),
+      pageBuilder: (ctx, anim1, anim2) => const SizedBox(),
+      transitionBuilder: (ctx, anim1, anim2, child) {
+        return BackdropFilter(
+          filter: ColorFilter.mode(
+            Colors.white.withOpacity(0.1),
+            BlendMode.srcOver,
+          ),
+          child: FadeTransition(
+            opacity: anim1,
+            child: ScaleTransition(
+              scale: anim1,
+              child: AlertDialog(
+                backgroundColor: Colors.white.withOpacity(0.9),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                title: Column(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(color: stepColor.withOpacity(0.1), shape: BoxShape.circle),
+                      child: Icon(stepIcon, color: stepColor, size: 32),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(stepLabel.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 1.2)),
+                    const SizedBox(height: 4),
+                    const Text('Configure zone-wise access control', style: TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.w500)),
+                  ],
+                ),
+                content: StatefulBuilder(
+                  builder: (ctx, setDialogState) {
+                    return SizedBox(
+                      width: double.maxFinite,
+                      height: 450,
+                      child: ListView(
+                        physics: const BouncingScrollPhysics(),
+                        children: groupedUsers.entries.where((e) => e.value.isNotEmpty).map((entry) {
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.only(top: 16, bottom: 8, left: 4),
+                                child: Text(
+                                  entry.key,
+                                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Colors.blueGrey.shade700, letterSpacing: 1),
+                                ),
                               ),
-                            ),
-                          ),
-                        ],
+                              ...entry.value.map((user) {
+                                final access = userAccessMap[user.id] ?? 'no';
+                                return Container(
+                                  margin: const EdgeInsets.only(bottom: 8),
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(16),
+                                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 4, offset: const Offset(0, 2))],
+                                    border: Border.all(
+                                      color: access == 'full' ? NexusTheme.emerald300 
+                                           : access == 'view' ? Colors.blue.shade200 
+                                           : Colors.grey.shade100,
+                                      width: 1.5,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      CircleAvatar(
+                                        radius: 14,
+                                        backgroundColor: access == 'full' ? NexusTheme.emerald500 
+                                                       : access == 'view' ? Colors.blue 
+                                                       : Colors.grey.shade200,
+                                        child: Text(user.name[0], style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(user.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 11)),
+                                            Text(user.role.label, style: const TextStyle(fontSize: 8, color: Colors.grey)),
+                                          ],
+                                        ),
+                                      ),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                                        decoration: BoxDecoration(
+                                          color: Colors.grey.shade50,
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: DropdownButtonHideUnderline(
+                                          child: DropdownButton<String>(
+                                            value: access,
+                                            isDense: true,
+                                            icon: const Icon(Icons.arrow_drop_down, size: 16),
+                                            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900),
+                                            items: const [
+                                              DropdownMenuItem(value: 'full', child: Text('✅ FULL', style: TextStyle(color: Color(0xFF059669)))),
+                                              DropdownMenuItem(value: 'view', child: Text('👁️ VIEW', style: TextStyle(color: Color(0xFF2563EB)))),
+                                              DropdownMenuItem(value: 'no', child: Text('❌ NO', style: TextStyle(color: Color(0xFFDC2626)))),
+                                            ],
+                                            onChanged: (val) {
+                                              setDialogState(() {
+                                                userAccessMap[user.id] = val!;
+                                              });
+                                            },
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }).toList(),
+                            ],
+                          );
+                        }).toList(),
                       ),
                     );
-                  }).toList(),
+                  }
                 ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(ctx),
-                  child: const Text('CANCEL', style: TextStyle(color: Colors.grey)),
-                ),
-                ElevatedButton(
-                  onPressed: () async {
-                    Navigator.pop(ctx);
-                    // Update each user's stepAccess
-                    for (final user in _users) {
-                      if (user.role.label == 'Admin') continue;
-                      final newAccess = userAccessMap[user.id] ?? 'no';
-                      final oldAccess = user.stepAccess[stepLabel] ?? 'no';
-                      
-                      if (newAccess != oldAccess) {
-                        Map<String, String> updated = Map.from(user.stepAccess);
-                        updated[stepLabel] = newAccess;
-                        await _updateStepAccess(user.id, updated);
-                      }
-                    }
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('✅ Access updated!'), backgroundColor: Colors.green),
-                      );
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: NexusTheme.emerald500,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    child: const Text('CANCEL', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold, fontSize: 11)),
                   ),
-                  child: const Text('SAVE', style: TextStyle(fontWeight: FontWeight.bold)),
-                ),
-              ],
-            );
-          },
+                  ElevatedButton(
+                    onPressed: () async {
+                      Navigator.pop(ctx);
+                      for (final user in _users) {
+                        if (user.role.label == 'Admin') continue;
+                        final newAccess = userAccessMap[user.id] ?? 'no';
+                        final oldAccess = user.stepAccess[stepLabel] ?? 'no';
+                        
+                        if (newAccess != oldAccess) {
+                          Map<String, String> updated = Map.from(user.stepAccess);
+                          updated[stepLabel] = newAccess;
+                          await _updateStepAccess(user.id, updated);
+                        }
+                      }
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('✅ Access updated mapping to Zone!'), backgroundColor: Colors.black87),
+                        );
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.black87,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    ),
+                    child: const Text('SAVE CHANGES', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 11)),
+                  ),
+                ],
+              ),
+            ),
+          ),
         );
       },
     );
