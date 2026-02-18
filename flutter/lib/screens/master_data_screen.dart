@@ -115,39 +115,54 @@ class _MasterDataScreenState extends State<MasterDataScreen> {
                           isPrimary: true,
                           fullWidth: true,
                         ),
-                        const SizedBox(height: 12),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _buildActionButton(
-                                icon: Icons.description_outlined,
-                                label: 'DOWNLOAD FORMAT',
-                                onTap: () async {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('📥 Download starting...'),
-                                      backgroundColor: NexusTheme.indigo500,
-                                      behavior: SnackBarBehavior.floating,
-                                    ),
-                                  );
-                                  await provider.downloadCustomerTemplate();
-                                },
-                                isPrimary: false,
-                                fullWidth: true,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: _buildActionButton(
-                                icon: Icons.download_rounded,
-                                label: 'EXPORT EXCEL',
-                                onTap: () => _exportCustomersToExcel(context),
-                                isPrimary: false,
-                                fullWidth: true,
-                              ),
-                            ),
-                          ],
-                        ),
+                         const SizedBox(height: 12),
+                         // Download Format - full width, prominent
+                         GestureDetector(
+                           onTap: () async {
+                             ScaffoldMessenger.of(context).showSnackBar(
+                               const SnackBar(
+                                 content: Text('📥 Download starting...'),
+                                 backgroundColor: NexusTheme.indigo500,
+                                 behavior: SnackBarBehavior.floating,
+                               ),
+                             );
+                             await provider.downloadCustomerTemplate();
+                           },
+                           child: Container(
+                             width: double.infinity,
+                             padding: const EdgeInsets.symmetric(vertical: 14),
+                             decoration: BoxDecoration(
+                               color: Colors.white,
+                               borderRadius: BorderRadius.circular(14),
+                               border: Border.all(color: const Color(0xFF6366F1), width: 1.5),
+                             ),
+                             child: const Row(
+                               mainAxisAlignment: MainAxisAlignment.center,
+                               children: [
+                                 Icon(Icons.description_outlined, size: 16, color: Color(0xFF6366F1)),
+                                 SizedBox(width: 8),
+                                 Text(
+                                   'DOWNLOAD EXCEL FORMAT',
+                                   style: TextStyle(
+                                     fontFamily: 'Montserrat',
+                                     fontSize: 11,
+                                     fontWeight: FontWeight.w800,
+                                     color: Color(0xFF6366F1),
+                                     letterSpacing: 0.5,
+                                   ),
+                                 ),
+                               ],
+                             ),
+                           ),
+                         ),
+                         const SizedBox(height: 12),
+                         _buildActionButton(
+                           icon: Icons.download_rounded,
+                           label: 'EXPORT EXCEL',
+                           onTap: () => _exportCustomersToExcel(context),
+                           isPrimary: false,
+                           fullWidth: true,
+                         ),
                       ],
                     ],
                   ),
@@ -510,9 +525,9 @@ class _MasterDataScreenState extends State<MasterDataScreen> {
       final end = (start + _pageSize).clamp(0, customers.length);
       final pageItems = customers.sublist(start, end);
 
-      // Scrollable columns (Dist is now frozen)
+      // Scrollable columns (Dist is first)
       final cols = [
-        ('Class', 70.0), ('Cr.Days', 65.0),
+        ('Dist', 80.0), ('Class', 70.0), ('Cr.Days', 65.0),
         ('Cr.Limit', 85.0), ('Sec.Chq', 75.0), ('O/s Amt', 85.0),
         ('OD Amt', 75.0), ('0-7', 60.0), ('7-15', 60.0),
         ('15-30', 60.0), ('30-45', 60.0), ('45-90', 65.0),
@@ -602,15 +617,7 @@ class _MasterDataScreenState extends State<MasterDataScreen> {
                   ],
                 ),
 
-                // FROZEN: Dist column (same 130px width)
-                Column(
-                  children: [
-                    buildFrozenCell('DIST', isHeader: true),
-                    ...pageItems.map((c) => buildFrozenCell(c.location ?? '-')),
-                  ],
-                ),
-
-                // SCROLLABLE: rest of columns
+                // SCROLLABLE: rest of columns (Dist is first scrollable col)
                 Expanded(
                   child: SingleChildScrollView(
                     controller: scrollCtrl,
@@ -627,8 +634,9 @@ class _MasterDataScreenState extends State<MasterDataScreen> {
                         // Data rows
                         ...pageItems.map((c) {
                           final ag = c.agingData;
-                          // Dist is now frozen, so skip it here
+                          // Dist is first scrollable col
                           final vals = [
+                            c.location ?? '-',
                             c.customerClass ?? '-',
                             c.exposureDays.toString(),
                             c.limit.toStringAsFixed(0),
