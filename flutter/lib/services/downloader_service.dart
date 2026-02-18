@@ -15,7 +15,7 @@ class DownloaderService {
   final ReceivePort _port = ReceivePort();
   final Map<String, String> _downloadTasks = {}; // taskId -> fileName
 
-  Future<void> initialize() async {
+  Future<void> initialize({DownloadCallback? callback}) async {
     if (!Platform.isAndroid && !Platform.isIOS) return;
     
     await FlutterDownloader.initialize(debug: true, ignoreSsl: true);
@@ -25,7 +25,6 @@ class DownloaderService {
     
     _port.listen((dynamic data) {
       String id = data[0];
-      DownloadTaskStatus status = DownloadTaskStatus.values[data[2] is int ? data[1] : 0]; // Note: data[1] is status
       // Flutter downloader status is int, progress is int
       // Status enum values: undefined(0), enqueued(1), running(2), complete(3), failed(4), canceled(5), paused(6)
       
@@ -39,7 +38,9 @@ class DownloaderService {
       }
     });
 
-    FlutterDownloader.registerCallback(downloadCallback, step: 1);
+    if (callback != null) {
+      FlutterDownloader.registerCallback(callback, step: 1);
+    }
   }
 
   void _handleDownloadUpdate(String id, DownloadTaskStatus status, int progress, String fileName) {

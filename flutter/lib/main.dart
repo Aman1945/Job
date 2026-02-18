@@ -32,8 +32,8 @@ void main() async {
   await Hive.initFlutter();
   await DriveStateManager.init();
   
-  // Initialize Downloader
-  await DownloaderService().initialize();
+  // Initialize Downloader - pass the top-level callback from main.dart
+  await DownloaderService().initialize(callback: downloadCallback);
 
   runApp(
     MultiProvider(
