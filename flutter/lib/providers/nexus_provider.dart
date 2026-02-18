@@ -658,5 +658,13 @@ class NexusProvider with ChangeNotifier {
       notifyListeners();
     }
   }
+
+  Future<void> downloadCustomerTemplate() async {
+    final url = '$_baseUrl/customers/import-template';
+    await DownloaderService().downloadFile(
+      url: url,
+      fileName: "Customer_Master_Template.xlsx",
+    );
+  }
 }
 

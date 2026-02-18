@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/nexus_provider.dart';
+import '../providers/auth_provider.dart';
 import '../utils/theme.dart';
 import '../models/models.dart';
 import '../widgets/nexus_components.dart';
@@ -16,9 +17,13 @@ class MasterDataScreen extends StatefulWidget {
 class _MasterDataScreenState extends State<MasterDataScreen> {
   String _selectedTab = 'USER MASTER';
   bool _isLoading = false;
+  late AuthProvider authProvider;
+  late NexusProvider provider;
 
   @override
   Widget build(BuildContext context) {
+    provider = Provider.of<NexusProvider>(context);
+    authProvider = Provider.of<AuthProvider>(context);
     return Scaffold(
       backgroundColor: NexusTheme.slate50,
       appBar: AppBar(
@@ -83,29 +88,41 @@ class _MasterDataScreenState extends State<MasterDataScreen> {
 
                   const SizedBox(height: 24),
 
-                  // Action Buttons
-                  Row(
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _buildActionButton(
-                        icon: Icons.description_outlined,
-                        label: 'TEMPLATE',
-                        onTap: () => _showMasterForm(context),
-                        isPrimary: false,
-                      ),
-                      const SizedBox(width: 12),
-                      _buildActionButton(
                         icon: Icons.add,
-                        label: 'ADD NEW',
+                        label: 'ADD NEW ${_selectedTab.replaceAll(' MASTER', '')}',
                         onTap: () => _showMasterForm(context),
                         isPrimary: true,
+                        fullWidth: true,
                       ),
                       if (_selectedTab == 'CUSTOMER MASTER') ...[
-                        const SizedBox(width: 12),
+                        const SizedBox(height: 12),
                         _buildActionButton(
                           icon: Icons.upload_file,
-                          label: 'IMPORT EXCEL',
+                          label: 'IMPORT EXCEL DATA',
                           onTap: () => _handleBulkImport(context),
                           isPrimary: true,
+                          fullWidth: true,
+                        ),
+                        const SizedBox(height: 12),
+                        _buildActionButton(
+                          icon: Icons.description_outlined,
+                          label: 'DOWNLOAD EXCEL FORMAT',
+                          onTap: () async {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('📥 Download starting... Check notification bar'),
+                                backgroundColor: NexusTheme.indigo500,
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                            await provider.downloadCustomerTemplate();
+                          },
+                          isPrimary: false,
+                          fullWidth: true,
                         ),
                       ],
                     ],
@@ -392,17 +409,21 @@ class _MasterDataScreenState extends State<MasterDataScreen> {
     required String label,
     required VoidCallback onTap,
     required bool isPrimary,
+    bool fullWidth = false,
   }) {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+        width: fullWidth ? double.infinity : null,
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
         decoration: BoxDecoration(
           color: isPrimary ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
           borderRadius: BorderRadius.circular(16),
         ),
         child: Row(
+          mainAxisAlignment: fullWidth ? MainAxisAlignment.center : MainAxisAlignment.start,
+          mainAxisSize: fullWidth ? MainAxisSize.max : MainAxisSize.min,
           children: [
             Icon(
               icon,
@@ -598,23 +619,32 @@ class _MasterDataScreenState extends State<MasterDataScreen> {
                   Flexible(
                     child: SingleChildScrollView(
                       child: Column(
-                        children: fields.map((f) => Padding(
-                          padding: const EdgeInsets.only(bottom: 24),
-                          child: TextField(
-                            controller: controllers[f],
-                            style: const TextStyle(color: Color(0xFF0F172A), fontWeight: FontWeight.bold, fontSize: 14),
-                            decoration: InputDecoration(
-                              labelText: f.toUpperCase(),
-                              labelStyle: const TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.w900, fontSize: 10, letterSpacing: 1),
-                              floatingLabelBehavior: FloatingLabelBehavior.always,
-                              enabledBorder: OutlineInputBorder(borderSide: const BorderSide(color: Color(0xFF0F172A), width: 1.5), borderRadius: BorderRadius.circular(16)),
-                              focusedBorder: OutlineInputBorder(borderSide: const BorderSide(color: Color(0xFF6366F1), width: 2), borderRadius: BorderRadius.circular(16)),
-                              filled: true,
-                              fillColor: const Color(0xFFF8FAFC),
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+                        children: [
+                          ...fields.map((f) => Padding(
+                            padding: const EdgeInsets.only(bottom: 24),
+                            child: TextField(
+                              controller: controllers[f],
+                              style: const TextStyle(color: Color(0xFF0F172A), fontWeight: FontWeight.bold, fontSize: 14),
+                              decoration: InputDecoration(
+                                labelText: f.toUpperCase(),
+                                labelStyle: const TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.w900, fontSize: 10, letterSpacing: 1),
+                                floatingLabelBehavior: FloatingLabelBehavior.always,
+                                enabledBorder: OutlineInputBorder(borderSide: const BorderSide(color: Color(0xFF0F172A), width: 1.5), borderRadius: BorderRadius.circular(16)),
+                                focusedBorder: OutlineInputBorder(borderSide: const BorderSide(color: Color(0xFF6366F1), width: 2), borderRadius: BorderRadius.circular(16)),
+                                filled: true,
+                                fillColor: const Color(0xFFF8FAFC),
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+                              ),
                             ),
-                          ),
-                        )).toList(),
+                          )).toList(),
+                          if (_selectedTab == 'CUSTOMER MASTER' && 
+                              initialData is Customer && 
+                              (authProvider.currentUser?.role.label == 'Admin' || authProvider.currentUser?.role.label == 'Credit Control')) ...[
+                            const SizedBox(height: 24),
+                            const Divider(height: 48),
+                            NexusComponents.creditMatrix(initialData),
+                          ],
+                        ],
                       ),
                     ),
                   ),

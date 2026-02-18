@@ -4,6 +4,13 @@ import 'dart:ui';
 import 'package:flutter_downloader/flutter_downloader.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:open_file/open_file.dart';
+
+@pragma('vm:entry-point')
+void downloadCallback(String id, int status, int progress) {
+  final SendPort? send = IsolateNameServer.lookupPortByName('downloader_port');
+  send?.send([id, status, progress]);
+}
 
 class DownloaderService {
   static final DownloaderService _instance = DownloaderService._internal();
@@ -23,12 +30,17 @@ class DownloaderService {
     
     _port.listen((dynamic data) {
       String id = data[0];
-      DownloadTaskStatus status = DownloadTaskStatus.values[data[1]];
-      int progress = data[2];
+      DownloadTaskStatus status = DownloadTaskStatus.values[data[2] is int ? data[1] : 0]; // Note: data[1] is status
+      // Flutter downloader status is int, progress is int
+      // Status enum values: undefined(0), enqueued(1), running(2), complete(3), failed(4), canceled(5), paused(6)
+      
+      final intStatus = data[1] as int;
+      final progress = data[2] as int;
+      DownloadTaskStatus taskStatus = DownloadTaskStatus.values[intStatus];
       
       final fileName = _downloadTasks[id];
       if (fileName != null) {
-        _handleDownloadUpdate(id, status, progress, fileName);
+        _handleDownloadUpdate(id, taskStatus, progress, fileName);
       }
     });
 
@@ -45,6 +57,8 @@ class DownloaderService {
       case DownloadTaskStatus.complete:
         print('Download Complete: $fileName');
         _downloadTasks.remove(id);
+        // Automatically try to open the file upon completion
+        _openFileByTaskId(id);
         break;
       case DownloadTaskStatus.failed:
         print('Download Failed: $fileName');
@@ -57,12 +71,6 @@ class DownloaderService {
       default:
         break;
     }
-  }
-
-  @pragma('vm:entry-point')
-  static void downloadCallback(String id, int status, int progress) {
-    final SendPort? send = IsolateNameServer.lookupPortByName('downloader_port');
-    send?.send([id, status, progress]);
   }
 
   Future<String?> downloadFile({
@@ -81,10 +89,11 @@ class DownloaderService {
 
       String? savedDir;
       if (Platform.isAndroid) {
-        // Try to use Downloads folder
-        savedDir = '/storage/emulated/0/Download';
-        final dir = Directory(savedDir);
-        if (!await dir.exists()) {
+        // More reliable way to get Download directory on Android
+        final externalDirs = await getExternalStorageDirectories(type: StorageDirectory.downloads);
+        if (externalDirs != null && externalDirs.isNotEmpty) {
+          savedDir = externalDirs.first.path;
+        } else {
           final externalDir = await getExternalStorageDirectory();
           savedDir = externalDir?.path;
         }
@@ -94,8 +103,13 @@ class DownloaderService {
       }
 
       if (savedDir == null) {
-        print('Storage not available');
+        print('Storage directory not found');
         return null;
+      }
+
+      final dir = Directory(savedDir);
+      if (!await dir.exists()) {
+        await dir.create(recursive: true);
       }
 
       print('Starting download: $fileName to $savedDir');
@@ -104,7 +118,7 @@ class DownloaderService {
         url: url,
         savedDir: savedDir,
         fileName: fileName,
-        showNotification: true, // Use flutter_downloader's built-in notifications
+        showNotification: true,
         openFileFromNotification: true,
         saveInPublicStorage: true,
       );
@@ -120,6 +134,25 @@ class DownloaderService {
     } catch (e) {
       print('Download error: $e');
       return null;
+    }
+  }
+
+  Future<void> _openFileByTaskId(String taskId) async {
+    final tasks = await FlutterDownloader.loadTasks();
+    if (tasks == null) return;
+
+    try {
+      final task = tasks.firstWhere((t) => t.taskId == taskId);
+      final filePath = "${task.savedDir}${Platform.pathSeparator}${task.filename}";
+      final file = File(filePath);
+      
+      if (await file.exists()) {
+        await OpenFile.open(filePath);
+      } else {
+        print('File not found for opening: $filePath');
+      }
+    } catch (e) {
+      print('Error finding/opening task: $e');
     }
   }
 

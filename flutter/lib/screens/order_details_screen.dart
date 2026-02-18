@@ -8,6 +8,7 @@ import '../models/models.dart';
 import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
 import '../config/api_config.dart';
+import '../widgets/nexus_components.dart';
 
 class OrderDetailsScreen extends StatefulWidget {
   final Order order;
@@ -101,9 +102,10 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
 
             _buildSectionTitle('⚡ 2. Credit Exposure Matrix', 'FINANCIAL HEALTH REVIEW FOR ${widget.order.customerName}'),
             const SizedBox(height: 16),
-            _buildCreditStatsGrid(customer),
-            const SizedBox(height: 16),
-            _buildAgingTable(customer),
+            if (authProvider.currentUser?.role.label == 'Admin' || authProvider.currentUser?.role.label == 'Credit Control')
+              NexusComponents.creditMatrix(customer)
+            else
+              NexusComponents.restrictedView(),
             const SizedBox(height: 24),
 
             // AI CREDIT INSIGHT CARD
@@ -227,69 +229,6 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
         if (subtitle.isNotEmpty)
           Text(subtitle.toUpperCase(), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: NexusTheme.slate400, letterSpacing: 0.5)),
       ],
-    );
-  }
-
-  Widget _buildCreditStatsGrid(Customer customer) {
-    return Row(
-      children: [
-        Expanded(
-          child: _buildStatCard('CURRENT STANDING', 'CRITICAL EXPOSURE', const Color(0xFFF43F5E)),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: _buildStatCard('AVAILABLE CREDIT', '₹${NumberFormat('#,##,###').format(customer.limit - customer.osBalance)}', const Color(0xFF6366F1)),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildStatCard(String label, String value, Color color) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.2)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(padding: const EdgeInsets.all(4), decoration: BoxDecoration(color: color, shape: BoxShape.circle), child: const Icon(Icons.priority_high, color: Colors.white, size: 8)),
-              const SizedBox(width: 8),
-              Text(label, style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: color)),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(value, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: color)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAgingTable(Customer customer) {
-    return Container(
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(32), border: Border.all(color: NexusTheme.slate200)),
-      clipBehavior: Clip.antiAlias,
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: DataTable(
-          headingRowHeight: 40,
-          columnSpacing: 20,
-          headingRowColor: WidgetStateProperty.all(const Color(0xFF1E293B)),
-          columns: ['Days', 'Limit', 'O/s Bal', 'Overdue'].map((h) => DataColumn(label: Text(h.toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.w900)))).toList(),
-          rows: [
-            DataRow(cells: [
-              const DataCell(Text('30 days', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold))),
-              DataCell(Text('₹${(customer.limit/1000).toStringAsFixed(0)}K', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold))),
-              DataCell(Text('₹${(customer.osBalance/1000).toStringAsFixed(0)}K', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold))),
-              const DataCell(Text('₹0', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.red))),
-            ])
-          ],
-        ),
-      ),
     );
   }
 

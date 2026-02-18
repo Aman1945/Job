@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:nexus_oms_mobile/providers/nexus_provider.dart';
+import 'package:nexus_oms_mobile/widgets/nexus_components.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
-import '../providers/nexus_provider.dart';
+import '../providers/auth_provider.dart';
 import '../utils/theme.dart';
 import '../models/models.dart';
 import 'package:lucide_icons/lucide_icons.dart';
@@ -27,6 +29,7 @@ class _CreditControlScreenState extends State<CreditControlScreen> {
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<NexusProvider>(context);
+    final authProvider = Provider.of<AuthProvider>(context);
     final pendingOrders = provider.orders.where((o) => o.status == 'Pending Credit Approval').toList();
 
     return Scaffold(
@@ -49,7 +52,7 @@ class _CreditControlScreenState extends State<CreditControlScreen> {
       ),
       body: selectedOrder == null
           ? _buildOrderQueue(pendingOrders, provider)
-          : _buildDetailTerminal(selectedOrder!, provider),
+          : _buildDetailTerminal(selectedOrder!, provider, authProvider),
     );
   }
 
@@ -156,130 +159,150 @@ class _CreditControlScreenState extends State<CreditControlScreen> {
     );
   }
 
-  Widget _buildDetailTerminal(Order order, NexusProvider provider) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isMobile = constraints.maxWidth < 900;
-
-        return SingleChildScrollView(
-          padding: EdgeInsets.all(isMobile ? 16 : 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header Card
-              Container(
-                padding: EdgeInsets.all(isMobile ? 20 : 32),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(32),
-                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 20)],
+  Widget _buildDetailTerminal(Order order, NexusProvider provider, AuthProvider authProvider) {
+    bool isMobile = MediaQuery.of(context).size.width < 900;
+    return SingleChildScrollView(
+      padding: EdgeInsets.all(isMobile ? 16 : 40),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildMissionHeader(order),
+          const SizedBox(height: 32),
+          if (isMobile) ...[
+            _buildCreditMatrixCard(isMobile, order, provider, authProvider),
+            const SizedBox(height: 24),
+            _buildNotesCard(isMobile),
+            const SizedBox(height: 24),
+            _buildInsightCard(isMobile),
+            const SizedBox(height: 24),
+            _buildActionButtons(isMobile),
+          ] else
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  flex: 2,
+                  child: Column(
+                    children: [
+                      _buildCreditMatrixCard(isMobile, order, provider, authProvider),
+                      const SizedBox(height: 32),
+                      _buildNotesCard(isMobile),
+                    ],
+                  ),
                 ),
-                child: isMobile 
-                  ? Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildSmallBadge('PENDING CREDIT APPROVAL', const Color(0xFFEEF2FF), const Color(0xFF4F46E5)),
-                        const SizedBox(height: 16),
-                        Text(order.id, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900, letterSpacing: -1, color: Color(0xFF1E293B))),
-                        Text('${order.customerName} • Distributor', style: const TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.bold)),
-                        const SizedBox(height: 24),
-                        const Divider(),
-                        const SizedBox(height: 16),
-                        const Text('ORDER BOOKING VALUE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF94A3B8), letterSpacing: 1)),
-                        Text('₹${NumberFormat('#,##,###').format(order.total)}', style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w900, color: Color(0xFF1E293B))),
-                      ],
-                    )
-                  : Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildSmallBadge('PENDING CREDIT APPROVAL', const Color(0xFFEEF2FF), const Color(0xFF4F46E5)),
-                            const SizedBox(height: 12),
-                            Text(order.id, style: const TextStyle(fontSize: 42, fontWeight: FontWeight.w900, letterSpacing: -1.5, color: Color(0xFF1E293B))),
-                            Text('${order.customerName} • Distributor', style: const TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.bold)),
-                          ],
-                        ),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            const Text('ORDER BOOKING VALUE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF94A3B8), letterSpacing: 1)),
-                            Text('₹${NumberFormat('#,##,###').format(order.total)}', style: const TextStyle(fontSize: 42, fontWeight: FontWeight.w900, color: Color(0xFF1E293B))),
-                          ],
-                        ),
-                      ],
-                    ),
-              ),
-              const SizedBox(height: 32),
-
-              if (isMobile) ...[
-                _buildCreditMatrixCard(isMobile, order, provider),
-                const SizedBox(height: 24),
-                _buildNotesCard(isMobile),
-                const SizedBox(height: 24),
-                _buildInsightCard(isMobile),
-                const SizedBox(height: 24),
-                _buildActionButtons(isMobile),
-              ] else
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      flex: 2,
-                      child: Column(
-                        children: [
-                          _buildCreditMatrixCard(isMobile, order, provider),
-                          const SizedBox(height: 32),
-                          _buildNotesCard(isMobile),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 32),
-                    Expanded(
-                      child: Column(
-                        children: [
-                          _buildInsightCard(isMobile),
-                          const SizedBox(height: 32),
-                          _buildActionButtons(isMobile),
-                        ],
-                      ),
-                    ),
-                  ],
+                const SizedBox(width: 32),
+                Expanded(
+                  child: Column(
+                    children: [
+                      _buildInsightCard(isMobile),
+                      const SizedBox(height: 32),
+                      _buildActionButtons(isMobile),
+                    ],
+                  ),
                 ),
-            ],
-          ),
-        );
-      },
+              ],
+            ),
+        ],
+      ),
     );
   }
 
-  Widget _buildCreditMatrixCard(bool isMobile, Order order, NexusProvider provider) {
-    final customer = provider.customers.firstWhere(
-      (c) => c.id == order.customerId, 
-      orElse: () => Customer(id: '', name: order.customerName, address: '')
-    );
-
+  Widget _buildMissionHeader(Order order) {
+    bool isMobile = MediaQuery.of(context).size.width < 900;
     return Container(
       padding: EdgeInsets.all(isMobile ? 20 : 32),
-      decoration: BoxDecoration(color: const Color(0xFF0F172A), borderRadius: BorderRadius.circular(32)),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(32),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 20)],
+      ),
+      child: isMobile
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildSmallBadge('PENDING CREDIT APPROVAL', const Color(0xFFEEF2FF), const Color(0xFF4F46E5)),
+                const SizedBox(height: 16),
+                Text(order.id, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900, letterSpacing: -1, color: Color(0xFF1E293B))),
+                Text('${order.customerName} • Distributor', style: const TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.bold)),
+                const SizedBox(height: 24),
+                const Divider(),
+                const SizedBox(height: 16),
+                const Text('ORDER BOOKING VALUE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF94A3B8), letterSpacing: 1)),
+                Text('₹${NumberFormat('#,##,###').format(order.total)}', style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w900, color: Color(0xFF1E293B))),
+              ],
+            )
+          : Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildSmallBadge('PENDING CREDIT APPROVAL', const Color(0xFFEEF2FF), const Color(0xFF4F46E5)),
+                    const SizedBox(height: 12),
+                    Text(order.id, style: const TextStyle(fontSize: 42, fontWeight: FontWeight.w900, letterSpacing: -1.5, color: Color(0xFF1E293B))),
+                    Text('${order.customerName} • Distributor', style: const TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.bold)),
+                  ],
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    const Text('ORDER BOOKING VALUE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF94A3B8), letterSpacing: 1)),
+                    Text('₹${NumberFormat('#,##,###').format(order.total)}', style: const TextStyle(fontSize: 42, fontWeight: FontWeight.w900, color: Color(0xFF1E293B))),
+                  ],
+                ),
+              ],
+            ),
+    );
+  }
+
+  Widget _buildCreditMatrixCard(bool isMobile, Order order, NexusProvider provider, AuthProvider authProvider) {
+    final customer = provider.customers.firstWhere(
+      (c) => c.id == order.customerId,
+      orElse: () => Customer(id: order.customerId, name: order.customerName, address: '', status: 'Active'),
+    );
+
+    final String? role = authProvider.currentUser?.role.label;
+    final bool hasAccess = role == 'Admin' || role == 'Credit Control';
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(32),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 40, offset: const Offset(0, 10))],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Icon(LucideIcons.zap, color: Color(0xFFFBBF24), size: 18),
-              const SizedBox(width: 12),
-              Expanded(child: const Text('2. Credit Exposure Matrix', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900))),
+              const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('CREDIT EXPOSURE MATRIX', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13)),
+                  Text('REAL-TIME FINANCIAL INTEGRITY CHECK', style: TextStyle(color: Color(0xFF64748B), fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(12)),
+                child: const Row(
+                  children: [
+                    Icon(Icons.shield_outlined, size: 14, color: Color(0xFF475569)),
+                    SizedBox(width: 6),
+                    Text('VERIFIED', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: Color(0xFF475569))),
+                  ],
+                ),
+              )
             ],
           ),
-          const SizedBox(height: 8),
-          Text('FINANCIAL HEALTH REVIEW FOR ${customer.name.toUpperCase()}', style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1)),
-          const SizedBox(height: 32),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: _buildMatrixTable(customer),
-          ),
+          const SizedBox(height: 24),
+          if (hasAccess)
+            NexusComponents.creditMatrix(customer)
+          else
+            NexusComponents.restrictedView(),
         ],
       ),
     );

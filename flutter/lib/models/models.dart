@@ -40,9 +40,13 @@ class Customer {
   final Map<String, dynamic> agingData;
   final int exposureDays;
   final String? salesManager;
+  final String? employeeResponsible;
   final String? distributionChannel;
   final String? customerClass;
   final String? location;
+  final String securityChq;
+  final double diffYesterdayToday;
+  final double odAmt;
   final List<CustomerAddress>? addresses;
   final String? fssaiLicenseNo;
   final String? panCard;

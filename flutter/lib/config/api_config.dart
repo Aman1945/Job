@@ -17,10 +17,11 @@ class ApiConfig {
   
   // ==================== SERVER CONFIGURATION ====================
   // Set to true ONLY when testing with local backend
-  static const bool useLocalServer = false;
+  static const bool useLocalServer = true;
   
   // Local server IP (for Android Emulator use 10.0.2.2, for iOS Simulator use localhost)
-  static const String localIp = '10.0.2.2';
+  // 💡 FOR PHYSICAL PHONE: Run 'ipconfig' on your PC and use your IPv4 address (e.g., 192.168.1.5)
+  static const String localIp = '192.168.0.123'; // Replace with your PC IP address
   
   // Production server address (Nexus OMS Backend on Render)
   static const String productionServer = 'nexus-oms-backend.onrender.com';

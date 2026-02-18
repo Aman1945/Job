@@ -30,14 +30,16 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
       final response = await http.get(Uri.parse('${ApiConfig.baseUrl}/users'));
       if (response.statusCode == 200) {
         final List data = json.decode(response.body);
-        setState(() {
-          _users = data.map((u) => User.fromJson(u)).toList();
-          _isLoading = false;
-        });
+        if (mounted) {
+          setState(() {
+            _users = data.map((u) => User.fromJson(u)).toList();
+            _isLoading = false;
+          });
+        }
       }
     } catch (e) {
-      setState(() => _isLoading = false);
       if (mounted) {
+        setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error fetching users: $e')),
         );
