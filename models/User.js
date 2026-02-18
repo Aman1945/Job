@@ -33,6 +33,11 @@ const userSchema = new mongoose.Schema({
     },
     password: { type: String, required: true },
     location: { type: String, default: 'Pan India' },
+    zone: {
+        type: String,
+        enum: ['WEST', 'EAST', 'SOUTH', 'NORTH', 'PAN INDIA'],
+        default: 'PAN INDIA'
+    },
     department1: { type: String },
     department2: { type: String },
     channel: { type: String },
