@@ -56,9 +56,13 @@ const userSchema = new mongoose.Schema({
             'master_data'
         ]
     },
-    allowedSteps: {
-        type: [String],
-        default: []
+    stepAccess: {
+        type: Map,
+        of: {
+            type: String,
+            enum: ['full', 'view', 'no']
+        },
+        default: {}
     },
     grossMonthlySalary: { type: Number, default: 0 },
     monthlyTarget: { type: Number, default: 0 },

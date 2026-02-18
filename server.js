@@ -345,30 +345,30 @@ app.patch('/api/users/:id/permissions', async (req, res) => {
     }
 });
 
-// Update user allowed steps (Step-based bypass system)
-app.patch('/api/users/:id/allowed-steps', async (req, res) => {
+// Update user step access (3-level: full/view/no)
+app.patch('/api/users/:id/step-access', async (req, res) => {
     try {
         const { id } = req.params;
-        const { allowedSteps } = req.body;
+        const { stepAccess } = req.body; // Object: { "Book Order": "full", "Credit Control": "view" }
 
-        if (!Array.isArray(allowedSteps)) {
-            return res.status(400).json({ message: 'allowedSteps must be an array' });
+        if (typeof stepAccess !== 'object' || Array.isArray(stepAccess)) {
+            return res.status(400).json({ message: 'stepAccess must be an object' });
         }
 
         const user = await User.findOneAndUpdate(
             { id },
-            { allowedSteps },
+            { stepAccess },
             { new: true }
         ).select('-password');
 
         if (user) {
-            console.log(`🎯 User allowed steps updated: ${id} -> [${allowedSteps.join(', ')}]`);
+            console.log(`🎯 Step access updated for ${id}:`, stepAccess);
             return res.json(user);
         }
         res.status(404).json({ message: 'User not found' });
     } catch (error) {
-        console.error('Error updating allowed steps:', error);
-        res.status(500).json({ message: 'Error updating allowed steps' });
+        console.error('Error updating step access:', error);
+        res.status(500).json({ message: 'Error updating step access' });
     }
 });
 
