@@ -345,6 +345,33 @@ app.patch('/api/users/:id/permissions', async (req, res) => {
     }
 });
 
+// Update user allowed steps (Step-based bypass system)
+app.patch('/api/users/:id/allowed-steps', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { allowedSteps } = req.body;
+
+        if (!Array.isArray(allowedSteps)) {
+            return res.status(400).json({ message: 'allowedSteps must be an array' });
+        }
+
+        const user = await User.findOneAndUpdate(
+            { id },
+            { allowedSteps },
+            { new: true }
+        ).select('-password');
+
+        if (user) {
+            console.log(`🎯 User allowed steps updated: ${id} -> [${allowedSteps.join(', ')}]`);
+            return res.json(user);
+        }
+        res.status(404).json({ message: 'User not found' });
+    } catch (error) {
+        console.error('Error updating allowed steps:', error);
+        res.status(500).json({ message: 'Error updating allowed steps' });
+    }
+});
+
 // ==================== CUSTOMERS ====================
 app.get('/api/customers', async (req, res) => {
     try {

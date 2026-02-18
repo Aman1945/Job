@@ -134,6 +134,7 @@ class User {
   final String? channel;
   final String? whatsappNumber;
   final List<String> permissions;
+  final List<String> allowedSteps;
 
   User({
     required this.id,
@@ -146,6 +147,7 @@ class User {
     this.channel,
     this.whatsappNumber,
     this.permissions = const [],
+    this.allowedSteps = const [],
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -160,6 +162,7 @@ class User {
       channel: json['channel'],
       whatsappNumber: json['whatsappNumber'],
       permissions: (json['permissions'] as List?)?.map((e) => e.toString()).toList() ?? [],
+      allowedSteps: (json['allowedSteps'] as List?)?.map((e) => e.toString()).toList() ?? [],
     );
   }
 
@@ -174,6 +177,7 @@ class User {
       if (channel != null) 'channel': channel,
       if (whatsappNumber != null) 'whatsappNumber': whatsappNumber,
       'permissions': permissions,
+      'allowedSteps': allowedSteps,
       if (password != null) 'password': password,
     };
   }

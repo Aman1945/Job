@@ -16,6 +16,10 @@ import 'invoicing_screen.dart';
 import 'logistics_hub_screen.dart';
 import 'delivery_execution_screen.dart';
 import 'new_customer_screen.dart';
+import 'credit_risk_screen.dart';
+import 'warehouse_ops_screen.dart';
+import 'quality_control_screen.dart';
+import 'logistics_ops_screen.dart'; // NEW
 import 'stock_transfer_screen.dart';
 import 'logistics_cost_screen.dart';
 import 'warehouse_inventory_screen.dart';
@@ -23,10 +27,12 @@ import 'analytics_screen.dart';
 import 'live_orders_screen.dart';
 import 'sales_hub_screen.dart';
 import 'reporting_screen.dart';
+import 'executive_pulse_screen.dart';
+import 'live_missions_screen.dart';
 import 'pms_screen.dart';
 import 'add_product_screen.dart';
-import 'live_missions_screen.dart';
-import 'executive_pulse_screen.dart';
+import 'admin_user_management_screen.dart';
+import 'step_assignment_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
@@ -161,6 +167,38 @@ class DashboardScreen extends StatelessWidget {
 
     final List<Map<String, dynamic>> lifecycleStages = [
       {
+        'stage': 'STAGE 0',
+        'label': 'New Customer',
+        'icon': Icons.person_add_rounded,
+        'color': Colors.indigo,
+        'screen': const NewCustomerScreen(),
+        'roles': ['Admin', 'Sales']
+      },
+      {
+        'stage': 'STAGE 1',
+        'label': 'Book Order',
+        'icon': Icons.add_shopping_cart_rounded,
+        'color': Colors.lightBlue,
+        'screen': const BookOrderScreen(),
+        'roles': ['Admin', 'Sales']
+      },
+      {
+        'stage': 'STAGE 1.1',
+        'label': 'Stock Transfer',
+        'icon': Icons.sync_alt_rounded,
+        'color': Colors.amber.shade800,
+        'screen': const StockTransferScreen(),
+        'roles': ['Admin', 'Sales']
+      },
+      {
+        'stage': 'STAGE 1.5',
+        'label': 'Clearance',
+        'icon': Icons.cleaning_services_rounded,
+        'color': Colors.blueGrey,
+        'screen': const LiveOrdersScreen(),
+        'roles': ['Admin', 'Sales']
+      },
+      {
         'stage': 'STAGE 2',
         'label': 'Credit Control',
         'icon': Icons.bolt_rounded,
@@ -169,19 +207,27 @@ class DashboardScreen extends StatelessWidget {
         'roles': ['Admin', 'Credit Control']
       },
       {
+        'stage': 'STAGE 2.1',
+        'label': 'Credit Alerts',
+        'icon': Icons.warning_amber_rounded,
+        'color': Colors.red.shade700,
+        'screen': const CreditRiskScreen(),
+        'roles': ['Admin', 'Credit Control']
+      },
+      {
         'stage': 'STAGE 3',
-        'label': 'WH Assignment & Packing',
+        'label': 'Warehouse Operations', // Unified
         'icon': Icons.inventory_2_rounded,
-        'color': Colors.teal,
-        'screen': const WarehouseInventoryScreen(),
-        'roles': ['Admin', 'Warehouse', 'WH House', 'WH Manager']
+        'color': Colors.brown.shade700,
+        'screen': const WarehouseOpsScreen(),
+        'roles': ['Admin', 'Warehouse', 'WH House', 'WH Manager', 'Operations']
       },
       {
         'stage': 'STAGE 3.5',
         'label': 'Quality Control (QC)',
         'icon': Icons.verified_user_rounded,
         'color': Colors.green.shade700,
-        'screen': const LiveOrdersScreen(), 
+        'screen': const QualityControlScreen(),
         'roles': ['Admin', 'QC Head']
       },
       {
@@ -189,7 +235,7 @@ class DashboardScreen extends StatelessWidget {
         'label': 'Logistics Costing',
         'icon': Icons.currency_rupee_rounded,
         'color': Colors.deepPurple,
-        'screen': const LogisticsCostScreen(),
+        'screen': const LogisticsOpsScreen(), // Changed from LogisticsCostScreen to LogisticsOpsScreen
         'roles': ['Admin', 'Logistics Lead', 'Logistics Team']
       },
       {
@@ -218,11 +264,91 @@ class DashboardScreen extends StatelessWidget {
       },
     ];
 
-    // Filter stages based on role AND potentially location/department
+    // Filter stages based on role AND specifically requested persons/emails
     final filteredStages = lifecycleStages.where((s) {
-      final roleMatch = (s['roles'] as List).contains(user.role.label);
-      // Logic for location filtering can be added here
-      // For example: if (user.location != 'Pan India' && s['location'] != null) return roleMatch && s['location'] == user.location;
+      final email = user.id.toLowerCase();
+      final role = user.role.label;
+
+      // ★ ADMIN ALWAYS SEES EVERYTHING
+      if (role == 'Admin') return true;
+
+      // ★ PRIORITY 1: If user has allowedSteps assigned by Admin, use ONLY those
+      if (user.allowedSteps.isNotEmpty) {
+        return user.allowedSteps.contains(s['label']);
+      }
+
+      // 1. Invoicing row only for ATL Executives
+      const atlExecutivesEmails = [
+        'sandesh.gonbare@bigsams.in',
+        'rajesh.suryavanshi@bigsams.in',
+        'nitin.kadam@bigsams.in',
+        'dipashree.gawde@bigsams.in'
+      ];
+      if (atlExecutivesEmails.contains(email)) {
+        return s['label'] == 'Invoicing';
+      }
+
+      // 2. Pranav Override -> ONLY WH Assignment
+      if (email == 'pranav.manger@bigsams.in') {
+        return s['label'] == 'WH Assignment & Packing';
+      }
+
+      // 3. Dheeraj / QC Head Override -> ONLY QC
+      if (email == 'dhiraj.kumar@bigsams.in' || email == 'quality@bigsams.in') {
+        return s['label'] == 'Quality Control (QC)';
+      }
+
+      // 4. Pratish Dalvi -> Logistics Costing & Hub
+      if (email == 'pratish.dalvi@bigsams.in') {
+        return s['label'] == 'Logistics Costing' || s['label'] == 'Fleet Loading (Hub)';
+      }
+
+      // 5. Sagar -> ONLY Fleet Loading (Hub)
+      if (email == 'sagar.delivery@bigsams.in') {
+        return s['label'] == 'Fleet Loading (Hub)';
+      }
+
+      // 6. Lawin -> ONLY Logistics Managed (Renamed for him)
+      if (email == 'lavin.samtani@bigsams.in') {
+        if (s['label'] == 'Logistics Costing') {
+          s['label'] = 'Logistics Managed';
+          return true;
+        }
+        return false;
+      }
+
+      // 7. Operations Manager (operations@bigsams.in) - Warehouse Focus
+      if (email == 'operations@bigsams.in') {
+        // STRICTLY SHOW: Warehouse Operations, Logistics Costing, Fleet Loading (Hub)
+        // EXPLICITLY HIDE: Quality Control (QC) and all others
+        const allowedStages = [
+          'Warehouse Operations', 
+          'Logistics Costing', 
+          'Fleet Loading (Hub)'
+        ];
+        return allowedStages.contains(s['label']);
+      }
+
+      // 8. Credit Control specialists (Already done)
+      if (email == 'pawan.kumar@bigsams.in' || email == 'kshama.jaiswal@bigsams.in' || role == 'Credit Control' || email == 'credit.control@bigsams.in') {
+        return s['label'] == 'Credit Control' || s['label'] == 'Credit Alerts';
+      }
+
+      // 9. Creation stages (restricted to Sales/Admin)
+      const creationStages = ['New Customer', 'Book Order', 'Stock Transfer', 'Clearance'];
+      if (creationStages.contains(s['label'])) {
+        // STRICT: "New Customer" only for Sales team (and Admin)
+        if (s['label'] == 'New Customer') {
+           if (role == 'Admin') return true;
+           if (role == 'Sales') return true;
+           // Explicitly block for everyone else
+           return false;
+        }
+        return (role == 'Sales' || role == 'Admin');
+      }
+
+      // Standard Role Match for Admin/Others
+      final roleMatch = (s['roles'] as List).contains(role);
       return roleMatch;
     }).toList();
 
@@ -253,11 +379,22 @@ class DashboardScreen extends StatelessWidget {
       {'l': 'Order Archive', 'i': Icons.history, 's': const OrderArchiveScreen(), 'roles': ['Admin', 'Sales']},
       {'l': 'PMS Performance', 'i': Icons.emoji_events, 's': const PMSScreen(), 'roles': ['Admin', 'Sales']},
       {'l': 'Intelligence', 'i': Icons.insights, 's': const AnalyticsScreen(), 'roles': ['Admin', 'Sales', 'Credit Control']},
+    {'l': 'Credit Alerts', 'i': Icons.warning_amber_rounded, 's': const CreditRiskScreen(), 'roles': ['Credit Control', 'Admin']}, // NEW
       {'l': 'Procurement', 'i': Icons.shopping_bag_outlined, 's': const ProcurementScreen(), 'roles': ['Admin']},
+      {'l': 'User Management', 'i': Icons.manage_accounts_rounded, 's': const AdminUserManagementScreen(), 'roles': ['Admin']},
+      {'l': 'Step Assignment', 'i': Icons.assignment_ind_rounded, 's': const StepAssignmentScreen(), 'roles': ['Admin']},
       {'l': 'Master Data', 'i': Icons.terminal, 's': const MasterDataScreen(), 'roles': ['Admin']},
     ];
 
-    final filteredUtils = allUtilities.where((u) => (u['roles'] as List).contains(user.role.label)).toList();
+    final email = user.id.toLowerCase();
+    final role = user.role.label;
+
+    // Strict filter for dedicated terminal users - No utilities
+    if (email == 'pawan.kumar@bigsams.in' || email == 'kshama.jaiswal@bigsams.in' || role == 'Credit Control' || email == 'credit.control@bigsams.in') {
+      return const SizedBox.shrink();
+    }
+
+    final filteredUtils = allUtilities.where((u) => (u['roles'] as List).contains(role)).toList();
 
     return GridView.builder(
       shrinkWrap: true,
