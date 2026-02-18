@@ -485,6 +485,12 @@ class _MasterDataScreenState extends State<MasterDataScreen> {
     // ── CUSTOMER MASTER: frozen column + horizontal scroll + pagination ──
     if (_selectedTab == 'CUSTOMER MASTER') {
       final customers = provider.customers;
+
+      // Skeleton loading while data is being fetched
+      if (customers.isEmpty && _isLoading) {
+        return _buildSkeletonTable();
+      }
+
       if (customers.isEmpty) {
         return const Padding(
           padding: EdgeInsets.all(48),
@@ -504,30 +510,75 @@ class _MasterDataScreenState extends State<MasterDataScreen> {
       final end = (start + _pageSize).clamp(0, customers.length);
       final pageItems = customers.sublist(start, end);
 
-      // Column definitions: label, width
+      // Scrollable columns (Dist is now frozen)
       final cols = [
-        ('Dist', 50.0), ('Class', 50.0), ('Cr.Days', 60.0),
-        ('Cr.Limit', 80.0), ('Sec.Chq', 70.0), ('O/s Amt', 80.0),
-        ('OD Amt', 70.0), ('0-7', 55.0), ('7-15', 55.0),
-        ('15-30', 55.0), ('30-45', 55.0), ('45-90', 60.0),
-        ('90-120', 65.0), ('120-150', 70.0), ('150-180', 70.0), ('>180', 55.0),
+        ('Class', 70.0), ('Cr.Days', 65.0),
+        ('Cr.Limit', 85.0), ('Sec.Chq', 75.0), ('O/s Amt', 85.0),
+        ('OD Amt', 75.0), ('0-7', 60.0), ('7-15', 60.0),
+        ('15-30', 60.0), ('30-45', 60.0), ('45-90', 65.0),
+        ('90-120', 70.0), ('120-150', 75.0), ('150-180', 75.0), ('>180', 60.0),
       ];
 
-      Widget buildCell(String text, double width, {bool isHeader = false}) =>
-          SizedBox(
+      const _montserrat = 'Montserrat';
+      const _headerColor = Color(0xFF64748B);
+      const _headerBg = Color(0xFFF1F5F9);
+      const _dividerColor = Color(0xFFE2E8F0);
+      const _rowDivider = Color(0xFFE8EDF2);
+
+      Widget buildCell(String text, double width, {bool isHeader = false, bool rightBorder = true}) =>
+          Container(
             width: width,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-              child: Text(
-                text,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: isHeader ? 9 : 11,
-                  fontWeight: isHeader ? FontWeight.w900 : FontWeight.w500,
-                  color: isHeader ? const Color(0xFF94A3B8) : const Color(0xFF1E293B),
-                  letterSpacing: isHeader ? 0.8 : 0,
-                ),
+            height: 48,
+            decoration: BoxDecoration(
+              color: isHeader ? _headerBg : Colors.white,
+              border: Border(
+                right: rightBorder
+                    ? const BorderSide(color: _dividerColor, width: 1)
+                    : BorderSide.none,
+                bottom: const BorderSide(color: _rowDivider, width: 1),
+              ),
+            ),
+            alignment: Alignment.centerLeft,
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            child: Text(
+              text,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontFamily: _montserrat,
+                fontSize: isHeader ? 9 : 11,
+                fontWeight: isHeader ? FontWeight.w700 : FontWeight.w500,
+                color: isHeader ? _headerColor : const Color(0xFF1E293B),
+                letterSpacing: isHeader ? 0.6 : 0,
+              ),
+            ),
+          );
+
+      Widget buildFrozenCell(String text, {bool isHeader = false, bool rightBorder = true}) =>
+          Container(
+            width: 130,
+            height: 48,
+            decoration: BoxDecoration(
+              color: isHeader ? _headerBg : Colors.white,
+              border: Border(
+                right: rightBorder
+                    ? const BorderSide(color: _dividerColor, width: 1)
+                    : BorderSide.none,
+                bottom: const BorderSide(color: _rowDivider, width: 1),
+              ),
+            ),
+            alignment: Alignment.centerLeft,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Text(
+              text,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontFamily: _montserrat,
+                fontSize: isHeader ? 9 : 11,
+                fontWeight: isHeader ? FontWeight.w700 : FontWeight.w600,
+                color: isHeader ? _headerColor : const Color(0xFF0F172A),
+                letterSpacing: isHeader ? 0.6 : 0,
               ),
             ),
           );
@@ -544,54 +595,19 @@ class _MasterDataScreenState extends State<MasterDataScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // FROZEN: Customer Name column
-                Container(
-                  width: 130,
-                  decoration: const BoxDecoration(
-                    border: Border(
-                        right: BorderSide(color: Color(0xFFE2E8F0), width: 1)),
-                  ),
-                  child: Column(
-                    children: [
-                      // Header
-                      Container(
-                        height: 48,
-                        alignment: Alignment.centerLeft,
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        decoration: const BoxDecoration(
-                          color: Color(0xFFF8FAFC),
-                          border: Border(
-                              bottom: BorderSide(
-                                  color: Color(0xFFE2E8F0), width: 1)),
-                        ),
-                        child: const Text('CUSTOMER',
-                            style: TextStyle(
-                                fontSize: 9,
-                                fontWeight: FontWeight.w900,
-                                color: Color(0xFF94A3B8),
-                                letterSpacing: 0.8)),
-                      ),
-                      // Rows
-                      ...pageItems.map((c) => Container(
-                            height: 48,
-                            alignment: Alignment.centerLeft,
-                            padding: const EdgeInsets.symmetric(horizontal: 12),
-                            decoration: const BoxDecoration(
-                              border: Border(
-                                  bottom: BorderSide(
-                                      color: Color(0xFFF1F5F9), width: 1)),
-                            ),
-                            child: Text(
-                              c.name,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w700,
-                                  color: Color(0xFF1E293B)),
-                            ),
-                          )),
-                    ],
-                  ),
+                Column(
+                  children: [
+                    buildFrozenCell('CUSTOMER', isHeader: true),
+                    ...pageItems.map((c) => buildFrozenCell(c.name)),
+                  ],
+                ),
+
+                // FROZEN: Dist column (same 130px width)
+                Column(
+                  children: [
+                    buildFrozenCell('DIST', isHeader: true),
+                    ...pageItems.map((c) => buildFrozenCell(c.location ?? '-')),
+                  ],
                 ),
 
                 // SCROLLABLE: rest of columns
@@ -603,26 +619,17 @@ class _MasterDataScreenState extends State<MasterDataScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         // Header row
-                        Container(
-                          height: 48,
-                          decoration: const BoxDecoration(
-                            color: Color(0xFFF8FAFC),
-                            border: Border(
-                                bottom: BorderSide(
-                                    color: Color(0xFFE2E8F0), width: 1)),
-                          ),
-                          child: Row(
-                            children: cols
-                                .map((c) => buildCell(c.$1, c.$2, isHeader: true))
-                                .toList(),
-                          ),
+                        Row(
+                          children: cols
+                              .map((c) => buildCell(c.$1, c.$2, isHeader: true))
+                              .toList(),
                         ),
                         // Data rows
                         ...pageItems.map((c) {
                           final ag = c.agingData;
+                          // Dist is now frozen, so skip it here
                           final vals = [
-                            c.location ?? '',
-                            c.customerClass ?? '',
+                            c.customerClass ?? '-',
                             c.exposureDays.toString(),
                             c.limit.toStringAsFixed(0),
                             c.securityChq,
@@ -638,18 +645,10 @@ class _MasterDataScreenState extends State<MasterDataScreen> {
                             (ag['150to180'] ?? ag['150 to 180'] ?? '').toString(),
                             (ag['>180'] ?? ag['above180'] ?? '').toString(),
                           ];
-                          return Container(
-                            height: 48,
-                            decoration: const BoxDecoration(
-                              border: Border(
-                                  bottom: BorderSide(
-                                      color: Color(0xFFF1F5F9), width: 1)),
-                            ),
-                            child: Row(
-                              children: List.generate(
-                                cols.length,
-                                (i) => buildCell(vals[i], cols[i].$2),
-                              ),
+                          return Row(
+                            children: List.generate(
+                              cols.length,
+                              (i) => buildCell(vals[i], cols[i].$2),
                             ),
                           );
                         }),
@@ -662,57 +661,70 @@ class _MasterDataScreenState extends State<MasterDataScreen> {
           ),
 
           // ── PAGINATION ──
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 16, 12, 24),
+          Container(
+            margin: const EdgeInsets.fromLTRB(0, 0, 0, 0),
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+            decoration: const BoxDecoration(
+              color: Color(0xFFF8FAFC),
+              border: Border(
+                top: BorderSide(color: Color(0xFFE2E8F0), width: 1),
+              ),
+            ),
             child: Column(
               children: [
+                // Record count info
                 Text(
                   'Showing ${start + 1}–$end of ${customers.length} records',
                   style: const TextStyle(
-                      fontSize: 10,
-                      color: Color(0xFF94A3B8),
-                      fontWeight: FontWeight.w600),
+                    fontFamily: 'Montserrat',
+                    fontSize: 10,
+                    color: Color(0xFF94A3B8),
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 const SizedBox(height: 12),
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      // Prev button
-                      _paginationBtn(
-                        icon: Icons.chevron_left,
-                        enabled: _currentPage > 0,
-                        onTap: () => setState(() => _currentPage--),
-                      ),
-                      const SizedBox(width: 4),
-                      // Page numbers
-                      ...List.generate(totalPages, (i) {
-                        if (totalPages <= 7 ||
-                            i == 0 ||
-                            i == totalPages - 1 ||
-                            (i - _currentPage).abs() <= 1) {
-                          return _pageNumBtn(i, i == _currentPage);
-                        } else if (i == 1 || i == totalPages - 2) {
-                          return const Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 4),
-                            child: Text('...',
-                                style: TextStyle(
-                                    color: Color(0xFF94A3B8),
-                                    fontWeight: FontWeight.bold)),
-                          );
-                        }
-                        return const SizedBox.shrink();
-                      }),
-                      const SizedBox(width: 4),
-                      // Next button
-                      _paginationBtn(
-                        icon: Icons.chevron_right,
-                        enabled: _currentPage < totalPages - 1,
-                        onTap: () => setState(() => _currentPage++),
-                      ),
-                    ],
-                  ),
+                // Page buttons — centered
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _paginationBtn(
+                      icon: Icons.chevron_left,
+                      enabled: _currentPage > 0,
+                      onTap: () => setState(() => _currentPage--),
+                    ),
+                    const SizedBox(width: 6),
+                    ...List.generate(totalPages, (i) {
+                      // Show: first, last, current ±1, and ellipsis
+                      final showPage = totalPages <= 7 ||
+                          i == 0 ||
+                          i == totalPages - 1 ||
+                          (i - _currentPage).abs() <= 1;
+                      final showEllipsis =
+                          (i == 1 && _currentPage > 3) ||
+                          (i == totalPages - 2 && _currentPage < totalPages - 4);
+
+                      if (showPage) return _pageNumBtn(i, i == _currentPage);
+                      if (showEllipsis) {
+                        return const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 4),
+                          child: Text('···',
+                              style: TextStyle(
+                                  fontFamily: 'Montserrat',
+                                  fontSize: 13,
+                                  color: Color(0xFF94A3B8),
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 2)),
+                        );
+                      }
+                      return const SizedBox.shrink();
+                    }),
+                    const SizedBox(width: 6),
+                    _paginationBtn(
+                      icon: Icons.chevron_right,
+                      enabled: _currentPage < totalPages - 1,
+                      onTap: () => setState(() => _currentPage++),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -803,9 +815,66 @@ class _MasterDataScreenState extends State<MasterDataScreen> {
         child: Center(
           child: Text('${page + 1}',
               style: TextStyle(
+                  fontFamily: 'Montserrat',
                   fontSize: 11,
                   fontWeight: FontWeight.w900,
                   color: isActive ? Colors.white : const Color(0xFF64748B))),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSkeletonTable() {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.4, end: 1.0),
+      duration: const Duration(milliseconds: 900),
+      curve: Curves.easeInOut,
+      builder: (context, opacity, _) {
+        return Column(
+          children: List.generate(10, (rowIndex) {
+            return Container(
+              height: 48,
+              decoration: BoxDecoration(
+                border: const Border(
+                  bottom: BorderSide(color: Color(0xFFE8EDF2), width: 1),
+                ),
+                color: rowIndex.isEven
+                    ? Colors.white
+                    : const Color(0xFFFAFAFA),
+              ),
+              child: Row(
+                children: [
+                  // Frozen name skeleton
+                  _skeletonBox(130, 14, opacity),
+                  const SizedBox(width: 1),
+                  // Dist skeleton
+                  _skeletonBox(130, 14, opacity),
+                  const SizedBox(width: 1),
+                  // Other columns
+                  ...[70.0, 65.0, 85.0, 75.0, 85.0, 75.0, 60.0, 60.0]
+                      .map((w) => _skeletonBox(w, 10, opacity)),
+                ],
+              ),
+            );
+          }),
+        );
+      },
+      onEnd: () => setState(() {}), // retrigger animation loop
+    );
+  }
+
+  Widget _skeletonBox(double width, double height, double opacity) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 16),
+      child: Opacity(
+        opacity: opacity,
+        child: Container(
+          width: width - 20,
+          height: height,
+          decoration: BoxDecoration(
+            color: const Color(0xFFE2E8F0),
+            borderRadius: BorderRadius.circular(4),
+          ),
         ),
       ),
     );
