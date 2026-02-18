@@ -207,27 +207,33 @@ class Product {
   final String id;
   final String skuCode;
   final String name;
+  final String? shortName;
   final double price;
   final int stock;
   final String category;
+  final String? distributionChannel;
   final String? specie;
   final String? productPacking;
   final double? mrp;
   final String? hsnCode;
   final double? gst;
+  final String? countryOfOrigin;
 
   Product({
     required this.id,
     required this.skuCode,
     required this.name,
+    this.shortName,
     required this.price,
     required this.stock,
     required this.category,
+    this.distributionChannel,
     this.specie,
     this.productPacking,
     this.mrp,
     this.hsnCode,
     this.gst,
+    this.countryOfOrigin,
   });
 
   factory Product.fromJson(Map<String, dynamic> json) {
@@ -235,14 +241,17 @@ class Product {
       id: json['id'] ?? json['skuCode'] ?? '',
       skuCode: json['skuCode'] ?? '',
       name: json['name'] ?? '',
+      shortName: json['shortName'],
       price: (json['price'] ?? 0).toDouble(),
       stock: json['stock'] ?? 0,
       category: json['category'] ?? 'General',
+      distributionChannel: json['distributionChannel'],
       specie: json['specie'],
       productPacking: json['productPacking'],
       mrp: (json['mrp'] ?? 0).toDouble(),
       hsnCode: json['hsnCode'],
       gst: (json['gst'] ?? 0).toDouble(),
+      countryOfOrigin: json['countryOfOrigin'],
     );
   }
 
@@ -251,14 +260,17 @@ class Product {
       'id': id,
       'skuCode': skuCode,
       'name': name,
+      if (shortName != null) 'shortName': shortName,
       'price': price,
       'stock': stock,
       'category': category,
+      if (distributionChannel != null) 'distributionChannel': distributionChannel,
       if (specie != null) 'specie': specie,
       if (productPacking != null) 'productPacking': productPacking,
       if (mrp != null) 'mrp': mrp,
       if (hsnCode != null) 'hsnCode': hsnCode,
       if (gst != null) 'gst': gst,
+      if (countryOfOrigin != null) 'countryOfOrigin': countryOfOrigin,
     };
   }
 }

@@ -979,7 +979,11 @@ class _MasterDataScreenState extends State<MasterDataScreen> {
     if (_selectedTab == 'CUSTOMER MASTER') {
       fields = ['ID', 'NAME', 'ADDRESS', 'CITY', 'LIMIT'];
     } else if (_selectedTab == 'MATERIAL MASTER') {
-      fields = ['SKU CODE', 'NAME', 'PRICE', 'CATEGORY', 'STOCK'];
+      fields = [
+        'PRODUCT CODE', 'PRODUCT NAME', 'SHORT NAME',
+        'DISTRIBUTION CHANNEL', 'SPECIE', 'PACKING',
+        'MRF', 'GST %', 'HSN CODE', 'COUNTRY OF ORIGIN',
+      ];
     } else {
       fields = ['NAME', 'EMAIL', 'ROLE', 'PASSWORD', 'LOCATION', 'DEPARTMENT 1', 'DEPARTMENT 2', 'CHANNEL', 'WHATSAPP', 'SALARY'];
     }
@@ -1004,11 +1008,16 @@ class _MasterDataScreenState extends State<MasterDataScreen> {
           if (f == 'CITY') value = initialData.city;
           if (f == 'LIMIT') value = initialData.limit.toString();
         } else if (_selectedTab == 'MATERIAL MASTER' && initialData is Product) {
-          if (f == 'SKU CODE') value = initialData.skuCode;
-          if (f == 'NAME') value = initialData.name;
-          if (f == 'PRICE') value = initialData.price.toString();
-          if (f == 'CATEGORY') value = initialData.category;
-          if (f == 'STOCK') value = initialData.stock.toString();
+          if (f == 'PRODUCT CODE') value = initialData.skuCode;
+          if (f == 'PRODUCT NAME') value = initialData.name;
+          if (f == 'SHORT NAME') value = initialData.shortName ?? '';
+          if (f == 'DISTRIBUTION CHANNEL') value = initialData.distributionChannel ?? '';
+          if (f == 'SPECIE') value = initialData.specie ?? '';
+          if (f == 'PACKING') value = initialData.productPacking ?? '';
+          if (f == 'MRF') value = initialData.mrp?.toStringAsFixed(2) ?? '';
+          if (f == 'GST %') value = initialData.gst?.toStringAsFixed(0) ?? '';
+          if (f == 'HSN CODE') value = initialData.hsnCode ?? '';
+          if (f == 'COUNTRY OF ORIGIN') value = initialData.countryOfOrigin ?? '';
         }
       }
       controllers[f] = TextEditingController(text: value);
@@ -1114,11 +1123,20 @@ class _MasterDataScreenState extends State<MasterDataScreen> {
                             });
                           } else if (_selectedTab == 'MATERIAL MASTER') {
                             success = await provider.createProduct({
-                              'skuCode': controllers['SKU CODE']!.text,
-                              'name': controllers['NAME']!.text,
-                              'price': double.tryParse(controllers['PRICE']!.text) ?? 0.0,
-                              'category': controllers['CATEGORY']!.text,
-                              'stock': int.tryParse(controllers['STOCK']!.text) ?? 0,
+                              'skuCode': controllers['PRODUCT CODE']!.text,
+                              'name': controllers['PRODUCT NAME']!.text,
+                              'shortName': controllers['SHORT NAME']!.text,
+                              'distributionChannel': controllers['DISTRIBUTION CHANNEL']!.text,
+                              'specie': controllers['SPECIE']!.text,
+                              'productPacking': controllers['PACKING']!.text,
+                              'mrp': double.tryParse(controllers['MRF']!.text) ?? 0.0,
+                              'gst': double.tryParse(controllers['GST %']!.text) ?? 0.0,
+                              'hsnCode': controllers['HSN CODE']!.text,
+                              'countryOfOrigin': controllers['COUNTRY OF ORIGIN']!.text,
+                              // Keep legacy fields with defaults
+                              'price': double.tryParse(controllers['MRF']!.text) ?? 0.0,
+                              'stock': 0,
+                              'category': controllers['DISTRIBUTION CHANNEL']!.text,
                             });
                           }
                           
