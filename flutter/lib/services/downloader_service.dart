@@ -6,11 +6,6 @@ import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:open_file/open_file.dart';
 
-@pragma('vm:entry-point')
-void downloadCallback(String id, int status, int progress) {
-  final SendPort? send = IsolateNameServer.lookupPortByName('downloader_port');
-  send?.send([id, status, progress]);
-}
 
 class DownloaderService {
   static final DownloaderService _instance = DownloaderService._internal();
@@ -44,7 +39,7 @@ class DownloaderService {
       }
     });
 
-    FlutterDownloader.registerCallback(downloadCallback);
+    FlutterDownloader.registerCallback(downloadCallback, step: 1);
   }
 
   void _handleDownloadUpdate(String id, DownloadTaskStatus status, int progress, String fileName) {
