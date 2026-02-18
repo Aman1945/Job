@@ -117,7 +117,17 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const SizedBox(height: 4),
-                        Text(user.id, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                        Row(
+                          children: [
+                            Text(user.id, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(color: Colors.blueGrey.shade50, borderRadius: BorderRadius.circular(4)),
+                              child: Text(user.zone, style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: Colors.blueGrey.shade700)),
+                            ),
+                          ],
+                        ),
                         const SizedBox(height: 8),
                         // Permission chips
                         if (user.permissions.isNotEmpty)
