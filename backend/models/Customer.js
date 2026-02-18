@@ -38,7 +38,10 @@ const customerSchema = new mongoose.Schema({
         "120 to 150": { type: Number, default: 0 },
         "150 to 180": { type: Number, default: 0 },
         ">180": { type: Number, default: 0 }
-    }
+    },
+    diffYesterdayToday: { type: Number, default: 0 },
+    securityChq: { type: String, default: '-' },
+    odAmt: { type: Number, default: 0 }
 }, { timestamps: true });
 
 module.exports = mongoose.model('Customer', customerSchema);
