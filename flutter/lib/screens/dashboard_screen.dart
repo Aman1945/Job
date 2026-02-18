@@ -272,9 +272,10 @@ class DashboardScreen extends StatelessWidget {
       // ★ ADMIN ALWAYS SEES EVERYTHING
       if (role == 'Admin') return true;
 
-      // ★ PRIORITY 1: If user has allowedSteps assigned by Admin, use ONLY those
-      if (user.allowedSteps.isNotEmpty) {
-        return user.allowedSteps.contains(s['label']);
+      // ★ PRIORITY 1: If Admin has configured stepAccess, use it (3-level: full/view/no)
+      if (user.stepAccess.isNotEmpty) {
+        final access = user.stepAccess[s['label']] ?? 'no';
+        return access == 'full' || access == 'view'; // Show for both full & view, hide for 'no'
       }
 
       // 1. Invoicing row only for ATL Executives

@@ -18,7 +18,6 @@ class _StepAssignmentScreenState extends State<StepAssignmentScreen> {
   List<User> _users = [];
   bool _isLoading = true;
 
-  // All workflow steps
   final List<Map<String, dynamic>> _workflowSteps = [
     {'label': 'New Customer', 'icon': Icons.person_add_rounded, 'color': Colors.indigo},
     {'label': 'Book Order', 'icon': Icons.add_shopping_cart_rounded, 'color': Colors.lightBlue},
@@ -56,21 +55,16 @@ class _StepAssignmentScreenState extends State<StepAssignmentScreen> {
     }
   }
 
-  Future<void> _updateAllowedSteps(String userId, List<String> steps) async {
+  Future<void> _updateStepAccess(String userId, Map<String, String> stepAccess) async {
     try {
       final auth = Provider.of<AuthProvider>(context, listen: false);
       final response = await http.patch(
-        Uri.parse('${ApiConfig.baseUrl}/users/$userId/allowed-steps'),
+        Uri.parse('${ApiConfig.baseUrl}/users/$userId/step-access'),
         headers: auth.authHeaders,
-        body: json.encode({'allowedSteps': steps}),
+        body: json.encode({'stepAccess': stepAccess}),
       );
       if (response.statusCode == 200) {
         _fetchUsers();
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('✅ Steps updated!'), backgroundColor: Colors.green),
-          );
-        }
       }
     } catch (e) {
       if (mounted) {
@@ -79,90 +73,122 @@ class _StepAssignmentScreenState extends State<StepAssignmentScreen> {
     }
   }
 
-  void _showAssignUsersDialog(String stepLabel) {
-    // Get users currently assigned to this step
-    List<String> assignedUserIds = _users
-        .where((u) => u.allowedSteps.contains(stepLabel))
-        .map((u) => u.id)
-        .toList();
+  void _showStepUsersDialog(String stepLabel, Color stepColor, IconData stepIcon) {
+    // Build a map of userId -> access level for this step
+    Map<String, String> userAccessMap = {};
+    for (final user in _users) {
+      if (user.role.label == 'Admin') continue;
+      userAccessMap[user.id] = user.stepAccess[stepLabel] ?? 'no';
+    }
 
     showDialog(
       context: context,
-      builder: (context) {
+      builder: (ctx) {
         return StatefulBuilder(
-          builder: (context, setDialogState) {
+          builder: (ctx, setDialogState) {
             return AlertDialog(
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
               title: Column(
                 children: [
-                  Icon(_workflowSteps.firstWhere((s) => s['label'] == stepLabel)['icon'] as IconData,
-                      color: _workflowSteps.firstWhere((s) => s['label'] == stepLabel)['color'] as Color, size: 36),
+                  Icon(stepIcon, color: stepColor, size: 32),
                   const SizedBox(height: 8),
-                  Text(stepLabel.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14, letterSpacing: 1)),
+                  Text(stepLabel.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 1)),
                   const SizedBox(height: 4),
-                  const Text('Select users for this step', style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.normal)),
+                  const Text('Set access level for each user', style: TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.normal)),
                 ],
               ),
               content: SizedBox(
                 width: double.maxFinite,
-                height: 400,
-                child: ListView.builder(
-                  itemCount: _users.length,
-                  itemBuilder: (context, index) {
-                    final user = _users[index];
-                    if (user.role.label == 'Admin') return const SizedBox.shrink(); // Skip Admin
-                    final isAssigned = assignedUserIds.contains(user.id);
-
-                    return CheckboxListTile(
-                      value: isAssigned,
-                      onChanged: (val) {
-                        setDialogState(() {
-                          if (val!) {
-                            assignedUserIds.add(user.id);
-                          } else {
-                            assignedUserIds.remove(user.id);
-                          }
-                        });
-                      },
-                      activeColor: NexusTheme.emerald500,
-                      title: Text(user.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                      subtitle: Text(user.role.label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
-                      secondary: CircleAvatar(
-                        radius: 16,
-                        backgroundColor: isAssigned ? NexusTheme.emerald100 : NexusTheme.slate100,
-                        child: Text(user.name[0], style: TextStyle(
-                          color: isAssigned ? NexusTheme.emerald700 : NexusTheme.slate400,
-                          fontWeight: FontWeight.bold, fontSize: 12)),
+                height: 420,
+                child: ListView(
+                  children: _users.where((u) => u.role.label != 'Admin').map((user) {
+                    final access = userAccessMap[user.id] ?? 'no';
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: access == 'full' ? const Color(0xFFECFDF5) 
+                             : access == 'view' ? const Color(0xFFEFF6FF) 
+                             : const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: access == 'full' ? NexusTheme.emerald300 
+                                                 : access == 'view' ? Colors.blue.shade200 
+                                                 : const Color(0xFFE2E8F0)),
+                      ),
+                      child: Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 14,
+                            backgroundColor: access == 'full' ? NexusTheme.emerald500 
+                                           : access == 'view' ? Colors.blue 
+                                           : NexusTheme.slate300,
+                            child: Text(user.name[0], style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(user.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                                Text(user.role.label, style: const TextStyle(fontSize: 9, color: Colors.grey)),
+                              ],
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: const Color(0xFFE2E8F0)),
+                            ),
+                            child: DropdownButtonHideUnderline(
+                              child: DropdownButton<String>(
+                                value: access,
+                                isDense: true,
+                                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900),
+                                items: const [
+                                  DropdownMenuItem(value: 'full', child: Text('✅ FULL', style: TextStyle(color: Color(0xFF059669), fontSize: 11, fontWeight: FontWeight.w900))),
+                                  DropdownMenuItem(value: 'view', child: Text('👁️ VIEW', style: TextStyle(color: Color(0xFF2563EB), fontSize: 11, fontWeight: FontWeight.w900))),
+                                  DropdownMenuItem(value: 'no', child: Text('❌ NO', style: TextStyle(color: Color(0xFFDC2626), fontSize: 11, fontWeight: FontWeight.w900))),
+                                ],
+                                onChanged: (val) {
+                                  setDialogState(() {
+                                    userAccessMap[user.id] = val!;
+                                  });
+                                },
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     );
-                  },
+                  }).toList(),
                 ),
               ),
               actions: [
                 TextButton(
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: () => Navigator.pop(ctx),
                   child: const Text('CANCEL', style: TextStyle(color: Colors.grey)),
                 ),
                 ElevatedButton(
                   onPressed: () async {
-                    Navigator.pop(context);
-                    // Update each user's allowedSteps
+                    Navigator.pop(ctx);
+                    // Update each user's stepAccess
                     for (final user in _users) {
                       if (user.role.label == 'Admin') continue;
+                      final newAccess = userAccessMap[user.id] ?? 'no';
+                      final oldAccess = user.stepAccess[stepLabel] ?? 'no';
                       
-                      List<String> updatedSteps = List.from(user.allowedSteps);
-                      bool shouldHaveStep = assignedUserIds.contains(user.id);
-                      bool hasStep = updatedSteps.contains(stepLabel);
-
-                      if (shouldHaveStep && !hasStep) {
-                        updatedSteps.add(stepLabel);
-                      } else if (!shouldHaveStep && hasStep) {
-                        updatedSteps.remove(stepLabel);
-                      } else {
-                        continue; // No change needed
+                      if (newAccess != oldAccess) {
+                        Map<String, String> updated = Map.from(user.stepAccess);
+                        updated[stepLabel] = newAccess;
+                        await _updateStepAccess(user.id, updated);
                       }
-                      
-                      await _updateAllowedSteps(user.id, updatedSteps);
+                    }
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('✅ Access updated!'), backgroundColor: Colors.green),
+                      );
                     }
                   },
                   style: ElevatedButton.styleFrom(
@@ -179,12 +205,28 @@ class _StepAssignmentScreenState extends State<StepAssignmentScreen> {
     );
   }
 
+  Color _accessColor(String access) {
+    switch (access) {
+      case 'full': return NexusTheme.emerald500;
+      case 'view': return Colors.blue;
+      default: return NexusTheme.slate300;
+    }
+  }
+
+  String _accessLabel(String access) {
+    switch (access) {
+      case 'full': return 'FULL';
+      case 'view': return 'VIEW';
+      default: return 'NO';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: const Text('STEP ASSIGNMENT CONTROL', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 1)),
+        title: const Text('STEP ASSIGNMENT', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 1)),
         backgroundColor: Colors.white,
         elevation: 0,
         actions: [
@@ -202,8 +244,9 @@ class _StepAssignmentScreenState extends State<StepAssignmentScreen> {
                 final stepColor = step['color'] as Color;
                 final stepIcon = step['icon'] as IconData;
 
-                // Find users assigned to this step
-                final assignedUsers = _users.where((u) => u.allowedSteps.contains(stepLabel)).toList();
+                // Get users with access to this step
+                final fullUsers = _users.where((u) => u.stepAccess[stepLabel] == 'full').toList();
+                final viewUsers = _users.where((u) => u.stepAccess[stepLabel] == 'view').toList();
 
                 return Container(
                   margin: const EdgeInsets.only(bottom: 16),
@@ -217,7 +260,7 @@ class _StepAssignmentScreenState extends State<StepAssignmentScreen> {
                     children: [
                       // Step Header
                       InkWell(
-                        onTap: () => _showAssignUsersDialog(stepLabel),
+                        onTap: () => _showStepUsersDialog(stepLabel, stepColor, stepIcon),
                         borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
                         child: Container(
                           padding: const EdgeInsets.all(16),
@@ -246,20 +289,17 @@ class _StepAssignmentScreenState extends State<StepAssignmentScreen> {
                                   ],
                                 ),
                               ),
+                              // Access counts
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: assignedUsers.isEmpty ? Colors.orange.shade50 : NexusTheme.emerald50,
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Text(
-                                  '${assignedUsers.length} USERS',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w900,
-                                    color: assignedUsers.isEmpty ? Colors.orange : NexusTheme.emerald600,
-                                  ),
-                                ),
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                                decoration: BoxDecoration(color: NexusTheme.emerald50, borderRadius: BorderRadius.circular(6)),
+                                child: Text('${fullUsers.length} FULL', style: const TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: NexusTheme.emerald600)),
+                              ),
+                              const SizedBox(width: 4),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                                decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(6)),
+                                child: Text('${viewUsers.length} VIEW', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: Colors.blue.shade600)),
                               ),
                               const SizedBox(width: 8),
                               Icon(Icons.edit_note_rounded, color: stepColor, size: 24),
@@ -268,47 +308,65 @@ class _StepAssignmentScreenState extends State<StepAssignmentScreen> {
                         ),
                       ),
 
-                      // Assigned Users List
-                      if (assignedUsers.isNotEmpty)
+                      // Users list
+                      if (fullUsers.isNotEmpty || viewUsers.isNotEmpty)
                         Padding(
                           padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
                           child: Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: assignedUsers.map((user) => Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF0F172A),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  CircleAvatar(
-                                    radius: 10,
-                                    backgroundColor: stepColor,
-                                    child: Text(user.name[0], style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Text(user.name.toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900)),
-                                ],
-                              ),
-                            )).toList(),
+                            spacing: 6,
+                            runSpacing: 6,
+                            children: [
+                              ...fullUsers.map((u) => _buildUserChip(u, 'full', stepColor)),
+                              ...viewUsers.map((u) => _buildUserChip(u, 'view', stepColor)),
+                            ],
                           ),
                         )
                       else
                         Padding(
                           padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-                          child: Text(
-                            'No users assigned — Tap to add',
-                            style: TextStyle(fontSize: 11, color: Colors.grey.shade400, fontStyle: FontStyle.italic),
-                          ),
+                          child: Text('No users assigned — Tap to configure', style: TextStyle(fontSize: 11, color: Colors.grey.shade400, fontStyle: FontStyle.italic)),
                         ),
                     ],
                   ),
                 );
               },
             ),
+    );
+  }
+
+  Widget _buildUserChip(User user, String access, Color stepColor) {
+    final isFullAccess = access == 'full';
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: isFullAccess ? const Color(0xFF0F172A) : Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: isFullAccess ? null : Border.all(color: Colors.blue.shade200),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          CircleAvatar(
+            radius: 9,
+            backgroundColor: isFullAccess ? stepColor : Colors.blue,
+            child: Text(user.name[0], style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold)),
+          ),
+          const SizedBox(width: 5),
+          Text(
+            user.name.split(' ')[0].toUpperCase(),
+            style: TextStyle(
+              color: isFullAccess ? Colors.white : Colors.blue.shade700,
+              fontSize: 9,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            isFullAccess ? '✅' : '👁️',
+            style: const TextStyle(fontSize: 9),
+          ),
+        ],
+      ),
     );
   }
 }
