@@ -17,7 +17,7 @@ class ApiConfig {
   
   // ==================== SERVER CONFIGURATION ====================
   // Set to true ONLY when testing with local backend
-  static const bool useLocalServer = true;
+  static const bool useLocalServer = false;
   
   // Local server IP (for Android Emulator use 10.0.2.2, for iOS Simulator use localhost)
   // 💡 FOR PHYSICAL PHONE: Run 'ipconfig' on your PC and use your IPv4 address (e.g., 192.168.1.5)
