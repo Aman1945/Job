@@ -36,11 +36,11 @@ All users have been provisioned on the Cloud MongoDB.
 | **Mumbai Store** | `mumbai.store@bigsams.in` | WH House | Pan India |
 | **Production Bigsams** | `production@bigsams.in` | WH House | Mumbai |
 | **Roshan Bhosale** | `roshan.bhosale@bigsams.in` | WH House | Mumbai |
-| **Nitin Kadam** | `nitin.kadam@bigsams.in` | Billing | Pan India |
+| **Nitin Kadam** | `nitin.kadam@bigsams.in` | ATL Executive | Pan India |
 | **Pradip Patil** | `pradip.patil@bigsams.in` | Billing | Pan India |
-| **Rajesh Suryavanshi** | `rajesh.suryavanshi@bigsams.in` | Billing | Pan India |
-| **Sandesh Gonbare** | `sandesh.gonbare@bigsams.in` | Billing | Pan India |
-| **Dipashree Gawde** | `dipashree.gawde@bigsams.in` | Billing | Pan India |
+| **Rajesh Suryavanshi** | `rajesh.suryavanshi@bigsams.in` | ATL Executive | Pan India |
+| **Sandesh Gonbare** | `sandesh.gonbare@bigsams.in` | ATL Executive | Pan India |
+| **Dipashree Gawde** | `dipashree.gawde@bigsams.in` | ATL Executive | Pan India |
 | **Logistics Bigsams** | `logistics@bigsams.in` | Logistics Team | Pan India |
 | **Delivery1** | `delivery1@bigsams.in` | Delivery Team | Mumbai |
 | **Delivery2** | `delivery2@bigsams.in` | Delivery Team | Mumbai |
@@ -53,6 +53,11 @@ All users have been provisioned on the Cloud MongoDB.
 | **Firoz Premani** | `firoz.premani@bigsams.in` | Admin (HR) | Pan India |
 | **Riya Darge** | `riya.darge@bigsams.in` | Admin (Purchase) | Pan India |
 | **Shravan Deshawal** | `Shravan.Deshawal@bigsams.in` | Admin (Purchase) | Pan India |
+| **Pratish Dalvi** | `pratish.dalvi@bigsams.in` | Logistics Manager | Pan India |
+| **Pawan Kumar** | `pawan.kumar@bigsams.in` | Credit Control | Pan India |
+| **Sagar** | `sagar.delivery@bigsams.in` | Delivery Team | Mumbai |
+| **Arun** | `arun.bng@bigsams.in` | WH House | South |
+| **Amit DP** | `amit.dp@bigsams.in` | WH House | Mumbai |
 
 ---
 

@@ -12,10 +12,11 @@
 
 ### 1️⃣ **BACKEND (Node.js + MongoDB)**
 **Repository:** https://github.com/Aman1945/Job.git  
-**Live URL:** https://your-render-app.onrender.com (Auto-deployed from GitHub)
+**Live URL:** https://nexus-oms-backend.onrender.com (Strictly MongoDB Only)
 
 #### ✅ Features:
-- ✅ MongoDB Atlas Cloud Database
+- ✅ Strictly MongoDB Atlas Cloud Database (No JSON Fallback)
+- ✅ Render-Ready Configuration (Trust Proxy, etc.)
 - ✅ Complete REST API (20+ endpoints)
 - ✅ User Authentication
 - ✅ CRUD Operations (Users, Customers, Products, Orders)

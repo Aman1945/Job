@@ -6,6 +6,7 @@ import 'package:excel/excel.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
+import '../config/api_config.dart';
 
 class BulkOrderScreen extends StatefulWidget {
   const BulkOrderScreen({Key? key}) : super(key: key);
@@ -15,8 +16,7 @@ class BulkOrderScreen extends StatefulWidget {
 }
 
 class _BulkOrderScreenState extends State<BulkOrderScreen> {
-  static const String serverAddress = 'nexus-oms-backend.onrender.com';
-  final String _baseUrl = 'https://$serverAddress/api';
+  final String _baseUrl = ApiConfig.baseUrl;
 
   bool _isLoading = false;
   List<Map<String, dynamic>> _previewOrders = [];

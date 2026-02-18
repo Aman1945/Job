@@ -154,7 +154,7 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
                       onPressed: () => _showPermissionDialog(user),
                       icon: const Icon(Icons.security_rounded, color: NexusTheme.emerald500, size: 28),
                       tooltip: 'Manage Access',
-                    ),
+                    ),  
                   ),
                 );
               },

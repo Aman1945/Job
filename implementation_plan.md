@@ -1,27 +1,49 @@
 # UI Refinement & SCM Dashboard Alignment
 
 This plan outlines the changes to streamline the dashboard lifecycle, improve user logout security with a confirmation dialog, and ensure the address management system is mobile-responsive.
+# implementation_plan.md
+
+# SCM Role & Workflow Refinement
+
+This plan outlines the implementation of enhanced role-based access control (RBAC) and specific workflow logic for the NexusOMS project.
+
+## User Review Required
+
+> [!IMPORTANT]
+> - New roles like **ATL Executive** and **Logistics Hub** will be added.
+> - Warehouse views will be restricted based on the assigned Operation Head.
+> - The 15% logistics cost alert will trigger a specific notification to Admin Animesh.
+> - **Invoicing Row Only:** ATL Executives (Sanesh, Rajesh, Nitin, Deepashree) will see ONLY the Invoicing row in the lifecycle section.
 
 ## Proposed Changes
 
-### 📱 Dashboard Customization
-**File:** [dashboard_screen.dart](file:///c:/Users/Dell/Desktop/NEW%20JOB/flutter/lib/screens/dashboard_screen.dart)
+### Documentation
+- [MODIFY] [SCM_ROLE_PLAYBOOK.md](file:///c:/Users/Dell/Desktop/NEW%20JOB/SCM_ROLE_PLAYBOOK.md): Updated with new workflow stages and personnel.
+- [MODIFY] [USER_DIRECTORY.md](file:///c:/Users/Dell/Desktop/NEW%20JOB/USER_DIRECTORY.md): Added new users: Pratish Dalvi, Sanesh, Rajesh, Deepashree, Sagar, Lawin.
 
-- **Lifecycle Stage Removal:** Remove "STAGE 0: Customer Onboarding" and "STAGE 1: Order Booking" from the Supply Chain Lifecycle row to focus on operational fulfillment.
-- **Lifecycle Stage Visibility:** Ensure "STAGE 3: WH Assignment & Packing" and "STAGE 3.5: Quality Control (QC)" are visible for all operational roles (Admin, Sales, WH, QC) to improve context and understanding.
-- **Logout Confirmation:** Enhance the logout button to trigger a standard OK/Cancel confirmation dialog to prevent accidental logouts.
-
-### 🏠 Address Management Response
-**File:** [address_management_widget.dart](file:///c:/Users/Dell/Desktop/NEW%20JOB/flutter/lib/widgets/address_management_widget.dart)
-
-- **Mobile Optimization:** 
-    - Adjust the header `Row` to handle wrapping on small screens.
-    - Refactor the `_AddressDialog` to use a vertical layout for City/State fields on mobile or a more flexible wrapping logic.
-    - Improve the `_buildAddressCard` layout to ensure labels and tags don't overlap on narrow displays.
+### Flutter (Frontend)
+- [MODIFY] `flutter/lib/screens/dashboard_screen.dart`: 
+    - Implement conditional row visibility based on `user.id` (email) and `user.role`.
+    - Specific logic for:
+        - **Sales Team:** New "Clearance" stage visibility.
+        - **Credit Control:** Restricted to Pawan and Credit Control team.
+        - **WH Assignment:** Restricted to Pranav (WH Manager) vs Operation Heads.
+        - **QC:** Restricted to Dheeraj.
+        - **Logistics Cost:** Restricted to Pratish, Animesh, Lawin.
+        - **Invoicing:** Exclusive view for ATL Executives.
+        - **Logistics Hub:** Restricted to Sagar and Pratish.
+- [MODIFY] `flutter/lib/providers/nexus_provider.dart`: 
+    - Add state handling for the "High Cost Alert" (>15%).
+- [MODIFY] `flutter/lib/models/models.dart`:
+    - Add `atlExecutive` to `UserRole` enum.
 
 ## Verification Plan
 
 ### Manual Verification
-- **Dashboard:** Login as different users (Sales, Admin) and verify that "Customer Onboarding" and "Order Booking" are gone from the row, while WH and QC stages are visible.
+- **Login as ATL Executive:** Verify only "Invoicing" row is visible in Lifecycle.
+- **Login as Dheeraj:** Verify only "Quality Control" is visible in Lifecycle.
+- **Login as Sales:** Verify "Clearance" and "Book Order" (Utility) are visible.
+- **Login as Pratish Dalvi:** Verify "Logistics Cost" and "Logistics Hub" are visible.
+- **Check Alert:** Simulate a logistics cost > 15% and verify notification for Admin Animesh.
 - **Logout:** Click the logout icon and verify that a confirmation popup appears. Test both "CANCEL" and "LOGOUT" (OK) action.
 - **Address:** Open the "New Customer" screen on a narrow simulation/device and test adding/editing addresses. Ensure fields are easy to tap and read.

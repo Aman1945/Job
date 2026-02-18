@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
 import '../providers/nexus_provider.dart';
-import '../utils/theme.dart';
 import '../models/models.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 
 class LogisticsHubScreen extends StatefulWidget {
   const LogisticsHubScreen({super.key});
@@ -12,606 +13,269 @@ class LogisticsHubScreen extends StatefulWidget {
 }
 
 class _LogisticsHubScreenState extends State<LogisticsHubScreen> {
-  String? _selectedDriver;
-  String _selectedFleetProvider = 'Internal';
+  final List<String> _selectedMissions = [];
+  String _selectedRoute = 'Route-A (Central Mumbai)';
+  String? _selectedAgent;
   final TextEditingController _vehicleController = TextEditingController();
-  final TextEditingController _kmController = TextEditingController();
-  String _activeTab = 'pending';
-  final List<String> _selectedOrderIds = [];
-  String _searchTerm = '';
+  final TextEditingController _ewayBillController = TextEditingController();
+  final TextEditingController _sealController = TextEditingController();
+  bool isManifesting = false;
 
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<NexusProvider>(context);
-    
-    final pendingOrders = provider.orders.where((o) => 
-      (o.status == 'Invoiced' || o.status == 'Ready for Dispatch') && 
-      o.logistics?.deliveryAgentId == null &&
-      (o.id.toLowerCase().contains(_searchTerm.toLowerCase()) || o.customerName.toLowerCase().contains(_searchTerm.toLowerCase()))
-    ).toList();
-
-    final activeShipments = provider.orders.where((o) => 
-      o.logistics?.deliveryAgentId != null &&
-      (o.id.toLowerCase().contains(_searchTerm.toLowerCase()) || o.customerName.toLowerCase().contains(_searchTerm.toLowerCase()))
-    ).toList()..sort((a, b) => b.createdAt.compareTo(a.createdAt));
-
-    final drivers = provider.users.where((u) => u.role == UserRole.delivery).toList();
+    final readyMissions = provider.orders.where((o) => (o.status == 'Invoiced' || o.status == 'Ready for Dispatch') && o.logistics?.manifestId == null).toList();
+    final agents = provider.users.where((u) => u.role == UserRole.deliveryTeam).toList();
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
+        title: const Text('6. LOGISTICS MISSION CONTROL', 
+            style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 1, color: Color(0xFF1E293B))),
         backgroundColor: Colors.white,
         elevation: 0,
-        centerTitle: false,
-        titleSpacing: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: NexusTheme.slate900),
+          icon: const Icon(Icons.arrow_back, color: Color(0xFF1E293B)),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text('LOGISTICS HUB', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: NexusTheme.slate900, letterSpacing: 1)),
       ),
       body: LayoutBuilder(
         builder: (context, constraints) {
           final isMobile = constraints.maxWidth < 900;
           
-          return SingleChildScrollView(
-            child: Column(
+          if (isMobile) {
+            return Column(
               children: [
-                const SizedBox(height: 20),
-
-                // Search Bar
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                  child: Container(
-                    height: 52,
-                    decoration: BoxDecoration(
-                      color: NexusTheme.slate50,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: NexusTheme.slate100),
-                    ),
-                    child: TextField(
-                      onChanged: (v) => setState(() => _searchTerm = v),
-                      decoration: const InputDecoration(
-                        hintText: 'Trace by ID or Client...',
-                        hintStyle: TextStyle(fontSize: 14, color: NexusTheme.slate300, fontWeight: FontWeight.w600),
-                        prefixIcon: Icon(Icons.search, size: 20, color: NexusTheme.slate300),
-                        border: InputBorder.none,
-                        contentPadding: EdgeInsets.symmetric(vertical: 16),
-                      ),
-                    ),
-                  ),
-                ),
-                
-                const SizedBox(height: 20),
-                
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    children: [
-                      _buildStatusTabs(pendingOrders.length, activeShipments.length),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 24),
-
-                // Order Table Area
-                if (_activeTab == 'pending')
-                  Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(32),
-                      border: Border.all(color: NexusTheme.slate100),
-                    ),
-                    child: Column(
-                      children: [
-                        _buildTableHeader(isMobile, pendingOrders.length),
-                        if (pendingOrders.isEmpty) 
-                          _buildEmptyPlaceholder()
-                        else
-                          ListView.builder(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            itemCount: pendingOrders.length,
-                            itemBuilder: (context, index) => _buildOrderRow(pendingOrders[index], isMobile),
-                          ),
-                      ],
-                    ),
-                  )
-                else
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: activeShipments.isEmpty 
-                      ? _buildEmptyPlaceholder()
-                      : Column(
-                          children: activeShipments.map((order) => _buildTrackShipmentCard(order, isMobile, provider)).toList(),
-                        ),
-                  ),
-                
-                const SizedBox(height: 24),
-
-                // Assignment Panel
-                if (_activeTab == 'pending')
-                  _buildAssignmentPanel(drivers, provider, pendingOrders, isMobile),
+                Expanded(child: _buildMissionList(readyMissions)),
+                _buildManifestTerminal(agents, provider, isMobile),
               ],
-            ),
+            );
+          }
+          
+          return Row(
+            children: [
+              Expanded(
+                flex: 2,
+                child: _buildMissionList(readyMissions),
+              ),
+              Container(width: 1, color: const Color(0xFFE2E8F0)),
+              Expanded(
+                child: _buildManifestTerminal(agents, provider, isMobile),
+              ),
+            ],
           );
         },
       ),
     );
   }
 
-  Widget _buildStatusTabs(int pendingCount, int activeCount) {
-    return Container(
-      padding: const EdgeInsets.all(6),
-      decoration: BoxDecoration(
-        color: NexusTheme.slate50,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: NexusTheme.slate100),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _buildTabButton('pending', 'UNASSIGNED ($pendingCount)'),
-          const SizedBox(width: 8),
-          _buildTabButton('active', 'TRACK TRIPS ($activeCount)'),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTabButton(String tab, String label) {
-    bool isSelected = _activeTab == tab;
-    return GestureDetector(
-      onTap: () => setState(() => _activeTab = tab),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        decoration: BoxDecoration(
-          color: isSelected ? Colors.white : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: isSelected ? [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4)] : [],
-        ),
-        child: Text(
-          label.toUpperCase(),
-          style: TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.w900,
-            color: isSelected ? NexusTheme.emerald600 : NexusTheme.slate400,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTableHeader(bool isMobile, int totalCount) {
-    if (isMobile) return const SizedBox.shrink();
-    
-    // Get pending orders for select all functionality
-    final provider = Provider.of<NexusProvider>(context, listen: false);
-    final pendingOrders = provider.orders.where((o) => 
-      (o.status == 'Invoiced' || o.status == 'Ready for Dispatch') && 
-      o.logistics?.deliveryAgentId == null &&
-      (o.id.toLowerCase().contains(_searchTerm.toLowerCase()) || o.customerName.toLowerCase().contains(_searchTerm.toLowerCase()))
-    ).toList();
-    
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
-      child: Row(
-        children: [
-          Checkbox(
-            value: _selectedOrderIds.length == pendingOrders.length && pendingOrders.isNotEmpty,
-            activeColor: NexusTheme.emerald600,
-            onChanged: (v) {
-              setState(() {
-                if (v == true) {
-                  _selectedOrderIds.clear();
-                  _selectedOrderIds.addAll(pendingOrders.map((o) => o.id));
-                } else {
-                  _selectedOrderIds.clear();
-                }
-              });
-            },
-          ),
-          const SizedBox(width: 48),
-          _buildHeaderText('MISSION ID', 150),
-          _buildHeaderText('CUSTOMER ENTITY', 250),
-          _buildHeaderText('BOXES', 100),
-          _buildHeaderText('INVOICE NUMBER', 150),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHeaderText(String label, double width) {
-    return SizedBox(width: width, child: Text(label, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: NexusTheme.slate300, letterSpacing: 1)));
-  }
-
-  Widget _buildEmptyPlaceholder() {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 80),
-      child: Column(
-        children: [
-          Icon(Icons.check_circle_outline, size: 64, color: NexusTheme.slate100),
-          const SizedBox(height: 24),
-          const Text(
-            'ALL LOADS CLEAR.',
-            style: TextStyle(color: NexusTheme.slate200, fontSize: 13, fontWeight: FontWeight.w900, letterSpacing: 1, height: 1.5, fontStyle: FontStyle.italic),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildOrderRow(Order order, bool isMobile) {
-    bool isSelected = _selectedOrderIds.contains(order.id);
-    if (isMobile) {
-      return GestureDetector(
-        onTap: () {
-          setState(() {
-            if (isSelected) _selectedOrderIds.remove(order.id);
-            else _selectedOrderIds.add(order.id);
-          });
-        },
-        child: Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: isSelected ? NexusTheme.emerald50.withOpacity(0.3) : Colors.transparent,
-            border: const Border(top: BorderSide(color: NexusTheme.slate50)),
-          ),
-          child: Row(
-            children: [
-              Checkbox(
-                value: isSelected,
-                activeColor: NexusTheme.emerald600,
-                onChanged: (v) {
-                  setState(() {
-                    if (v == true) _selectedOrderIds.add(order.id);
-                    else _selectedOrderIds.remove(order.id);
-                  });
-                },
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(order.id, style: const TextStyle(fontWeight: FontWeight.w900, color: NexusTheme.indigo600, fontSize: 13)),
-                        const Text('READY FOR LOADING', style: TextStyle(fontWeight: FontWeight.w900, color: NexusTheme.slate400, fontSize: 9)),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Text(order.customerName.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w900, color: NexusTheme.slate800, fontSize: 15)),
-                    const SizedBox(height: 8),
-                    const Text('8 BOXES • INV/24/00431', style: TextStyle(fontWeight: FontWeight.w900, color: NexusTheme.slate400, fontSize: 11)),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          if (isSelected) _selectedOrderIds.remove(order.id);
-          else _selectedOrderIds.add(order.id);
-        });
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 20),
-        decoration: BoxDecoration(
-          color: isSelected ? NexusTheme.emerald50.withOpacity(0.3) : Colors.transparent,
-          border: const Border(top: BorderSide(color: NexusTheme.slate50)),
-        ),
-        child: Row(
-          children: [
-            Checkbox(
-              value: isSelected,
-              activeColor: NexusTheme.emerald600,
-              onChanged: (v) {
-                setState(() {
-                  if (v == true) _selectedOrderIds.add(order.id);
-                  else _selectedOrderIds.remove(order.id);
-                });
-              },
-            ),
-            const SizedBox(width: 48),
-            SizedBox(width: 150, child: Text(order.id, style: const TextStyle(fontWeight: FontWeight.w900, color: NexusTheme.indigo600, fontSize: 13))),
-            SizedBox(width: 250, child: Text(order.customerName.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w900, color: NexusTheme.slate800, fontSize: 13))),
-            const SizedBox(width: 100, child: Text('8 BOXES', style: TextStyle(fontWeight: FontWeight.w900, color: NexusTheme.slate400, fontSize: 12))),
-            const SizedBox(width: 150, child: Text('INV/24/00431', style: TextStyle(fontWeight: FontWeight.w900, color: NexusTheme.slate400, fontSize: 12))),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTrackShipmentCard(Order order, bool isMobile, NexusProvider provider) {
-    final statusColor = order.status == 'Delivered' ? const Color(0xFF10B981) : const Color(0xFF6366F1);
-    final statusBg = statusColor.withOpacity(0.1);
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(32),
-        border: Border.all(color: NexusTheme.slate100),
-      ),
-      child: Theme(
-        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-        child: ExpansionTile(
-          tilePadding: const EdgeInsets.all(24),
-          leading: Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: statusBg,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Icon(order.status == 'Delivered' ? Icons.check_circle_rounded : Icons.local_shipping_rounded, color: statusColor, size: 24),
-          ),
-          title: Row(
-            children: [
-              Text(order.id, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: Color(0xFF6366F1))),
-              const SizedBox(width: 12),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(color: statusBg, borderRadius: BorderRadius.circular(8)),
-                child: Text(order.status.toUpperCase(), style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: statusColor, letterSpacing: 0.5)),
-              ),
-            ],
-          ),
-          subtitle: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 8),
-              Text(order.customerName.toUpperCase(), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFF0F172A))),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  const Icon(Icons.person_pin, size: 12, color: Color(0xFF94A3B8)),
-                  const SizedBox(width: 6),
-                  Text(order.logistics?.deliveryAgentId ?? 'NO AGENT', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF94A3B8))),
-                  const SizedBox(width: 16),
-                  const Icon(Icons.navigation_rounded, size: 12, color: Color(0xFF94A3B8)),
-                  const SizedBox(width: 6),
-                  Text('${order.logistics?.distanceKm ?? 0} KM', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF94A3B8))),
-                ],
-              ),
-            ],
-          ),
-          children: [
-            Container(
-              padding: const EdgeInsets.only(left: 24, right: 24, bottom: 32),
-              child: Column(
-                children: [
-                  const Divider(height: 1),
-                  const SizedBox(height: 24),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      _buildDetailItem('VEHICLE REG', order.logistics?.vehicleNo ?? 'N/A'),
-                      _buildDetailItem('FLEET TYPE', order.logistics?.vehicleProvider ?? 'INTERNAL'),
-                      _buildDetailItem('INVOICE VAL', '₹${order.total.toInt().toLocaleString()}'),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDetailItem(String label, String value) {
+  Widget _buildMissionList(List<Order> missions) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: Color(0xFFCBD5E1), letterSpacing: 1)),
-        const SizedBox(height: 4),
-        Text(value, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: Color(0xFF0F172A))),
+        Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Row(
+            children: [
+              const Text('AWAITING MANIFESTATION', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 11, color: Colors.grey, letterSpacing: 1)),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                decoration: BoxDecoration(color: const Color(0xFFEEF2FF), borderRadius: BorderRadius.circular(8)),
+                child: Text('${missions.length} MISSIONS', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 10, color: Color(0xFF6366F1))),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: missions.isEmpty
+              ? _buildEmptyState()
+              : ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  itemCount: missions.length,
+                  itemBuilder: (context, index) {
+                    final order = missions[index];
+                    bool isSelected = _selectedMissions.contains(order.id);
+                    return _buildMissionCard(order, isSelected);
+                  },
+                ),
+        ),
       ],
     );
   }
 
-  Widget _buildAssignmentPanel(List<User> drivers, NexusProvider provider, List<Order> readyOrders, bool isMobile) {
+  Widget _buildMissionCard(Order order, bool isSelected) {
     return Container(
-      width: double.infinity,
-      decoration: const BoxDecoration(
-        color: Color(0xFF04261E), // Deep Emerald from screenshot
-        borderRadius: BorderRadius.only(topLeft: Radius.circular(40), topRight: Radius.circular(40)),
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: isSelected ? const Color(0xFFEEF2FF) : Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: isSelected ? const Color(0xFF6366F1) : const Color(0xFFE2E8F0)),
       ),
-      padding: EdgeInsets.all(isMobile ? 24 : 40),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.near_me_outlined, color: NexusTheme.emerald400, size: 24),
-              const SizedBox(width: 12),
-              Text('Assignment Panel', style: TextStyle(color: Colors.white, fontSize: isMobile ? 18 : 20, fontWeight: FontWeight.w900, letterSpacing: -0.5)),
-            ],
-          ),
-          const SizedBox(height: 32),
-          
-          const Text('FLEET PROVIDER', style: TextStyle(color: NexusTheme.emerald600, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1)),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              _buildFleetToggle('Internal'),
-              const SizedBox(width: 12),
-              _buildFleetToggle('Porter'),
-              if (!isMobile) const SizedBox(width: 12),
-              if (!isMobile) _buildFleetToggle('Other'),
-            ],
-          ),
-          if (isMobile) const SizedBox(height: 12),
-          if (isMobile) Row(
-            children: [
-              _buildFleetToggle('Other'),
-              const Expanded(flex: 2, child: SizedBox()),
-            ],
-          ),
-          
-          const SizedBox(height: 24),
-          
-          const Text('DELIVERY EXECUTIVE', style: TextStyle(color: NexusTheme.emerald600, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1)),
-          const SizedBox(height: 12),
-          _buildPanelInput(
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<String>(
-                value: _selectedDriver,
-                hint: const Text('SELECT DRIVER', style: TextStyle(color: Colors.white12, fontSize: 13, fontWeight: FontWeight.bold)),
-                dropdownColor: const Color(0xFF04261E),
-                isExpanded: true,
-                icon: const Icon(Icons.keyboard_arrow_down, color: NexusTheme.emerald500),
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                items: drivers.map((d) => DropdownMenuItem(value: d.name, child: Text(d.name))).toList(),
-                onChanged: (v) => setState(() => _selectedDriver = v),
-              ),
-            ),
-          ),
-          
-          const SizedBox(height: 24),
-          
-          const Text('VEHICLE REG NO.', style: TextStyle(color: NexusTheme.emerald600, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1)),
-          const SizedBox(height: 12),
-          _buildPanelInput(
-            child: TextField(
-              controller: _vehicleController,
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-              decoration: const InputDecoration(
-                hintText: 'E.G. MH-12-NEXU-1234',
-                hintStyle: TextStyle(color: Colors.white12, fontSize: 13),
-                border: InputBorder.none,
-              ),
-            ),
-          ),
-          
-          const SizedBox(height: 24),
-          
-          const Text('JOURNEY EST. (KM)', style: TextStyle(color: NexusTheme.emerald600, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1)),
-          const SizedBox(height: 12),
-          _buildPanelInput(
-            child: TextField(
-              controller: _kmController,
-              keyboardType: TextInputType.number,
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-              decoration: const InputDecoration(
-                hintText: '0',
-                hintStyle: TextStyle(color: Colors.white10, fontSize: 13),
-                border: InputBorder.none,
-              ),
-            ),
-          ),
-          
-          const SizedBox(height: 40),
-          
-          SizedBox(
-            width: double.infinity,
-            height: 64,
-            child: ElevatedButton(
-              onPressed: (_selectedDriver == null || _selectedOrderIds.isEmpty) ? null : () => _confirmDispatch(provider),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF0D5F47), // Emerald 700ish
-                foregroundColor: Colors.white,
-                disabledBackgroundColor: Colors.white.withOpacity(0.05),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                elevation: 0,
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text('CONFIRM LOADING (${_selectedOrderIds.length})', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14, letterSpacing: 1)),
-                  const SizedBox(width: 12),
-                  const Icon(Icons.arrow_forward_rounded, size: 20),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFleetToggle(String label) {
-    bool isSelected = _selectedFleetProvider == label;
-    return Expanded(
-      child: InkWell(
-        onTap: () => setState(() => _selectedFleetProvider = label),
-        child: Container(
-          height: 48,
-          decoration: BoxDecoration(
-            // ignore: deprecated_member_use
-            color: isSelected ? NexusTheme.emerald500 : Colors.white.withOpacity(0.03),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: isSelected ? NexusTheme.emerald400 : Colors.white.withOpacity(0.05)),
-          ),
-          child: Center(
-            child: Text(
-              label.toUpperCase(),
-              style: TextStyle(
-                color: isSelected ? Colors.white : Colors.white24,
-                fontSize: 10,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 1,
-              ),
-            ),
-          ),
+      child: CheckboxListTile(
+        value: isSelected,
+        onChanged: (v) {
+          setState(() {
+            if (v!) _selectedMissions.add(order.id);
+            else _selectedMissions.remove(order.id);
+          });
+        },
+        activeColor: const Color(0xFF6366F1),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(order.id, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: Color(0xFF6366F1))),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(order.customerName, style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
+            Text('Value: ₹${NumberFormat('#,##,###').format(order.total)} | Boxes: 08', style: const TextStyle(fontSize: 10, color: Colors.grey)),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildPanelInput({required Widget child}) {
+  Widget _buildManifestTerminal(List<User> agents, NexusProvider provider, bool isMobile) {
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-      decoration: BoxDecoration(
-        // ignore: deprecated_member_use
-        color: Colors.white.withOpacity(0.04),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.05)),
-      ),
-      child: child,
+      color: Colors.white,
+      padding: EdgeInsets.all(isMobile ? 16 : 32),
+      child: isMobile 
+        ? SingleChildScrollView(
+            child: Column(children: _buildManifestContent(agents, provider)))
+        : Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: _buildManifestContent(agents, provider),
+          ),
+    );
+  }
+  
+  List<Widget> _buildManifestContent(List<User> agents, NexusProvider provider) {
+    return [
+          const Row(
+            children: [
+              Icon(LucideIcons.gitPullRequest, color: Color(0xFF10B981), size: 20),
+              SizedBox(width: 12),
+              Text('MANIFEST ENGINE', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF1E293B))),
+            ],
+          ),
+          const SizedBox(height: 32),
+          _buildTerminalInput('ASSIGNMENT ROUTE', DropdownButton<String>(
+            value: _selectedRoute,
+            isExpanded: true,
+            underline: const SizedBox(),
+            items: ['Route-A (Central Mumbai)', 'Route-B (Western Suburbs)', 'Route-C (Thane/Navi)'].map((r) => DropdownMenuItem(value: r, child: Text(r, style: const TextStyle(fontSize: 12)))).toList(),
+            onChanged: (v) => setState(() => _selectedRoute = v!),
+          )),
+          const SizedBox(height: 20),
+          _buildTerminalInput('DELIVERY AGENT', DropdownButton<String>(
+            value: _selectedAgent,
+            isExpanded: true,
+            hint: const Text('Select Agent', style: TextStyle(fontSize: 12)),
+            underline: const SizedBox(),
+            items: agents.map((a) => DropdownMenuItem(value: a.name, child: Text(a.name, style: const TextStyle(fontSize: 12)))).toList(),
+            onChanged: (v) => setState(() => _selectedAgent = v!),
+          )),
+          const SizedBox(height: 20),
+          _buildTerminalInput('VEHICLE REG NO.', TextField(
+            controller: _vehicleController,
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+            decoration: const InputDecoration(hintText: 'MH-12-XX-0000', border: InputBorder.none),
+          )),
+          const SizedBox(height: 20),
+          _buildTerminalInput('E-WAY BILL NO.', TextField(
+            controller: _ewayBillController,
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+            decoration: const InputDecoration(hintText: '12-Digit Reference', border: InputBorder.none),
+          )),
+          const SizedBox(height: 20),
+          _buildTerminalInput('CONTAINER SEAL NO.', TextField(
+            controller: _sealController,
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+            decoration: const InputDecoration(hintText: 'Security Seal ID', border: InputBorder.none),
+          )),
+          const SizedBox(height: 20),
+          const Divider(),
+          const SizedBox(height: 20),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('SELECTED UNITS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+              Text('${_selectedMissions.length} ORDERS', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF1E293B))),
+            ],
+          ),
+          const SizedBox(height: 24),
+          SizedBox(
+            width: double.infinity,
+            height: 60,
+            child: ElevatedButton(
+              onPressed: (_selectedMissions.isEmpty || _selectedAgent == null) ? null : () => _createManifest(provider),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF0F172A),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              ),
+              child: isManifesting 
+                  ? const CircularProgressIndicator(color: Colors.white)
+                  : const Text('AUTHENTICATE & DISPATCH', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1)),
+            ),
+          ),
+    ];
+  }
+
+  Widget _buildTerminalInput(String label, Widget input) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: Colors.grey, letterSpacing: 0.5)),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          decoration: BoxDecoration(color: const Color(0xFFF8FAFC), borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFFE2E8F0))),
+          child: input,
+        ),
+      ],
     );
   }
 
-  void _confirmDispatch(NexusProvider provider) async {
+  Widget _buildEmptyState() {
+    return const Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(LucideIcons.checkCircle2, size: 64, color: Color(0xFFE2E8F0)),
+          SizedBox(height: 16),
+          Text('HUB QUEUE CLEAR', style: TextStyle(fontWeight: FontWeight.w900, color: Color(0xFFCBD5E1))),
+        ],
+      ),
+    );
+  }
+
+  void _createManifest(NexusProvider provider) async {
+    setState(() => isManifesting = true);
+    
     final success = await provider.assignLogistics(
-      _selectedOrderIds, 
+      _selectedMissions, 
       {
-        'deliveryAgentId': _selectedDriver,
+        'deliveryAgentId': _selectedAgent,
         'vehicleNo': _vehicleController.text,
-        'vehicleProvider': _selectedFleetProvider,
-        'distanceKm': double.tryParse(_kmController.text) ?? 0,
+        'vehicleProvider': 'Hub Manifest',
+        'manifestId': 'MAN-${DateFormat('yyMMdd').format(DateTime.now())}-${_selectedMissions.length}',
+        'ewayBill': _ewayBillController.text,
+        'sealNo': _sealController.text,
       }
     );
 
     if (success && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Fleet Assigned to ${_selectedOrderIds.length} Missions')),
-      );
-      _vehicleController.clear();
-      _kmController.clear();
-      _selectedOrderIds.clear();
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Fleet Manifest generated and agents notified!'), backgroundColor: Color(0xFF10B981)));
       setState(() {
-        _selectedDriver = null;
-        _activeTab = 'active'; // Move to track trips
+        _selectedMissions.clear();
+        _vehicleController.clear();
+        _ewayBillController.clear();
+        _sealController.clear();
+        _selectedAgent = null;
+        isManifesting = false;
       });
+    } else {
+      setState(() => isManifesting = false);
     }
-  }
-}
-
-extension NumberFormatting on num {
-  String toLocaleString() {
-    return toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},');
   }
 }

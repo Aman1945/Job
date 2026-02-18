@@ -3,24 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/models.dart';
-
+import '../config/api_config.dart';
 import '../services/downloader_service.dart';
 
 class NexusProvider with ChangeNotifier {
-  // --- CONFIGURATION ---
-  // Default to Render production. Set to true ONLY when testing locally.
-  static const bool useLocalServer = false; 
-  static const String localIp = '10.0.2.2'; // Standard for Android Emulator
-  
-  static String get serverAddress {
-    if (useLocalServer) {
-      return '$localIp:3000'; 
-    }
-    return 'nexus-oms-backend.onrender.com';
-  }
-
-  String get _baseUrl => useLocalServer ? 'http://$serverAddress/api' : 'https://$serverAddress/api';
-  String get _socketUrl => useLocalServer ? 'http://$serverAddress' : 'https://$serverAddress';
+  // Use centralized configuration
+  String get _baseUrl => ApiConfig.baseUrl;
+  String get _socketUrl => ApiConfig.socketUrl;
   
   User? _currentUser;
 
@@ -73,6 +62,21 @@ class NexusProvider with ChangeNotifier {
       fetchProcurementItems(),
     ]);
     notifyListeners();
+  }
+
+  // --- MOCK NOTIFICATION ENGINE ---
+  Future<void> sendEmailNotification({
+    required String recipient, 
+    required String subject, 
+    required String body
+  }) async {
+    // Simulate SMTP Latency
+    await Future.delayed(const Duration(milliseconds: 800));
+    print('------------------------------------------');
+    print('📧 EMAIL TRIGGERED: $recipient');
+    print('📝 SUBJECT: $subject');
+    print('📄 BODY: $body');
+    print('------------------------------------------');
   }
 
   // --- Auth ---
@@ -227,16 +231,19 @@ class NexusProvider with ChangeNotifier {
   }
 
   Future<bool> createOrder(String customerId, String customerName, List<Map<String, dynamic>> items) async {
-    double total = 0;
+    double subTotal = 0;
     for (var item in items) {
-      total += (item['price'] as num) * (item['quantity'] as num);
+      subTotal += (item['price'] as num) * (item['quantity'] as num);
     }
+    double total = subTotal * 1.18; // Added 18% GST
 
     final orderData = {
       'customerId': customerId,
       'customerName': customerName,
       'status': 'Pending Credit Approval',
       'total': total,
+      'subTotal': subTotal,
+      'gstValue': subTotal * 0.18,
       'items': items,
       'salespersonId': _currentUser?.id,
       'createdAt': DateTime.now().toIso8601String(),

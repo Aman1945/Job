@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../providers/nexus_provider.dart';
 import '../utils/theme.dart';
 import '../models/models.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 
 class CreditControlScreen extends StatefulWidget {
   const CreditControlScreen({super.key});
@@ -13,365 +14,133 @@ class CreditControlScreen extends StatefulWidget {
 }
 
 class _CreditControlScreenState extends State<CreditControlScreen> {
-  String _approvalNotes = '';
-  
+  Order? selectedOrder;
+  final TextEditingController _notesController = TextEditingController();
+  bool isSubmitting = false;
+
+  @override
+  void dispose() {
+    _notesController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<NexusProvider>(context);
     final pendingOrders = provider.orders.where((o) => o.status == 'Pending Credit Approval').toList();
 
     return Scaffold(
-      backgroundColor: NexusTheme.slate50,
+      backgroundColor: const Color(0xFFF1F5F9), // Slate 100 for background
       appBar: AppBar(
-        title: const Text('CREDIT CONTROL TERMINAL', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1)),
+        title: Text(selectedOrder == null ? 'CREDIT CONTROL QUEUE' : 'MISSION AUDIT TERMINAL',
+            style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 1, color: Color(0xFF1E293B))),
         backgroundColor: Colors.white,
         elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () => provider.fetchOrders(),
-          ),
-        ],
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Color(0xFF1E293B)),
+          onPressed: () {
+            if (selectedOrder != null) {
+              setState(() => selectedOrder = null);
+            } else {
+              Navigator.pop(context);
+            }
+          },
+        ),
       ),
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          final isMobile = constraints.maxWidth < 600;
-          return pendingOrders.isEmpty
-              ? _buildEmptyState()
-              : ListView.builder(
-                  padding: EdgeInsets.all(isMobile ? 12 : 16),
-                  itemCount: pendingOrders.length,
-                  itemBuilder: (context, index) {
-                    final order = pendingOrders[index];
-                    return _buildOrderCard(context, order, provider, isMobile);
-                  },
-                );
-        },
-      ),
+      body: selectedOrder == null
+          ? _buildOrderQueue(pendingOrders, provider)
+          : _buildDetailTerminal(selectedOrder!, provider),
     );
   }
 
-  Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(32),
-            decoration: BoxDecoration(
-              color: NexusTheme.emerald50,
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(Icons.check_circle_outline, size: 80, color: NexusTheme.emerald600),
-          ),
-          const SizedBox(height: 24),
-          const Text(
-            'All Clear!',
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: NexusTheme.slate900),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'No orders pending credit approval',
-            style: TextStyle(color: NexusTheme.slate400, fontSize: 14),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildOrderCard(BuildContext context, Order order, NexusProvider provider, bool isMobile) {
-    // Find actual customer data from provider
-    final customer = provider.customers.firstWhere(
-      (c) => c.id == order.customerId || c.name == order.customerName,
-      orElse: () => Customer(id: '?', name: order.customerName, address: '', city: '', limit: 100000, osBalance: 0),
-    );
-    
-    final outstandingBalance = customer.osBalance;
-    final creditLimit = customer.limit;
-    final creditUtilization = creditLimit > 0 ? (outstandingBalance / creditLimit * 100) : 0.0;
-    
-    // Use actual aging data if available, else use specific mock for this customer
-    final mockPayments = [
-      {'date': DateTime.now().subtract(const Duration(days: 15)), 'amount': order.total, 'status': 'Pending'},
-      {'date': DateTime.now().subtract(const Duration(days: 45)), 'amount': 32000, 'status': 'Paid'},
-      {'date': DateTime.now().subtract(const Duration(days: 75)), 'amount': customer.overdue, 'status': 'Overdue'},
-    ];
-
-    return Card(
-      margin: EdgeInsets.only(bottom: isMobile ? 12 : 16),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      elevation: 2,
-      child: Padding(
-        padding: EdgeInsets.all(isMobile ? 16 : 20),
+  Widget _buildOrderQueue(List<Order> orders, NexusProvider provider) {
+    if (orders.isEmpty) {
+      return Center(
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Header
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        order.id,
-                        style: TextStyle(
-                          fontSize: isMobile ? 11 : 12,
-                          fontWeight: FontWeight.w900,
-                          color: NexusTheme.indigo600,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        order.customerName,
-                        style: TextStyle(
-                          fontSize: isMobile ? 16 : 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Salesperson: ${order.salespersonId}',
-                        style: TextStyle(
-                          fontSize: isMobile ? 11 : 12,
-                          color: NexusTheme.slate500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: isMobile ? 8 : 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: NexusTheme.amber500.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: NexusTheme.amber500.withOpacity(0.3)),
-                  ),
-                  child: Text(
-                    'PENDING',
-                    style: TextStyle(
-                      color: NexusTheme.amber900,
-                      fontWeight: FontWeight.w900,
-                      fontSize: isMobile ? 9 : 10,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            
-            const Divider(height: 32),
-            
-            // Financial Metrics
             Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: NexusTheme.slate50,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: NexusTheme.slate200),
-              ),
-              child: Column(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      _buildMetricItem('ORDER VALUE', '₹${order.total.toStringAsFixed(0)}', NexusTheme.emerald600, isMobile),
-                      _buildMetricItem('OUTSTANDING', '₹${outstandingBalance.toStringAsFixed(0)}', Colors.orange, isMobile),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      _buildMetricItem('CREDIT LIMIT', '₹${creditLimit.toStringAsFixed(0)}', NexusTheme.slate600, isMobile),
-                      _buildMetricItem('UTILIZATION', '${creditUtilization.toStringAsFixed(1)}%', 
-                        creditUtilization > 80 ? Colors.red : NexusTheme.emerald600, isMobile),
-                    ],
-                  ),
-                ],
-              ),
+              padding: const EdgeInsets.all(32),
+              decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+              child: const Icon(Icons.check_circle_outline, size: 80, color: Color(0xFF10B981)),
             ),
-            
-            const SizedBox(height: 16),
-            
-            // Credit Aging Analysis
-            _buildAgingAnalysis(mockPayments, isMobile),
-            
-            const SizedBox(height: 16),
-            
-            // Payment History Timeline
-            _buildPaymentTimeline(mockPayments, isMobile),
-            
-            const SizedBox(height: 16),
-            
-            // Approval Notes
-            TextField(
-              onChanged: (value) => _approvalNotes = value,
-              decoration: InputDecoration(
-                labelText: 'Approval Notes (Optional)',
-                labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                hintText: 'Add reason or comments...',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: NexusTheme.slate200),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: NexusTheme.emerald500, width: 2),
-                ),
-                filled: true,
-                fillColor: Colors.white,
-              ),
-              maxLines: 2,
-            ),
-            
-            const SizedBox(height: 16),
-            
-            // Action Buttons
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () => _approveOrder(context, order, provider),
-                    icon: const Icon(Icons.check_circle, size: 18),
-                    label: const Text('APPROVE'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: NexusTheme.emerald600,
-                      foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(vertical: isMobile ? 12 : 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () => _rejectOrder(context, order, provider),
-                    icon: const Icon(Icons.cancel, size: 18),
-                    label: const Text('REJECT'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: NexusTheme.rose600,
-                      side: const BorderSide(color: NexusTheme.rose600, width: 2),
-                      padding: EdgeInsets.symmetric(vertical: isMobile ? 12 : 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
+            const SizedBox(height: 24),
+            const Text('ALL MISSIONS CLEARED', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18)),
+            const Text('The credit control queue is currently empty', style: TextStyle(color: Colors.grey)),
           ],
         ),
-      ),
+      );
+    }
+
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(16),
+          color: Colors.white,
+          child: TextField(
+            decoration: InputDecoration(
+              hintText: 'Trace Reference ID or Client...',
+              prefixIcon: const Icon(Icons.search, size: 20),
+              filled: true,
+              fillColor: const Color(0xFFF8FAFC),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+              contentPadding: const EdgeInsets.symmetric(vertical: 12),
+            ),
+          ),
+        ),
+        Expanded(
+          child: ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: orders.length,
+            itemBuilder: (context, index) {
+              final order = orders[index];
+              return _buildQueueItem(order);
+            },
+          ),
+        ),
+      ],
     );
   }
 
-  Widget _buildMetricItem(String label, String value, Color color, bool isMobile) {
-    return Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: isMobile ? 9 : 10,
-              fontWeight: FontWeight.w900,
-              color: NexusTheme.slate400,
-              letterSpacing: 0.5,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: isMobile ? 16 : 18,
-              fontWeight: FontWeight.w900,
-              color: color,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAgingAnalysis(List<Map<String, dynamic>> payments, bool isMobile) {
-    final now = DateTime.now();
-    final aging30 = payments.where((p) => now.difference(p['date']).inDays <= 30 && p['status'] == 'Overdue').length;
-    final aging60 = payments.where((p) {
-      final days = now.difference(p['date']).inDays;
-      return days > 30 && days <= 60 && p['status'] == 'Overdue';
-    }).length;
-    final aging90 = payments.where((p) => now.difference(p['date']).inDays > 60 && p['status'] == 'Overdue').length;
-
+  Widget _buildQueueItem(Order order) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: NexusTheme.slate200),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 4))],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.schedule, size: 16, color: NexusTheme.slate400),
-              const SizedBox(width: 8),
-              const Text(
-                'CREDIT AGING ANALYSIS',
-                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: NexusTheme.slate600, letterSpacing: 0.5),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              _buildAgingBadge('0-30 Days', aging30, Colors.green, isMobile),
-              const SizedBox(width: 8),
-              _buildAgingBadge('31-60 Days', aging60, Colors.orange, isMobile),
-              const SizedBox(width: 8),
-              _buildAgingBadge('60+ Days', aging90, Colors.red, isMobile),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAgingBadge(String label, int count, Color color, bool isMobile) {
-    return Expanded(
-      child: Container(
-        padding: EdgeInsets.symmetric(vertical: isMobile ? 8 : 10),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: color.withOpacity(0.3)),
-        ),
-        child: Column(
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+        title: Row(
           children: [
-            Text(
-              '$count',
-              style: TextStyle(
-                fontSize: isMobile ? 18 : 20,
-                fontWeight: FontWeight.w900,
-                color: color,
+            Text(order.id, style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF10B981), fontSize: 13)),
+            const Spacer(),
+            Text('₹${NumberFormat('#,##,###').format(order.total)}', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15)),
+          ],
+        ),
+        subtitle: Padding(
+          padding: const EdgeInsets.only(top: 8.0),
+          child: Row(
+            children: [
+              Text(order.customerName, style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
+              const Spacer(),
+              _buildSmallBadge('PENDING CREDIT APPROVAL', const Color(0xFFF1F5F9), const Color(0xFF475569)),
+            ],
+          ),
+        ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ElevatedButton(
+              onPressed: () => setState(() => selectedOrder = order),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF0F172A),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: isMobile ? 8 : 9,
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
-              textAlign: TextAlign.center,
+              child: const Text('QUICK VIEW', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 10)),
             ),
           ],
         ),
@@ -379,140 +148,285 @@ class _CreditControlScreenState extends State<CreditControlScreen> {
     );
   }
 
-  Widget _buildPaymentTimeline(List<Map<String, dynamic>> payments, bool isMobile) {
+  Widget _buildSmallBadge(String text, Color bg, Color textCol) {
     return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: NexusTheme.slate200),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(6)),
+      child: Text(text, style: TextStyle(color: textCol, fontWeight: FontWeight.w900, fontSize: 8)),
+    );
+  }
+
+  Widget _buildDetailTerminal(Order order, NexusProvider provider) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isMobile = constraints.maxWidth < 900;
+
+        return SingleChildScrollView(
+          padding: EdgeInsets.all(isMobile ? 16 : 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(Icons.history, size: 16, color: NexusTheme.slate400),
-              const SizedBox(width: 8),
-              const Text(
-                'PAYMENT HISTORY',
-                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: NexusTheme.slate600, letterSpacing: 0.5),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          ...payments.take(3).map((payment) {
-            final isPaid = payment['status'] == 'Paid';
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Row(
-                children: [
-                  Container(
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      color: isPaid ? NexusTheme.emerald500 : Colors.red,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
+              // Header Card
+              Container(
+                padding: EdgeInsets.all(isMobile ? 20 : 32),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(32),
+                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 20)],
+                ),
+                child: isMobile 
+                  ? Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          DateFormat('dd MMM yyyy').format(payment['date']),
-                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                        _buildSmallBadge('PENDING CREDIT APPROVAL', const Color(0xFFEEF2FF), const Color(0xFF4F46E5)),
+                        const SizedBox(height: 16),
+                        Text(order.id, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900, letterSpacing: -1, color: Color(0xFF1E293B))),
+                        Text('${order.customerName} • Distributor', style: const TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 24),
+                        const Divider(),
+                        const SizedBox(height: 16),
+                        const Text('ORDER BOOKING VALUE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF94A3B8), letterSpacing: 1)),
+                        Text('₹${NumberFormat('#,##,###').format(order.total)}', style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w900, color: Color(0xFF1E293B))),
+                      ],
+                    )
+                  : Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildSmallBadge('PENDING CREDIT APPROVAL', const Color(0xFFEEF2FF), const Color(0xFF4F46E5)),
+                            const SizedBox(height: 12),
+                            Text(order.id, style: const TextStyle(fontSize: 42, fontWeight: FontWeight.w900, letterSpacing: -1.5, color: Color(0xFF1E293B))),
+                            Text('${order.customerName} • Distributor', style: const TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.bold)),
+                          ],
                         ),
-                        Text(
-                          payment['status'],
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: isPaid ? NexusTheme.emerald600 : Colors.red,
-                            fontWeight: FontWeight.bold,
-                          ),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            const Text('ORDER BOOKING VALUE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF94A3B8), letterSpacing: 1)),
+                            Text('₹${NumberFormat('#,##,###').format(order.total)}', style: const TextStyle(fontSize: 42, fontWeight: FontWeight.w900, color: Color(0xFF1E293B))),
+                          ],
                         ),
                       ],
                     ),
-                  ),
-                  Text(
-                    '₹${payment['amount']}',
-                    style: TextStyle(
-                      fontSize: isMobile ? 13 : 14,
-                      fontWeight: FontWeight.w900,
-                      color: isPaid ? NexusTheme.slate900 : Colors.red,
-                    ),
-                  ),
-                ],
               ),
-            );
-          }).toList(),
+              const SizedBox(height: 32),
+
+              if (isMobile) ...[
+                _buildCreditMatrixCard(isMobile),
+                const SizedBox(height: 24),
+                _buildNotesCard(isMobile),
+                const SizedBox(height: 24),
+                _buildInsightCard(isMobile),
+                const SizedBox(height: 24),
+                _buildActionButtons(isMobile),
+              ] else
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      flex: 2,
+                      child: Column(
+                        children: [
+                          _buildCreditMatrixCard(isMobile),
+                          const SizedBox(height: 32),
+                          _buildNotesCard(isMobile),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 32),
+                    Expanded(
+                      child: Column(
+                        children: [
+                          _buildInsightCard(isMobile),
+                          const SizedBox(height: 32),
+                          _buildActionButtons(isMobile),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildCreditMatrixCard(bool isMobile) {
+    return Container(
+      padding: EdgeInsets.all(isMobile ? 20 : 32),
+      decoration: BoxDecoration(color: const Color(0xFF0F172A), borderRadius: BorderRadius.circular(32)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(LucideIcons.zap, color: Color(0xFFFBBF24), size: 18),
+              const SizedBox(width: 12),
+              Expanded(child: const Text('2. Credit Exposure Matrix', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900))),
+            ],
+          ),
+          const SizedBox(height: 8),
+          const Text('FINANCIAL HEALTH REVIEW FOR CLIENT', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1)),
+          const SizedBox(height: 32),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: _buildMatrixTable(),
+          ),
         ],
       ),
     );
   }
 
-  void _approveOrder(BuildContext context, Order order, NexusProvider provider) async {
-    final success = await provider.updateOrderStatus(order.id, 'Credit Approved');
-    if (success && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              const Icon(Icons.check_circle, color: Colors.white),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text('Order ${order.id} approved!', style: const TextStyle(fontWeight: FontWeight.bold)),
-                    if (_approvalNotes.isNotEmpty)
-                      Text('Note: $_approvalNotes', style: const TextStyle(fontSize: 12)),
-                  ],
-                ),
-              ),
-            ],
+  Widget _buildNotesCard(bool isMobile) {
+    return Container(
+      padding: EdgeInsets.all(isMobile ? 20 : 32),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(32)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('INTERNAL NOTE / REJECTION REASON', style: TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.w900, fontSize: 11)),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _notesController,
+            maxLines: 4,
+            decoration: InputDecoration(
+              hintText: 'Add internal verification notes...',
+              filled: true,
+              fillColor: const Color(0xFFF8FAFC),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+            ),
           ),
-          backgroundColor: NexusTheme.emerald600,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          duration: const Duration(seconds: 3),
-        ),
-      );
-      setState(() => _approvalNotes = '');
-    }
+        ],
+      ),
+    );
   }
 
-  void _rejectOrder(BuildContext context, Order order, NexusProvider provider) async {
-    final success = await provider.updateOrderStatus(order.id, 'Rejected');
-    if (success && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
+  Widget _buildInsightCard(bool isMobile) {
+    return Container(
+      padding: EdgeInsets.all(isMobile ? 20 : 32),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(colors: [Color(0xFF059669), Color(0xFF34D399)]),
+        borderRadius: BorderRadius.circular(32),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
-              const Icon(Icons.cancel, color: Colors.white),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text('Order ${order.id} rejected!', style: const TextStyle(fontWeight: FontWeight.bold)),
-                    if (_approvalNotes.isNotEmpty)
-                      Text('Reason: $_approvalNotes', style: const TextStyle(fontSize: 12)),
-                  ],
-                ),
-              ),
+              const Icon(Icons.info_outline, color: Colors.white, size: 16),
+              const SizedBox(width: 8),
+              const Text('INTELLIGENCE INSIGHT', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1)),
             ],
           ),
-          backgroundColor: NexusTheme.rose600,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          duration: const Duration(seconds: 3),
+          const SizedBox(height: 16),
+          const Text('"Analyzing payments history... Verdict: POSITIVE. No overdue buckets above 30 days."', 
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontStyle: FontStyle.italic, fontSize: 16)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionButtons(bool isMobile) {
+    return Column(
+      children: [
+        _buildActionButton('APPROVE ORDER', const Color(0xFF059669), Icons.check_circle_outline, () => _handleAction('Credit Approved')),
+        const SizedBox(height: 16),
+        _buildActionButton('PLACE ON HOLD', const Color(0xFFF59E0B), Icons.pause_circle_outline, () => _handleAction('On Hold')),
+        const SizedBox(height: 16),
+        _buildOutlineButton('REJECT ORDER', const Color(0xFFE11D48), Icons.cancel_outlined, () => _handleAction('Rejected')),
+      ],
+    );
+  }
+
+  Widget _buildMatrixTable() {
+    return Container(
+      decoration: BoxDecoration(border: Border.all(color: const Color(0xFF334155)), borderRadius: BorderRadius.circular(16)),
+      child: Table(
+        border: TableBorder.all(color: const Color(0xFF334155), width: 1),
+        children: [
+          _buildMatrixHeaderRow(),
+          _buildMatrixDataRow(),
+        ],
+      ),
+    );
+  }
+
+  TableRow _buildMatrixHeaderRow() {
+    const headers = ['Days', 'Limit', 'Sec Chq', 'O/s Balance', 'Overdue', '0 to 7', '7 to 15', '15 to 30', '30 to 45'];
+    return TableRow(
+      children: headers.map((h) => Container(
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+        alignment: Alignment.center,
+        child: Text(h, style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w900)),
+      )).toList(),
+    );
+  }
+
+  TableRow _buildMatrixDataRow() {
+    const data = ['30 days', '₹200,000', 'N/A', '₹145,000', '₹42,000', '₹50,000', '₹20,000', '₹33,000', '₹42,000'];
+    return TableRow(
+      children: data.asMap().entries.map((entry) {
+        final isRed = entry.key >= 4; // Overdue and beyond
+        return Container(
+          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 8),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(color: isRed ? const Color(0xFFFFF1F2).withOpacity(0.05) : null),
+          child: Text(entry.value, style: TextStyle(color: isRed ? const Color(0xFFFDA4AF) : Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildActionButton(String label, Color color, IconData icon, VoidCallback onPressed) {
+    return SizedBox(
+      width: double.infinity,
+      height: 70,
+      child: ElevatedButton.icon(
+        onPressed: isSubmitting ? null : onPressed,
+        icon: Icon(icon, color: Colors.white),
+        label: Text(label, style: const TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1)),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: color,
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         ),
-      );
-      setState(() => _approvalNotes = '');
+      ),
+    );
+  }
+
+  Widget _buildOutlineButton(String label, Color color, IconData icon, VoidCallback onPressed) {
+    return SizedBox(
+      width: double.infinity,
+      height: 70,
+      child: OutlinedButton.icon(
+        onPressed: isSubmitting ? null : onPressed,
+        icon: Icon(icon, color: color),
+        label: Text(label, style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1, color: color)),
+        style: OutlinedButton.styleFrom(
+          side: BorderSide(color: color, width: 2),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        ),
+      ),
+    );
+  }
+
+  void _handleAction(String newStatus) async {
+    if (selectedOrder == null) return;
+    setState(() => isSubmitting = true);
+    final provider = Provider.of<NexusProvider>(context, listen: false);
+    final success = await provider.updateOrderStatus(selectedOrder!.id, newStatus);
+    if (success && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Mission ${selectedOrder!.id} status updated to $newStatus')));
+      setState(() {
+        selectedOrder = null;
+        isSubmitting = false;
+        _notesController.clear();
+      });
+    } else {
+      setState(() => isSubmitting = false);
     }
   }
 }

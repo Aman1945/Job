@@ -1,9 +1,9 @@
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 import 'package:flutter/material.dart';
+import '../config/api_config.dart';
 
 class SocketService {
-  static const String serverAddress = 'nexus-oms-backend.onrender.com';
-  static const String _socketUrl = 'https://$serverAddress';
+  static String get _socketUrl => ApiConfig.socketUrl;
 
   IO.Socket? _socket;
   bool _isConnected = false;

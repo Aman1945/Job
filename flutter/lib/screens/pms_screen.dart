@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../config/api_config.dart';
 
 class PMSScreen extends StatefulWidget {
   const PMSScreen({Key? key}) : super(key: key);
@@ -13,8 +14,7 @@ class PMSScreen extends StatefulWidget {
 }
 
 class _PMSScreenState extends State<PMSScreen> {
-  static const String serverAddress = 'nexus-oms-backend.onrender.com';
-  final String _baseUrl = 'https://$serverAddress/api';
+  final String _baseUrl = ApiConfig.baseUrl;
 
   bool _isLoading = true;
   Map<String, dynamic>? _pmsData;

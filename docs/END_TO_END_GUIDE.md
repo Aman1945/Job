@@ -174,105 +174,16 @@ The Flutter DevTools debugger and profiler on RMX3031 is available at: http://12
 
 ## 🎯 Complete User Journey
 
-### **Journey 1: New Order Creation (End-to-End)**
+#### **High-Fidelity SCM Flow (Ek Dum Detail):**
 
-#### **Backend Preparation:**
-1. Start backend server
-2. Verify users exist in `backend/data/users.json`
-3. Verify customers exist in `backend/data/customers.json`
-4. Verify products exist in `backend/data/products.json`
-
-#### **App Flow:**
-
-**1. Login Screen**
-- Open app
-- Enter credentials:
-  - Email: `admin@nexus.com`
-  - Password: `admin123`
-- Click "LOGIN"
-- **Backend Call:** `POST /api/login`
-- **Expected:** Navigate to Dashboard
-
-**2. Dashboard Screen**
-- View real-time stats (Live Missions, Pending Ops, Revenue)
-- **Backend Call:** `GET /api/orders`
-- **Expected:** Stats cards show correct data
-
-**3. Book Order Screen**
-- Click "1. BOOK ORDER" from dashboard
-- Fill order details:
-  - Select customer
-  - Add products
-  - Enter quantities
-  - Add delivery address
-- Click "SUBMIT ORDER"
-- **Backend Call:** `POST /api/orders`
-- **Expected:** Order created, navigate back to dashboard
-
-**4. Live Orders Screen**
-- Click "1.5 LIVE ORDERS" from dashboard
-- **Backend Call:** `GET /api/orders?status=Pending`
-- **Expected:** See newly created order in list
-- Click "TRACK MISSION LIVE" on order
-- **Expected:** Navigate to Tracking Screen with map
-
-**5. Credit Control Screen**
-- Click "2. CREDIT CONTROL" from dashboard
-- **Backend Call:** `GET /api/orders?status=Pending`
-- **Expected:** See pending orders
-- Select order, click "APPROVE"
-- **Backend Call:** `PATCH /api/orders/:id`
-- **Expected:** Order status updated to "Credit Approved"
-
-**6. Warehouse Selection Screen**
-- Click "2.5 WH ASSIGN" from dashboard
-- **Backend Call:** `GET /api/orders` (Credit Approved orders)
-- **Expected:** See approved orders
-- Select warehouse, click "ASSIGN"
-- **Backend Call:** `PATCH /api/orders/:id`
-- **Expected:** Warehouse assigned
-
-**7. Warehouse Inventory Screen**
-- Click "3. WAREHOUSE" from dashboard
-- **Backend Call:** `GET /api/products`
-- **Expected:** See product inventory
-- Update stock if needed
-- **Backend Call:** `PATCH /api/products/:id`
-
-**8. Logistics Cost Screen**
-- Click "4. LOGISTICS COST" from dashboard
-- Enter shipment details
-- **Expected:** Calculate freight cost
-- Save logistics info
-- **Backend Call:** `PATCH /api/orders/:id`
-
-**9. Invoicing Screen**
-- Click "5. INVOICING" from dashboard
-- **Backend Call:** `GET /api/orders` (Ready for invoice)
-- **Expected:** See orders ready for invoicing
-- Generate invoice
-- **Backend Call:** `PATCH /api/orders/:id`
-
-**10. Logistics Hub Screen**
-- Click "6. LOGISTICS HUB" from dashboard
-- **Backend Call:** `GET /api/orders` (Invoiced orders)
-- **Expected:** See orders ready for dispatch
-- Assign driver, set route
-- **Backend Call:** `PATCH /api/orders/:id`
-
-**11. Delivery Execution Screen**
-- Click "7. EXECUTION" from dashboard
-- **Backend Call:** `GET /api/orders` (In Transit)
-- **Expected:** See orders in delivery
-- Upload POD (Proof of Delivery)
-- **Backend Call:** `POST /api/upload/pod`
-- Mark as delivered
-- **Backend Call:** `PATCH /api/orders/:id`
-
-**12. Order Archive Screen**
-- Click "Order Archive" from utilities
-- **Backend Call:** `GET /api/orders`
-- **Expected:** See all orders including delivered ones
+1.  **Stage 1 (Booking)**: Sales records mission with 18% GST.
+2.  **Stage 2 (Finance)**: Credit Control clears financial risk.
+3.  **Stage 3 (QC Audit)**: Dheeraj performs Temperature & Packaging integrity check.
+4.  **Stage 4 (WMS Packing)**: Pranav verifies Batch Numbers and Packaging consumption.
+5.  **Stage 5 (Logistics Audit)**: Lawin calculates Freight; Sentinel checks for High-Cost alerts (>15%).
+6.  **Stage 6 (Invoicing)**: ATL Team generates Revenue lines with ERP Sync.
+7.  **Stage 7 (Hub)**: Sagar manifests missions into Regional Routes.
+8.  **Stage 8 (Execution)**: Field team captures EPOD (Signature/OTP/Photo).
 
 ---
 

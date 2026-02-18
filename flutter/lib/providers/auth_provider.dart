@@ -3,10 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../models/models.dart';
+import '../config/api_config.dart';
 
 class AuthProvider with ChangeNotifier {
-  static const String serverAddress = 'nexus-oms-backend.onrender.com';
-  final String _baseUrl = 'https://$serverAddress/api';
+  final String _baseUrl = ApiConfig.baseUrl;
   
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
   

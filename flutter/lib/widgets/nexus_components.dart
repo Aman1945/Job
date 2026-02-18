@@ -88,40 +88,42 @@ class NexusComponents {
   }
 
   // 3. Status Badge (Unified across all screens)
-  static Widget statusBadge(String status) {
-    Color color;
-    Color bgColor;
+  static Widget statusBadge(String status, {Color? color, Color? bgColor}) {
+    Color finalColor = color ?? NexusTheme.slate500;
+    Color finalBgColor = bgColor ?? NexusTheme.slate100;
     
-    switch (status) {
-      case 'Pending Credit Approval':
-      case 'Pending WH Selection':
-      case 'Pending Packing':
-        color = Colors.orange.shade700;
-        bgColor = Colors.orange.shade50;
-        break;
-      case 'Invoiced':
-      case 'Ready for Dispatch':
-      case 'Delivered':
-      case 'Packed':
-        color = NexusTheme.emerald700;
-        bgColor = NexusTheme.emerald50;
-        break;
-      case 'Out for Delivery':
-      case 'In Transit':
-        color = Colors.blue.shade700;
-        bgColor = Colors.blue.shade50;
-        break;
-      default:
-        color = NexusTheme.slate500;
-        bgColor = NexusTheme.slate100;
+    if (color == null) {
+      switch (status) {
+        case 'Pending Credit Approval':
+        case 'Pending WH Selection':
+        case 'Pending Packing':
+          finalColor = Colors.orange.shade700;
+          finalBgColor = Colors.orange.shade50;
+          break;
+        case 'Invoiced':
+        case 'Ready for Dispatch':
+        case 'Delivered':
+        case 'Packed':
+          finalColor = NexusTheme.emerald700;
+          finalBgColor = NexusTheme.emerald50;
+          break;
+        case 'Out for Delivery':
+        case 'In Transit':
+          finalColor = Colors.blue.shade700;
+          finalBgColor = Colors.blue.shade50;
+          break;
+        default:
+          finalColor = NexusTheme.slate500;
+          finalBgColor = NexusTheme.slate100;
+      }
     }
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(8)),
+      decoration: BoxDecoration(color: finalBgColor, borderRadius: BorderRadius.circular(8)),
       child: Text(
         status.toUpperCase(),
-        style: TextStyle(color: color, fontWeight: FontWeight.w900, fontSize: 8, letterSpacing: 0.5),
+        style: TextStyle(color: finalColor, fontWeight: FontWeight.w900, fontSize: 8, letterSpacing: 0.5),
       ),
     );
   }

@@ -61,9 +61,12 @@ class _BookOrderScreenState extends State<BookOrderScreen> {
     });
   }
 
-  double get _cartTotal {
+  double get _cartSubTotal {
     return cartItems.fold(0, (sum, item) => sum + ((item['price'] as num) * (item['quantity'] as num)));
   }
+
+  double get _gstTotal => _cartSubTotal * 0.18;
+  double get _cartTotal => _cartSubTotal + _gstTotal;
 
   void _submitOrder() async {
     if (selectedCustomer == null || cartItems.isEmpty) {
@@ -502,9 +505,15 @@ class _BookOrderScreenState extends State<BookOrderScreen> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('AGGREGATE VALUE', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 10, color: NexusTheme.slate400)),
+                  const Text('AGGREGATE VALUE (INC. 18% GST)', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 10, color: NexusTheme.slate400)),
                   const SizedBox(height: 4),
-                  Text('₹${NumberFormat('#,##,###').format(_cartTotal)}', style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w900, letterSpacing: -1)),
+                  Row(
+                    children: [
+                      Text('₹${NumberFormat('#,##,###').format(_cartTotal)}', style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w900, letterSpacing: -1)),
+                      const SizedBox(width: 12),
+                      Text('(GST: ₹${NumberFormat('#,##,###').format(_gstTotal)})', style: const TextStyle(fontSize: 10, color: NexusTheme.slate400, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
                 ],
               ),
               const SizedBox(height: 20),

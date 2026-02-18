@@ -7,6 +7,7 @@ import '../utils/theme.dart';
 import '../models/models.dart';
 import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
+import '../config/api_config.dart';
 
 class OrderDetailsScreen extends StatefulWidget {
   final Order order;
@@ -30,10 +31,9 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
     setState(() => _isInsightLoading = true);
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      const String serverAddress = 'nexus-oms-backend.onrender.com';
       
       final response = await http.post(
-        Uri.parse('https://$serverAddress/api/ai/credit-insight'),
+        Uri.parse('${ApiConfig.baseUrl}/ai/credit-insight'),
         headers: authProvider.authHeaders,
         body: jsonEncode({
           'customerId': widget.order.customerId,
@@ -65,6 +65,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<NexusProvider>(context);
+    final authProvider = Provider.of<AuthProvider>(context);
     final customer = provider.customers.firstWhere(
       (c) => c.id == widget.order.customerId, 
       orElse: () => Customer(id: '', name: 'Unknown', address: '', city: 'NA', status: 'Inactive')
@@ -112,6 +113,10 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
             const SizedBox(height: 24),
 
             _buildActionPanel(context, widget.order),
+            if (authProvider.currentUser?.role.label == 'Admin') ...[
+              const SizedBox(height: 24),
+              _buildAdminBypassPanel(context, widget.order),
+            ],
             const SizedBox(height: 24),
 
             _buildSectionTitle('MISSION WORKFLOW TRACE', ''),
@@ -313,6 +318,91 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
       ),
     );
   }
+
+  Widget _buildAdminBypassPanel(BuildContext context, Order order) {
+    final List<String> statuses = [
+      'Pending', 'Credit Approved', 'Pending WH Selection', 
+      'WH Assigned', 'Packed', 'Quality Checked', 
+      'Logistics Costed', 'Invoiced', 'Loaded', 'Delivered', 
+      'Rejected', 'Pending Admin Review'
+    ];
+
+    String selectedStatus = statuses.contains(order.status) ? order.status : statuses[0];
+
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: NexusTheme.slate900, 
+        borderRadius: BorderRadius.circular(32),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 15, offset: const Offset(0, 8))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.shield, color: Colors.orange, size: 20),
+              const SizedBox(width: 8),
+              const Text('ADMIN CONTROL PANEL', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 10, letterSpacing: 1.2)),
+            ],
+          ),
+          const SizedBox(height: 16),
+          const Text('Bypass current step and force status to:', style: TextStyle(color: Colors.white70, fontSize: 12)),
+          const SizedBox(height: 12),
+          StatefulBuilder(
+            builder: (context, setState) {
+              return Column(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    decoration: BoxDecoration(color: Colors.white10, borderRadius: BorderRadius.circular(12)),
+                    child: DropdownButton<String>(
+                      isExpanded: true,
+                      value: selectedStatus,
+                      dropdownColor: NexusTheme.slate900,
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                      underline: const SizedBox(),
+                      items: statuses.map((s) => DropdownMenuItem(value: s, child: Text(s.toUpperCase()))).toList(),
+                      onChanged: (val) => setState(() => selectedStatus = val!),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _buildActionButton(Icons.bolt, 'BYPASS & MOVE TO STEP', Colors.orange.shade700, () async {
+                    try {
+                      final auth = Provider.of<AuthProvider>(context, listen: false);
+                      final response = await http.patch(
+                        Uri.parse('${ApiConfig.baseUrl}/orders/${order.id}'),
+                        headers: auth.authHeaders,
+                        body: json.encode({
+                          'status': selectedStatus,
+                          'isAdminBypass': true
+                        }),
+                      );
+                      
+                      if (response.statusCode == 200 && context.mounted) {
+                        Provider.of<NexusProvider>(context, listen: false).fetchOrders();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Bypassed to $selectedStatus')),
+                        );
+                        Navigator.pop(context);
+                      }
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Error: $e')),
+                        );
+                      }
+                    }
+                  }),
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
 
   Widget _buildActionButton(IconData icon, String label, Color color, VoidCallback onTap) {
     return InkWell(
