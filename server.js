@@ -372,6 +372,33 @@ app.patch('/api/users/:id/step-access', async (req, res) => {
     }
 });
 
+// Update any user field (generic endpoint)
+app.patch('/api/users/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const updateData = { ...req.body };
+
+        // Remove sensitive fields if present
+        delete updateData.password;
+        delete updateData.id;
+
+        const user = await User.findOneAndUpdate(
+            { id },
+            { $set: updateData },
+            { new: true }
+        ).select('-password');
+
+        if (user) {
+            console.log(`👤 User updated: ${id}`, updateData);
+            return res.json(user);
+        }
+        res.status(404).json({ message: 'User not found' });
+    } catch (error) {
+        console.error('Error updating user:', error);
+        res.status(500).json({ message: 'Error updating user' });
+    }
+});
+
 // ==================== CUSTOMERS ====================
 app.get('/api/customers', async (req, res) => {
     try {

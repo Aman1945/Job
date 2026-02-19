@@ -11,6 +11,9 @@ const userSchema = new mongoose.Schema({
         enum: [
             'Admin',
             'Sales',
+            'RSM',
+            'ASM',
+            'Sales Executive',
             'Credit Control',
             'WH Manager',
             'WH House',
@@ -21,7 +24,9 @@ const userSchema = new mongoose.Schema({
             'Billing',
             'ATL Executive',
             'Hub Lead',
-            'Delivery Team'
+            'Delivery Team',
+            'Procurement',
+            'Procurement Head'
         ]
     },
     status: { type: String, default: 'Active', enum: ['Active', 'Inactive', 'Suspended'] },
@@ -72,7 +77,8 @@ const userSchema = new mongoose.Schema({
     grossMonthlySalary: { type: Number, default: 0 },
     monthlyTarget: { type: Number, default: 0 },
     monthlyQtyTarget: { type: Number, default: 0 },
-    lastLogin: { type: Date }
+    lastLogin: { type: Date },
+    managerId: { type: String, default: null }  // RSM/ASM hierarchy: ID of the reporting manager
 }, { timestamps: true });
 
 // Pre-save hook: Hash password before saving
