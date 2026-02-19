@@ -136,8 +136,8 @@ class _StepAssignmentScreenState extends State<StepAssignmentScreen> {
       userManagerMap[user.id] = user.managerId;
     }
 
-    // Zone grouping
-    final zones = ['NORTH', 'WEST', 'EAST', 'SOUTH', 'PAN INDIA'];
+    // Zone grouping — PAN INDIA excluded from tabs (those users still appear under their zone or are admin)
+    final zones = ['NORTH', 'WEST', 'EAST', 'SOUTH'];
     Map<String, List<User>> groupedUsers = {for (var z in zones) z: []};
     for (var u in _users) {
       if (u.role.label == 'Admin') continue;
@@ -145,13 +145,14 @@ class _StepAssignmentScreenState extends State<StepAssignmentScreen> {
       if (groupedUsers.containsKey(z)) {
         groupedUsers[z]!.add(u);
       } else {
-        groupedUsers[u.zone] = [u];
+        // PAN INDIA and unknown zones go into a catch-all
+        groupedUsers.putIfAbsent('OTHER', () => []).add(u);
       }
     }
-    final activeZones = zones.where((z) => (groupedUsers[z]?.isNotEmpty ?? false)).toList();
-    // selectedZone is declared HERE — outside the builder — so it never resets
+    // Also show OTHER tab if it has users
+    final allTabZones = [...zones, if ((groupedUsers['OTHER']?.isNotEmpty ?? false)) 'OTHER'];
+    final activeZones = allTabZones.where((z) => (groupedUsers[z]?.isNotEmpty ?? false)).toList();
     String selectedZone = activeZones.isNotEmpty ? activeZones[0] : '';
-    // searchQuery is also outside builder so it persists across rebuilds
     String searchQuery = '';
 
     showGeneralDialog(
@@ -194,7 +195,8 @@ class _StepAssignmentScreenState extends State<StepAssignmentScreen> {
                       insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
                       child: ConstrainedBox(
                         constraints: BoxConstraints(
-                          maxHeight: MediaQuery.of(ctx2).size.height * 0.88,
+                          maxHeight: MediaQuery.of(ctx2).size.height * 0.88
+                              - MediaQuery.of(ctx2).viewInsets.bottom,
                         ),
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
@@ -677,7 +679,7 @@ class _StepAssignmentScreenState extends State<StepAssignmentScreen> {
                           ),
                         ],
                       ),
-                    );
+                    ));
                   },
                 );
               },

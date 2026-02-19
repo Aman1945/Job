@@ -33,6 +33,7 @@ import 'pms_screen.dart';
 import 'add_product_screen.dart';
 import 'admin_user_management_screen.dart';
 import 'step_assignment_screen.dart';
+import 'team_hierarchy_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
@@ -340,6 +341,7 @@ class DashboardScreen extends StatelessWidget {
       {'l': 'User Management', 'i': Icons.manage_accounts_rounded, 's': const AdminUserManagementScreen(), 'roles': ['Admin']},
       {'l': 'Step Assignment', 'i': Icons.assignment_ind_rounded, 's': const StepAssignmentScreen(), 'roles': ['Admin']},
       {'l': 'Master Data', 'i': Icons.terminal, 's': const MasterDataScreen(), 'roles': ['Admin']},
+      {'l': 'Team Hierarchy', 'i': Icons.account_tree_rounded, 's': const TeamHierarchyScreen(), 'roles': ['Admin', 'RSM', 'ASM']},
     ];
 
     final email = user.id.toLowerCase();

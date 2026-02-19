@@ -36,7 +36,7 @@ class NexusProvider with ChangeNotifier {
   List<Order> getVisibleOrdersFor(User? user) {
     if (user == null || user.role == UserRole.admin) return _orders;
     if (user.role == UserRole.rsm || user.role == UserRole.asm) {
-      final teamIds = _getTeamMemberIds(user);
+      final teamIds = getTeamMemberIds(user);
       return _orders.where((o) => teamIds.contains(o.salespersonId)).toList();
     }
     // Sales / others — only own orders
@@ -50,11 +50,11 @@ class NexusProvider with ChangeNotifier {
     return _customers;
   }
 
-  /// Recursively collects IDs of [manager] + all team members below
-  Set<String> _getTeamMemberIds(User manager) {
+  /// Recursively collects IDs of [manager] + all team members below (public for hierarchy screen)
+  Set<String> getTeamMemberIds(User manager) {
     final Set<String> ids = {manager.id};
     for (final u in _users.where((u) => u.managerId == manager.id)) {
-      ids.addAll(_getTeamMemberIds(u));
+      ids.addAll(getTeamMemberIds(u));
     }
     return ids;
   }
