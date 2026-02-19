@@ -103,7 +103,7 @@ class TeamHierarchyScreen extends StatefulWidget {
 }
 
 class _TeamHierarchyScreenState extends State<TeamHierarchyScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late TabController _tabController;
   final List<String> _zones = ['ALL', 'NORTH', 'WEST', 'EAST', 'SOUTH', 'PAN INDIA'];
 
@@ -118,18 +118,22 @@ class _TeamHierarchyScreenState extends State<TeamHierarchyScreen>
 
   // Main page tabs
   late TabController _pageTabCtrl;
+  // Workflow zone tabs
+  late TabController _workflowZoneCtrl;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: _zones.length, vsync: this);
     _pageTabCtrl = TabController(length: 2, vsync: this);
+    _workflowZoneCtrl = TabController(length: _zones.length, vsync: this);
   }
 
   @override
   void dispose() {
     _tabController.dispose();
     _pageTabCtrl.dispose();
+    _workflowZoneCtrl.dispose();
     super.dispose();
   }
 
@@ -175,13 +179,7 @@ class _TeamHierarchyScreenState extends State<TeamHierarchyScreen>
     return m[r] ?? const Color(0xFF64748B);
   }
 
-  /// Returns true if ANY user has full/view access to [stepLabel]
-  bool _isStepAssigned(List<User> allUsers, String stepLabel) {
-    return allUsers.any((u) {
-      final access = u.stepAccess[stepLabel] ?? 'no';
-      return access == 'full' || access == 'view';
-    });
-  }
+
 
   // ── BUILD ────────────────────────────────────────────────────
 
@@ -363,22 +361,64 @@ class _TeamHierarchyScreenState extends State<TeamHierarchyScreen>
     );
   }
 
-  // ── TAB 2: Workflow Departments ──────────────────────────────
+  // ── TAB 2: Workflow Departments (zone-filtered) ─────────────
 
   Widget _buildWorkflowTab(List<User> allUsers) {
-    return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(16, 20, 16, 32),
-      itemCount: _departments.length,
-      itemBuilder: (_, i) {
-        final dept = _departments[i];
-        final isLast = i == _departments.length - 1;
-        return Column(
-          children: [
-            _buildDeptCard(dept, allUsers),
-            if (!isLast) _buildArrow(dept.pushesTo),
-          ],
-        );
-      },
+    return Column(
+      children: [
+        // Zone filter tabs
+        Container(
+          color: const Color(0xFF0F172A),
+          child: TabBar(
+            controller: _workflowZoneCtrl,
+            isScrollable: true,
+            tabAlignment: TabAlignment.start,
+            indicatorColor: Colors.white,
+            indicatorWeight: 2,
+            labelStyle: const TextStyle(
+                fontFamily: 'Montserrat', fontWeight: FontWeight.w800, fontSize: 10, letterSpacing: 0.5),
+            unselectedLabelStyle: const TextStyle(
+                fontFamily: 'Montserrat', fontWeight: FontWeight.w400, fontSize: 10),
+            tabs: _zones.map((z) {
+              final color = _zoneColors[z] ?? Colors.white;
+              return Tab(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                        width: 7, height: 7,
+                        margin: const EdgeInsets.only(right: 5),
+                        decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+                    Text(z),
+                  ],
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+        // Zone tab content
+        Expanded(
+          child: TabBarView(
+            controller: _workflowZoneCtrl,
+            children: _zones.map((selectedZone) {
+              return ListView.builder(
+                padding: const EdgeInsets.fromLTRB(16, 20, 16, 32),
+                itemCount: _departments.length,
+                itemBuilder: (_, i) {
+                  final dept = _departments[i];
+                  final isLast = i == _departments.length - 1;
+                  return Column(
+                    children: [
+                      _buildDeptCard(dept, allUsers, selectedZone),
+                      if (!isLast) _buildArrow(dept.pushesTo),
+                    ],
+                  );
+                },
+              );
+            }).toList(),
+          ),
+        ),
+      ],
     );
   }
 
@@ -398,14 +438,28 @@ class _TeamHierarchyScreenState extends State<TeamHierarchyScreen>
     );
   }
 
-  Widget _buildDeptCard(_Dept dept, List<User> allUsers) {
-    // Get users for this department
-    final deptUsers = allUsers.where((u) => dept.roles.contains(u.role)).toList();
+  Widget _buildDeptCard(_Dept dept, List<User> allUsers, String selectedZone) {
+    // Filter users by: role in dept + zone match + admin has assigned them (full/view)
+    final zoneUsers = allUsers.where((u) {
+      final zoneMatch = selectedZone == 'ALL' || u.zone.toUpperCase() == selectedZone;
+      return dept.roles.contains(u.role) && zoneMatch;
+    }).toList();
 
-    // Red warning: no user has access to this step
-    final assigned = _isStepAssigned(allUsers, dept.stepLabel);
-    final borderColor = assigned ? dept.color : const Color(0xFFDC2626);
-    final isUnassigned = !assigned;
+    // Assigned = has full/view stepAccess for this step
+    final assignedUsers = zoneUsers.where((u) {
+      final access = u.stepAccess[dept.stepLabel] ?? 'no';
+      return access == 'full' || access == 'view';
+    }).toList();
+
+    // Unassigned role users (has role but no stepAccess set yet)
+    final unassignedUsers = zoneUsers.where((u) {
+      final access = u.stepAccess[dept.stepLabel] ?? 'no';
+      return access == 'no';
+    }).toList();
+
+    // Red card if NO user in this zone has access to the step
+    final isUnassigned = assignedUsers.isEmpty;
+    final borderColor = isUnassigned ? const Color(0xFFDC2626) : dept.color;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
@@ -486,33 +540,59 @@ class _TeamHierarchyScreenState extends State<TeamHierarchyScreen>
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(color: dept.color.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
-                    child: Text('${deptUsers.length} USER${deptUsers.length != 1 ? 'S' : ''}',
+                    child: Text('${(assignedUsers.length + unassignedUsers.length)} USER${(assignedUsers.length + unassignedUsers.length) != 1 ? 'S' : ''}',
                         style: TextStyle(fontFamily: 'Montserrat', fontSize: 7, fontWeight: FontWeight.w900, color: dept.color)),
                   ),
               ],
             ),
           ),
 
-          // ── Users ──
-          if (deptUsers.isEmpty)
+          // ── Assigned Users ──
+          if (assignedUsers.isEmpty && unassignedUsers.isEmpty)
             Padding(
               padding: const EdgeInsets.all(16),
               child: Row(
                 children: [
                   Icon(Icons.person_off_rounded, size: 16, color: Colors.red.shade300),
                   const SizedBox(width: 8),
-                  Text('No users with this role in database',
-                      style: TextStyle(fontFamily: 'Montserrat', fontSize: 11, color: Colors.red.shade300, fontWeight: FontWeight.w600)),
+                  Text(selectedZone == 'ALL'
+                      ? 'No users with this role in database'
+                      : 'No users with this role in $selectedZone zone',
+                      style: TextStyle(fontFamily: 'Montserrat', fontSize: 11,
+                          color: Colors.red.shade300, fontWeight: FontWeight.w600)),
                 ],
               ),
             )
           else
             Padding(
               padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
-              child: Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: deptUsers.map((u) => _buildUserChip(u, dept)).toList(),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Assigned (green/normal)
+                  if (assignedUsers.isNotEmpty) ...[
+                    Text('ASSIGNED',
+                        style: TextStyle(fontFamily: 'Montserrat', fontSize: 8,
+                            fontWeight: FontWeight.w900, color: dept.color)),
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: 8, runSpacing: 8,
+                      children: assignedUsers.map((u) => _buildUserChip(u, dept, true)).toList(),
+                    ),
+                  ],
+                  // Unassigned role users (red warning)
+                  if (unassignedUsers.isNotEmpty) ...[
+                    SizedBox(height: assignedUsers.isNotEmpty ? 12 : 0),
+                    Text('NOT YET ASSIGNED',
+                        style: TextStyle(fontFamily: 'Montserrat', fontSize: 8,
+                            fontWeight: FontWeight.w900, color: Colors.red.shade400)),
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: 8, runSpacing: 8,
+                      children: unassignedUsers.map((u) => _buildUserChip(u, dept, false)).toList(),
+                    ),
+                  ],
+                ],
               ),
             ),
 
@@ -541,10 +621,8 @@ class _TeamHierarchyScreenState extends State<TeamHierarchyScreen>
     );
   }
 
-  Widget _buildUserChip(User user, _Dept dept) {
-    // WH users show location as warehouse tag
+  Widget _buildUserChip(User user, _Dept dept, bool hasAccess) {
     final isWH = dept.roles.contains(UserRole.whManager) || dept.roles.contains(UserRole.warehouse);
-    final hasAccess = (user.stepAccess[dept.stepLabel] ?? 'no') != 'no';
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
