@@ -399,6 +399,29 @@ app.patch('/api/users/:id', async (req, res) => {
     }
 });
 
+// Set manager for hierarchy (RSM > ASM > Sales)
+app.patch('/api/users/:id/manager', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { managerId } = req.body; // null = remove manager
+
+        const user = await User.findOneAndUpdate(
+            { id },
+            { $set: { managerId: managerId || null } },
+            { new: true }
+        ).select('-password');
+
+        if (user) {
+            console.log(`🏢 Manager updated: ${id} now reports to ${managerId || 'no one'}`);
+            return res.json(user);
+        }
+        res.status(404).json({ message: 'User not found' });
+    } catch (error) {
+        console.error('Error updating manager:', error);
+        res.status(500).json({ message: 'Error updating manager' });
+    }
+});
+
 // ==================== CUSTOMERS ====================
 app.get('/api/customers', async (req, res) => {
     try {

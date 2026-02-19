@@ -68,10 +68,7 @@ const userSchema = new mongoose.Schema({
     },
     stepAccess: {
         type: Map,
-        of: {
-            type: String,
-            enum: ['full', 'view', 'no']
-        },
+        of: String,   // 'full' | 'view' | 'no' — validated in app layer
         default: {}
     },
     grossMonthlySalary: { type: Number, default: 0 },
