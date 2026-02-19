@@ -121,7 +121,13 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
                         const SizedBox(height: 4),
                         Row(
                           children: [
-                            Text(user.id, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                            Flexible(
+                              child: Text(
+                                user.id,
+                                style: const TextStyle(fontSize: 11, color: Colors.grey),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
                             const SizedBox(width: 8),
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),

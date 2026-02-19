@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/nexus_provider.dart';
+import '../providers/auth_provider.dart';
 import '../utils/theme.dart';
 import '../models/models.dart';
 import 'package:lucide_icons/lucide_icons.dart';
@@ -19,6 +20,14 @@ class _BookOrderScreenState extends State<BookOrderScreen> {
   List<Map<String, dynamic>> cartItems = [];
   final _remarksController = TextEditingController();
 
+  // Zone & Hierarchy state
+  String _selectedZone = 'PAN INDIA';
+  User? _selectedRSM;
+  User? _selectedASM;
+  User? _selectedSE;
+
+  static const List<String> _zones = ['PAN INDIA', 'NORTH', 'SOUTH', 'EAST', 'WEST'];
+
   @override
   void initState() {
     super.initState();
@@ -26,6 +35,7 @@ class _BookOrderScreenState extends State<BookOrderScreen> {
       final provider = Provider.of<NexusProvider>(context, listen: false);
       provider.fetchProducts();
       provider.fetchCustomers();
+      provider.fetchUsers();
     });
   }
 
@@ -50,7 +60,7 @@ class _BookOrderScreenState extends State<BookOrderScreen> {
         'skuCode': product.skuCode,
         'quantity': 1,
         'price': product.price,
-        'prevRate': 0.0, // Example placeholder
+        'prevRate': 0.0,
       };
     });
   }
@@ -89,11 +99,57 @@ class _BookOrderScreenState extends State<BookOrderScreen> {
     }
   }
 
+  // ── Helpers ──────────────────────────────────────────────────────────────
+
+  /// Deduplicated customers filtered by zone
+  List<Customer> _filteredCustomers(List<Customer> all) {
+    // Deduplicate by ID first (fixes assertion error)
+    final seen = <String>{};
+    final unique = all.where((c) => seen.add(c.id)).toList();
+
+    if (_selectedZone == 'PAN INDIA') return unique;
+
+    // Filter by location matching zone keyword
+    return unique.where((c) {
+      final loc = (c.location ?? c.city ?? '').toUpperCase();
+      return loc.contains(_selectedZone);
+    }).toList();
+  }
+
+  /// Users filtered by zone (non-admin)
+  List<User> _zoneUsers(List<User> users) {
+    return users.where((u) {
+      if (u.role == UserRole.admin) return false;
+      if (_selectedZone == 'PAN INDIA') return true;
+      return u.zone.toUpperCase() == _selectedZone;
+    }).toList();
+  }
+
+  /// RSM list from zone users
+  List<User> _rsmList(List<User> users) => _zoneUsers(users)
+      .where((u) => u.role == UserRole.rsm || u.role == UserRole.sales)
+      .toList();
+
+  /// ASM list
+  List<User> _asmList(List<User> users) => _zoneUsers(users)
+      .where((u) => u.role == UserRole.asm)
+      .toList();
+
+  /// Sales Executive list
+  List<User> _seList(List<User> users) => _zoneUsers(users)
+      .where((u) => u.role == UserRole.salesExecutive ||
+                    u.role.label.toLowerCase().contains('executive'))
+      .toList();
+
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<NexusProvider>(context);
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final width = MediaQuery.of(context).size.width;
     final bool isMobile = width < 768;
+    final bool isAdmin = authProvider.currentUser?.role == UserRole.admin;
+
+    final filteredCustomers = _filteredCustomers(provider.customers);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
@@ -107,13 +163,27 @@ class _BookOrderScreenState extends State<BookOrderScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 1. Customer Selection Section
+            // ── ZONE SELECTION ──────────────────────────────────────────
+            _buildSectionHeader('ZONE SELECTION'),
+            const SizedBox(height: 12),
+            _buildZoneChips(),
+            const SizedBox(height: 20),
+
+            // ── SALES HIERARCHY (Admin only) ─────────────────────────────
+            if (isAdmin) ...[
+              _buildSectionHeader('ASSIGN SALES TEAM'),
+              const SizedBox(height: 12),
+              _buildHierarchyPanel(provider.users, isMobile),
+              const SizedBox(height: 20),
+            ],
+
+            // ── CUSTOMER SELECTION ───────────────────────────────────────
             _buildSectionHeader('CUSTOMER SELECTION'),
             const SizedBox(height: 16),
-            _buildCustomerDropdown(provider.customers),
+            _buildCustomerDropdown(filteredCustomers),
             const SizedBox(height: 32),
 
-            // 2. SKU Selection & Pricing Hub
+            // ── SKU Selection & Pricing Hub ──────────────────────────────
             Container(
               padding: EdgeInsets.all(isMobile ? 16 : 32),
               decoration: BoxDecoration(
@@ -176,14 +246,14 @@ class _BookOrderScreenState extends State<BookOrderScreen> {
             ),
             const SizedBox(height: 32),
 
-            // 3. Documentation & Instructions
+            // ── Documentation & Instructions ─────────────────────────────
             _buildResponsiveLayout(isMobile, [
               _buildDocumentationUpload(),
               _buildRemarksField(),
             ]),
             const SizedBox(height: 48),
 
-            // 4. Footer Aggregate & Commit
+            // ── Footer ───────────────────────────────────────────────────
             _buildFooter(isMobile),
             const SizedBox(height: 40),
           ],
@@ -191,6 +261,255 @@ class _BookOrderScreenState extends State<BookOrderScreen> {
       ),
     );
   }
+
+  // ── Zone Chips ────────────────────────────────────────────────────────────
+
+  Widget _buildZoneChips() {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: _zones.map((zone) {
+          final isSelected = zone == _selectedZone;
+          return GestureDetector(
+            onTap: () => setState(() {
+              _selectedZone = zone;
+              _selectedRSM = null;
+              _selectedASM = null;
+              _selectedSE = null;
+              selectedCustomer = null;
+            }),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOut,
+              margin: const EdgeInsets.only(right: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+              decoration: BoxDecoration(
+                color: isSelected ? const Color(0xFF0F172A) : Colors.white,
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                  color: isSelected ? const Color(0xFF0F172A) : const Color(0xFFE2E8F0),
+                  width: 1.5,
+                ),
+                boxShadow: isSelected
+                    ? [BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 8, offset: const Offset(0, 3))]
+                    : [],
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    zone == 'PAN INDIA' ? Icons.public : Icons.location_on_outlined,
+                    size: 13,
+                    color: isSelected ? Colors.white : const Color(0xFF64748B),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    zone,
+                    style: TextStyle(
+                      fontFamily: 'Montserrat',
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      color: isSelected ? Colors.white : const Color(0xFF64748B),
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  // ── Hierarchy Panel ───────────────────────────────────────────────────────
+
+  Widget _buildHierarchyPanel(List<User> users, bool isMobile) {
+    final rsmList = _rsmList(users);
+    final asmList = _asmList(users);
+    final seList = _seList(users);
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 12)],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: NexusTheme.indigo600.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(Icons.account_tree_outlined, size: 16, color: NexusTheme.indigo600),
+              ),
+              const SizedBox(width: 10),
+              const Text(
+                'SALES HIERARCHY',
+                style: TextStyle(
+                  fontFamily: 'Montserrat',
+                  fontSize: 11,
+                  fontWeight: FontWeight.w900,
+                  color: Color(0xFF0F172A),
+                  letterSpacing: 0.8,
+                ),
+              ),
+              const Spacer(),
+              if (_selectedRSM != null || _selectedASM != null || _selectedSE != null)
+                GestureDetector(
+                  onTap: () => setState(() {
+                    _selectedRSM = null;
+                    _selectedASM = null;
+                    _selectedSE = null;
+                  }),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text('CLEAR', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: Colors.red.shade400)),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          isMobile
+              ? Column(
+                  children: [
+                    _buildHierarchyDropdown('RSM', rsmList, _selectedRSM, (u) => setState(() { _selectedRSM = u; _selectedASM = null; _selectedSE = null; })),
+                    const SizedBox(height: 12),
+                    _buildHierarchyDropdown('ASM', asmList, _selectedASM, (u) => setState(() { _selectedASM = u; _selectedSE = null; })),
+                    const SizedBox(height: 12),
+                    _buildHierarchyDropdown('SALES EXECUTIVE', seList, _selectedSE, (u) => setState(() => _selectedSE = u)),
+                  ],
+                )
+              : Row(
+                  children: [
+                    Expanded(child: _buildHierarchyDropdown('RSM', rsmList, _selectedRSM, (u) => setState(() { _selectedRSM = u; _selectedASM = null; _selectedSE = null; }))),
+                    const SizedBox(width: 12),
+                    const Icon(Icons.chevron_right, color: Color(0xFFCBD5E1), size: 20),
+                    const SizedBox(width: 12),
+                    Expanded(child: _buildHierarchyDropdown('ASM', asmList, _selectedASM, (u) => setState(() { _selectedASM = u; _selectedSE = null; }))),
+                    const SizedBox(width: 12),
+                    const Icon(Icons.chevron_right, color: Color(0xFFCBD5E1), size: 20),
+                    const SizedBox(width: 12),
+                    Expanded(child: _buildHierarchyDropdown('SALES EXECUTIVE', seList, _selectedSE, (u) => setState(() => _selectedSE = u))),
+                  ],
+                ),
+          // Selected team summary
+          if (_selectedRSM != null || _selectedASM != null || _selectedSE != null) ...[
+            const SizedBox(height: 16),
+            const Divider(height: 1, color: Color(0xFFF1F5F9)),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 6,
+              children: [
+                if (_selectedRSM != null) _buildAssignedChip('RSM', _selectedRSM!.name, const Color(0xFF7C3AED)),
+                if (_selectedASM != null) _buildAssignedChip('ASM', _selectedASM!.name, NexusTheme.indigo600),
+                if (_selectedSE != null) _buildAssignedChip('SE', _selectedSE!.name, const Color(0xFF059669)),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHierarchyDropdown(String label, List<User> users, User? selected, ValueChanged<User?> onChanged) {
+    // Deduplicate users by id
+    final seen = <String>{};
+    final unique = users.where((u) => seen.add(u.id)).toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontFamily: 'Montserrat',
+            fontSize: 9,
+            fontWeight: FontWeight.w900,
+            color: Color(0xFF94A3B8),
+            letterSpacing: 1,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Container(
+          decoration: BoxDecoration(
+            color: const Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: selected != null ? NexusTheme.indigo600.withOpacity(0.4) : const Color(0xFFE2E8F0)),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton2<User>(
+              isExpanded: true,
+              hint: Text(
+                unique.isEmpty ? 'No ${label}s in zone' : 'Select $label...',
+                style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8), fontWeight: FontWeight.w600),
+              ),
+              items: unique.map((u) => DropdownMenuItem<User>(
+                value: u,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(u.name, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF0F172A))),
+                    Text(u.zone, style: const TextStyle(fontSize: 9, color: Color(0xFF94A3B8), fontWeight: FontWeight.w500)),
+                  ],
+                ),
+              )).toList(),
+              value: selected,
+              onChanged: unique.isEmpty ? null : onChanged,
+              buttonStyleData: ButtonStyleData(
+                height: 48,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(borderRadius: BorderRadius.circular(12)),
+              ),
+              dropdownStyleData: DropdownStyleData(
+                maxHeight: 250,
+                decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), color: Colors.white),
+              ),
+              iconStyleData: const IconStyleData(
+                icon: Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFF94A3B8), size: 18),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAssignedChip(String role, String name, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withOpacity(0.2)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(width: 6, height: 6, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+          const SizedBox(width: 6),
+          Text(
+            '$role: $name',
+            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: color),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Section Headers ───────────────────────────────────────────────────────
 
   Widget _buildSectionHeader(String title) {
     return Row(
@@ -219,7 +538,16 @@ class _BookOrderScreenState extends State<BookOrderScreen> {
     );
   }
 
+  // ── Customer Dropdown (deduplicated + zone-filtered) ──────────────────────
+
   Widget _buildCustomerDropdown(List<Customer> customers) {
+    // Ensure selectedCustomer is still in the filtered list; if not, clear it
+    if (selectedCustomer != null && !customers.any((c) => c.id == selectedCustomer!.id)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() => selectedCustomer = null);
+      });
+    }
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -230,13 +558,26 @@ class _BookOrderScreenState extends State<BookOrderScreen> {
       child: DropdownButtonHideUnderline(
         child: DropdownButton2<Customer>(
           isExpanded: true,
-          hint: const Text('Search Organization Client Base...', style: TextStyle(fontSize: 14, color: NexusTheme.slate400, fontWeight: FontWeight.bold)),
+          hint: Text(
+            customers.isEmpty
+                ? 'No customers in $_selectedZone zone'
+                : 'Search Organization Client Base...',
+            style: const TextStyle(fontSize: 14, color: NexusTheme.slate400, fontWeight: FontWeight.bold),
+          ),
           items: customers.map((Customer customer) => DropdownMenuItem<Customer>(
             value: customer,
-            child: Text(customer.name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(customer.name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                if (customer.location != null)
+                  Text(customer.location!, style: const TextStyle(fontSize: 10, color: NexusTheme.slate400)),
+              ],
+            ),
           )).toList(),
-          value: selectedCustomer,
-          onChanged: (val) => setState(() => selectedCustomer = val),
+          value: customers.any((c) => c.id == selectedCustomer?.id) ? selectedCustomer : null,
+          onChanged: customers.isEmpty ? null : (val) => setState(() => selectedCustomer = val),
           buttonStyleData: ButtonStyleData(
             height: 64,
             padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -247,10 +588,32 @@ class _BookOrderScreenState extends State<BookOrderScreen> {
             decoration: BoxDecoration(borderRadius: BorderRadius.circular(24), color: Colors.white),
             offset: const Offset(0, -4),
           ),
+          dropdownSearchData: DropdownSearchData(
+            searchController: TextEditingController(),
+            searchInnerWidgetHeight: 50,
+            searchInnerWidget: Container(
+              height: 50,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: TextFormField(
+                decoration: InputDecoration(
+                  isDense: true,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  hintText: 'Search customer...',
+                  hintStyle: const TextStyle(fontSize: 12),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+              ),
+            ),
+            searchMatchFn: (item, searchValue) {
+              return item.value!.name.toLowerCase().contains(searchValue.toLowerCase());
+            },
+          ),
         ),
       ),
     );
   }
+
+  // ── Table ─────────────────────────────────────────────────────────────────
 
   Widget _buildTableHeader() {
     return Padding(
@@ -263,7 +626,7 @@ class _BookOrderScreenState extends State<BookOrderScreen> {
           Expanded(flex: 1, child: Text('PREV. RATE', style: _tableHeaderStyle)),
           Expanded(flex: 1, child: Text('QTY', style: _tableHeaderStyle)),
           Expanded(flex: 1, child: Text('FINAL RATE', style: _tableHeaderStyle, textAlign: TextAlign.center)),
-          const SizedBox(width: 48), // Space for delete icon
+          const SizedBox(width: 48),
         ],
       ),
     );
@@ -330,11 +693,15 @@ class _BookOrderScreenState extends State<BookOrderScreen> {
   }
 
   Widget _buildSKUDropdown(int index, Map<String, dynamic> item, List<Product> products) {
+    // Deduplicate products by id
+    final seen = <String>{};
+    final unique = products.where((p) => seen.add(p.id)).toList();
+
     return DropdownButtonHideUnderline(
       child: DropdownButton2<Product>(
         isExpanded: true,
         hint: Text(item['productName'], style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: NexusTheme.slate800)),
-        items: products.map((Product p) => DropdownMenuItem<Product>(
+        items: unique.map((Product p) => DropdownMenuItem<Product>(
           value: p,
           child: Text('${p.skuCode} - ${p.name}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
         )).toList(),
@@ -373,26 +740,18 @@ class _BookOrderScreenState extends State<BookOrderScreen> {
             constraints: const BoxConstraints(),
             icon: const Icon(Icons.remove, color: Colors.white, size: 16),
             onPressed: () {
-              if (qty > 1) {
-                setState(() => cartItems[index]['quantity'] = qty - 1);
-              }
+              if (qty > 1) setState(() => cartItems[index]['quantity'] = qty - 1);
             },
           ),
           SizedBox(
             width: 30,
-            child: Text(
-              qty.toString(),
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
-            ),
+            child: Text(qty.toString(), textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
           ),
           IconButton(
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(),
             icon: const Icon(Icons.add, color: Colors.white, size: 16),
-            onPressed: () {
-              setState(() => cartItems[index]['quantity'] = qty + 1);
-            },
+            onPressed: () => setState(() => cartItems[index]['quantity'] = qty + 1),
           ),
         ],
       ),
@@ -447,7 +806,7 @@ class _BookOrderScreenState extends State<BookOrderScreen> {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: NexusTheme.slate200, style: BorderStyle.solid), // Should be dashed in reality
+            border: Border.all(color: NexusTheme.slate200, style: BorderStyle.solid),
           ),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,

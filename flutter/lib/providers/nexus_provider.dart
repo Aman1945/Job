@@ -31,6 +31,35 @@ class NexusProvider with ChangeNotifier {
   List<ProcurementItem> get procurementItems => _procurementItems;
   bool get isLoading => _isLoading;
 
+  /// Returns orders visible to [user] based on sales hierarchy:
+  /// Admin → all | RSM → team (ASM + their Sales) | ASM → their Sales | Sales → own
+  List<Order> getVisibleOrdersFor(User? user) {
+    if (user == null || user.role == UserRole.admin) return _orders;
+    if (user.role == UserRole.rsm || user.role == UserRole.asm) {
+      final teamIds = _getTeamMemberIds(user);
+      return _orders.where((o) => teamIds.contains(o.salespersonId)).toList();
+    }
+    // Sales / others — only own orders
+    return _orders.where((o) => o.salespersonId == user.id).toList();
+  }
+
+  /// Returns customers visible to [user] — RSM/ASM see all; reserved for future salespersonId linking
+  List<Customer> getVisibleCustomersFor(User? user) {
+    if (user == null || user.role == UserRole.admin) return _customers;
+    // Customers currently don't have salespersonId; RSM/ASM see all customers in their zone
+    return _customers;
+  }
+
+  /// Recursively collects IDs of [manager] + all team members below
+  Set<String> _getTeamMemberIds(User manager) {
+    final Set<String> ids = {manager.id};
+    for (final u in _users.where((u) => u.managerId == manager.id)) {
+      ids.addAll(_getTeamMemberIds(u));
+    }
+    return ids;
+  }
+
+
   NexusProvider() {
     // Initial fetch
     _initialize();
@@ -666,5 +695,41 @@ class NexusProvider with ChangeNotifier {
       fileName: "Customer_Master_Template.xlsx",
     );
   }
+
+  Future<bool> importProducts(String filePath) async {
+    _isLoading = true;
+    notifyListeners();
+    try {
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('$_baseUrl/products/bulk-import'),
+      );
+      request.files.add(await http.MultipartFile.fromPath('file', filePath));
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+      if (response.statusCode == 200) {
+        await fetchProducts();
+        return true;
+      } else {
+        debugPrint('Product import error: ${response.statusCode} - ${response.body}');
+        return false;
+      }
+    } catch (e) {
+      debugPrint('Error importing products: $e');
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> downloadProductTemplate() async {
+    final url = '$_baseUrl/products/import-template';
+    await DownloaderService().downloadFile(
+      url: url,
+      fileName: "Material_Master_Template.xlsx",
+    );
+  }
 }
+
 

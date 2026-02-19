@@ -115,54 +115,110 @@ class _MasterDataScreenState extends State<MasterDataScreen> {
                           isPrimary: true,
                           fullWidth: true,
                         ),
-                         const SizedBox(height: 12),
-                         // Download Format - full width, prominent
-                         GestureDetector(
-                           onTap: () async {
-                             ScaffoldMessenger.of(context).showSnackBar(
-                               const SnackBar(
-                                 content: Text('📥 Download starting...'),
-                                 backgroundColor: NexusTheme.indigo500,
-                                 behavior: SnackBarBehavior.floating,
-                               ),
-                             );
-                             await provider.downloadCustomerTemplate();
-                           },
-                           child: Container(
-                             width: double.infinity,
-                             padding: const EdgeInsets.symmetric(vertical: 14),
-                             decoration: BoxDecoration(
-                               color: Colors.white,
-                               borderRadius: BorderRadius.circular(14),
-                               border: Border.all(color: const Color(0xFF6366F1), width: 1.5),
-                             ),
-                             child: const Row(
-                               mainAxisAlignment: MainAxisAlignment.center,
-                               children: [
-                                 Icon(Icons.description_outlined, size: 16, color: Color(0xFF6366F1)),
-                                 SizedBox(width: 8),
-                                 Text(
-                                   'DOWNLOAD EXCEL FORMAT',
-                                   style: TextStyle(
-                                     fontFamily: 'Montserrat',
-                                     fontSize: 11,
-                                     fontWeight: FontWeight.w800,
-                                     color: Color(0xFF6366F1),
-                                     letterSpacing: 0.5,
-                                   ),
-                                 ),
-                               ],
-                             ),
-                           ),
-                         ),
-                         const SizedBox(height: 12),
-                         _buildActionButton(
-                           icon: Icons.download_rounded,
-                           label: 'EXPORT EXCEL',
-                           onTap: () => _exportCustomersToExcel(context),
-                           isPrimary: false,
-                           fullWidth: true,
-                         ),
+                        const SizedBox(height: 12),
+                        GestureDetector(
+                          onTap: () async {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('📥 Download starting...'),
+                                backgroundColor: NexusTheme.indigo500,
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                            await provider.downloadCustomerTemplate();
+                          },
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(color: const Color(0xFF6366F1), width: 1.5),
+                            ),
+                            child: const Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.description_outlined, size: 16, color: Color(0xFF6366F1)),
+                                SizedBox(width: 8),
+                                Text(
+                                  'DOWNLOAD EXCEL FORMAT',
+                                  style: TextStyle(
+                                    fontFamily: 'Montserrat',
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w800,
+                                    color: Color(0xFF6366F1),
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        _buildActionButton(
+                          icon: Icons.download_rounded,
+                          label: 'EXPORT EXCEL',
+                          onTap: () => _exportCustomersToExcel(context),
+                          isPrimary: false,
+                          fullWidth: true,
+                        ),
+                      ],
+                      if (_selectedTab == 'MATERIAL MASTER') ...[
+                        const SizedBox(height: 12),
+                        _buildActionButton(
+                          icon: Icons.upload_file,
+                          label: 'IMPORT EXCEL DATA',
+                          onTap: () => _handleProductBulkImport(context),
+                          isPrimary: true,
+                          fullWidth: true,
+                        ),
+                        const SizedBox(height: 12),
+                        GestureDetector(
+                          onTap: () async {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('📥 Download starting...'),
+                                backgroundColor: NexusTheme.indigo500,
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                            await provider.downloadProductTemplate();
+                          },
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(color: const Color(0xFF6366F1), width: 1.5),
+                            ),
+                            child: const Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.description_outlined, size: 16, color: Color(0xFF6366F1)),
+                                SizedBox(width: 8),
+                                Text(
+                                  'DOWNLOAD EXCEL FORMAT',
+                                  style: TextStyle(
+                                    fontFamily: 'Montserrat',
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w800,
+                                    color: Color(0xFF6366F1),
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        _buildActionButton(
+                          icon: Icons.download_rounded,
+                          label: 'EXPORT EXCEL',
+                          onTap: () => _exportProductsToExcel(context),
+                          isPrimary: false,
+                          fullWidth: true,
+                        ),
                       ],
                     ],
                   ),
@@ -1196,6 +1252,99 @@ class _MasterDataScreenState extends State<MasterDataScreen> {
       } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Bulk import failed. Please check the file format.'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  Future<void> _handleProductBulkImport(BuildContext context) async {
+    final provider = Provider.of<NexusProvider>(context, listen: false);
+    
+    FilePickerResult? result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['xlsx'],
+    );
+
+    if (result != null && result.files.single.path != null) {
+      setState(() => _isLoading = true);
+      final success = await provider.importProducts(result.files.single.path!);
+      setState(() => _isLoading = false);
+      
+      if (success && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Bulk import completed successfully!'), backgroundColor: Colors.green),
+        );
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Bulk import failed. Please check the file format.'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  Future<void> _exportProductsToExcel(BuildContext context) async {
+    final provider = Provider.of<NexusProvider>(context, listen: false);
+    final products = provider.products;
+    if (products.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No product data to export'), backgroundColor: Colors.orange),
+      );
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('📊 Preparing Product Excel export...'), backgroundColor: NexusTheme.indigo500, behavior: SnackBarBehavior.floating),
+    );
+
+    try {
+      final excel = xl.Excel.createExcel();
+      final sheet = excel['Material Master'];
+
+      // Headers
+      final headers = [
+        'SKU CODE', 'PRODUCT NAME', 'SHORT NAME', 
+        'DISTRIBUTION CHANNEL', 'SPECIE', 'PACKING', 
+        'MRF', 'GST %', 'HSN CODE', 'COUNTRY OF ORIGIN'
+      ];
+      sheet.appendRow(headers.map((h) => xl.TextCellValue(h)).toList());
+
+      // Data rows
+      for (final p in products) {
+        sheet.appendRow([
+          xl.TextCellValue(p.skuCode),
+          xl.TextCellValue(p.name),
+          xl.TextCellValue(p.shortName ?? ''),
+          xl.TextCellValue(p.distributionChannel ?? ''),
+          xl.TextCellValue(p.specie ?? ''),
+          xl.TextCellValue(p.productPacking ?? ''),
+          xl.DoubleCellValue(p.mrp ?? 0.0),
+          xl.DoubleCellValue(p.gst ?? 0.0),
+          xl.TextCellValue(p.hsnCode ?? ''),
+          xl.TextCellValue(p.countryOfOrigin ?? ''),
+        ]);
+      }
+
+      // Save file
+      final dir = await getExternalStorageDirectory();
+      final filePath = '${dir!.path}/Material_Export_${DateTime.now().millisecondsSinceEpoch}.xlsx';
+      final fileBytes = excel.encode();
+      if (fileBytes != null) {
+        await File(filePath).writeAsBytes(fileBytes);
+        await OpenFile.open(filePath);
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('✅ Exported ${products.length} products!'),
+              backgroundColor: Colors.green,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('❌ Export failed: $e'), backgroundColor: Colors.red),
         );
       }
     }

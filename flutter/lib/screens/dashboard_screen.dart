@@ -43,10 +43,13 @@ class DashboardScreen extends StatelessWidget {
     final nexusProvider = Provider.of<NexusProvider>(context);
     
     final user = auth.currentUser;
+    final visibleOrders = user != null
+        ? nexusProvider.getVisibleOrdersFor(user)
+        : nexusProvider.orders;
 
-    final liveCount = nexusProvider.orders.where((o) => o.status != 'Delivered' && o.status != 'Rejected').length;
-    final pendingCount = nexusProvider.orders.where((o) => o.status.contains('Pending')).length;
-    final totalRevenue = nexusProvider.orders.fold(0.0, (sum, o) => sum + o.total);
+    final liveCount = visibleOrders.where((o) => o.status != 'Delivered' && o.status != 'Rejected').length;
+    final pendingCount = visibleOrders.where((o) => o.status.contains('Pending')).length;
+    final totalRevenue = visibleOrders.fold(0.0, (sum, o) => sum + o.total);
 
     return PopScope(
       canPop: false,

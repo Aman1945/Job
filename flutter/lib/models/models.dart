@@ -3,6 +3,9 @@
 enum UserRole {
   admin('Admin'),
   sales('Sales'),
+  rsm('RSM'),
+  asm('ASM'),
+  salesExecutive('Sales Executive'),
   creditControl('Credit Control'),
   whManager('WH Manager'),
   whHouse('WH House'),
@@ -152,6 +155,7 @@ class User {
   final String zone;
   final List<String> permissions;
   final Map<String, String> stepAccess; // 3-level: 'full', 'view', 'no'
+  final String? managerId; // RSM/ASM hierarchy: ID of the manager this user reports to
 
   User({
     required this.id,
@@ -166,6 +170,7 @@ class User {
     this.whatsappNumber,
     this.permissions = const [],
     this.stepAccess = const {},
+    this.managerId,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -182,6 +187,7 @@ class User {
       whatsappNumber: json['whatsappNumber'],
       permissions: (json['permissions'] as List?)?.map((e) => e.toString()).toList() ?? [],
       stepAccess: (json['stepAccess'] as Map?)?.map((k, v) => MapEntry(k.toString(), v.toString())) ?? {},
+      managerId: json['managerId'],
     );
   }
 
@@ -199,6 +205,7 @@ class User {
       'permissions': permissions,
       'stepAccess': stepAccess,
       if (password != null) 'password': password,
+      if (managerId != null) 'managerId': managerId,
     };
   }
 }
