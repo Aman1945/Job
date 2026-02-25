@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/nexus_provider.dart';
 import '../utils/theme.dart';
+import '../utils/master_actions.dart';
 import '../models/models.dart';
+import '../config/api_config.dart';
 
 class MaterialMasterScreen extends StatefulWidget {
   const MaterialMasterScreen({super.key});
@@ -165,6 +167,21 @@ class _MaterialMasterScreenState extends State<MaterialMasterScreen> {
                   ],
                 ),
               ),
+            ),
+          ),
+          // ── Action bar (Add / Import / Export) ──────────────────────────────
+          MasterActions.actionBar(
+            context: context,
+            onAdd: () => _showAddDialog(context, provider),
+            onImport: () => MasterActions.importExcel(
+              context: context,
+              uploadRoute: '/products/bulk-import',
+              onSuccess: provider.fetchProducts,
+            ),
+            onExport: () => MasterActions.downloadTemplate(
+              context: context,
+              templateRoute: '${ApiConfig.baseUrl}/products/import-template',
+              fileName: 'Material_Master_Template.xlsx',
             ),
           ),
         ],
@@ -346,6 +363,93 @@ class _MaterialMasterScreenState extends State<MaterialMasterScreen> {
           borderRadius: BorderRadius.circular(8),
         ),
         child: Icon(icon, size: 18, color: enabled ? Colors.white : const Color(0xFFCBD5E1)),
+      ),
+    );
+  }
+
+  // ───────────────────────── ADD NEW PRODUCT DIALOG ──────────────────────────
+  void _showAddDialog(BuildContext context, NexusProvider provider) {
+    final formKey = GlobalKey<FormState>();
+    final name = TextEditingController();
+    final sku  = TextEditingController();
+    final cat  = TextEditingController();
+    final mrp  = TextEditingController();
+    final price = TextEditingController();
+    final gst  = TextEditingController(text: '5');
+    final hsn  = TextEditingController();
+    final stock = TextEditingController(text: '0');
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Add New Product', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+        content: SizedBox(
+          width: 380,
+          child: Form(
+            key: formKey,
+            child: SingleChildScrollView(
+              child: Column(
+                children: [
+                  _field('Product Name *', name, required: true),
+                  _field('SKU Code *', sku, required: true),
+                  _field('Category *', cat, required: true),
+                  _field('HSN Code', hsn),
+                  _field('MRP (₹)', mrp, numeric: true),
+                  _field('Price (₹)', price, numeric: true),
+                  _field('GST %', gst, numeric: true),
+                  _field('Stock (units)', stock, numeric: true),
+                ],
+              ),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('CANCEL')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0F172A), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+            onPressed: () async {
+              if (!formKey.currentState!.validate()) return;
+              final ok = await MasterActions.postRecord(
+                context: context,
+                route: '/products',
+                data: {
+                  'name': name.text.trim(),
+                  'skuCode': sku.text.trim(),
+                  'category': cat.text.trim(),
+                  'hsnCode': hsn.text.trim(),
+                  'mrp': double.tryParse(mrp.text) ?? 0,
+                  'price': double.tryParse(price.text) ?? 0,
+                  'gst': double.tryParse(gst.text) ?? 5,
+                  'stock': int.tryParse(stock.text) ?? 0,
+                },
+              );
+              if (ok && ctx.mounted) {
+                Navigator.pop(ctx);
+                MasterActions.showSuccess(context, 'Product created successfully');
+                provider.fetchProducts();
+              }
+            },
+            child: const Text('SAVE', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _field(String label, TextEditingController ctrl, {bool required = false, bool numeric = false}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: TextFormField(
+        controller: ctrl,
+        keyboardType: numeric ? TextInputType.number : TextInputType.text,
+        validator: required ? (v) => (v == null || v.isEmpty) ? 'Required' : null : null,
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        ),
       ),
     );
   }

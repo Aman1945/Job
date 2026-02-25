@@ -3,7 +3,9 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../providers/nexus_provider.dart';
 import '../utils/theme.dart';
+import '../utils/master_actions.dart';
 import '../models/models.dart';
+import '../config/api_config.dart';
 
 class CustomerMasterScreen extends StatefulWidget {
   const CustomerMasterScreen({super.key});
@@ -163,6 +165,21 @@ class _CustomerMasterScreenState extends State<CustomerMasterScreen> {
                   ],
                 ),
               ),
+            ),
+          ),
+          // ── Action bar (Add / Import / Export) ──
+          MasterActions.actionBar(
+            context: context,
+            onAdd: () => _showAddDialog(context, provider),
+            onImport: () => MasterActions.importExcel(
+              context: context,
+              uploadRoute: '/customers/bulk-import',
+              onSuccess: provider.fetchCustomers,
+            ),
+            onExport: () => MasterActions.downloadTemplate(
+              context: context,
+              templateRoute: '${ApiConfig.baseUrl}/customers/import-template',
+              fileName: 'Customer_Master_Template.xlsx',
             ),
           ),
         ],
@@ -357,6 +374,91 @@ class _CustomerMasterScreenState extends State<CustomerMasterScreen> {
           borderRadius: BorderRadius.circular(8),
         ),
         child: Icon(icon, size: 18, color: enabled ? Colors.white : const Color(0xFFCBD5E1)),
+      ),
+    );
+  }
+
+  // ───────────────────────── ADD NEW CUSTOMER DIALOG ─────────────────────────
+  void _showAddDialog(BuildContext context, NexusProvider provider) {
+    final formKey = GlobalKey<FormState>();
+    final name    = TextEditingController();
+    final id      = TextEditingController();
+    final channel = TextEditingController();
+    final limit   = TextEditingController(text: '0');
+    final address = TextEditingController();
+    final email   = TextEditingController();
+    final postal  = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Add New Customer', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+        content: SizedBox(
+          width: 380,
+          child: Form(
+            key: formKey,
+            child: SingleChildScrollView(
+              child: Column(
+                children: [
+                  _field('Customer Name *', name, required: true),
+                  _field('Customer ID *', id, required: true),
+                  _field('Distribution Channel', channel),
+                  _field('Credit Limit (₹)', limit, numeric: true),
+                  _field('Address', address),
+                  _field('Email', email),
+                  _field('Postal Code', postal),
+                ],
+              ),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('CANCEL')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0F172A), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+            onPressed: () async {
+              if (!formKey.currentState!.validate()) return;
+              final ok = await MasterActions.postRecord(
+                context: context,
+                route: '/customers',
+                data: {
+                  'name': name.text.trim(),
+                  'id': id.text.trim(),
+                  'distributionChannel': channel.text.trim(),
+                  'limit': double.tryParse(limit.text) ?? 0,
+                  'address': address.text.trim(),
+                  'customerEmail': email.text.trim(),
+                  'postalCode': postal.text.trim(),
+                  'status': 'Active',
+                },
+              );
+              if (ok && ctx.mounted) {
+                Navigator.pop(ctx);
+                MasterActions.showSuccess(context, 'Customer created successfully');
+                provider.fetchCustomers();
+              }
+            },
+            child: const Text('SAVE', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _field(String label, TextEditingController ctrl, {bool required = false, bool numeric = false}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: TextFormField(
+        controller: ctrl,
+        keyboardType: numeric ? TextInputType.number : TextInputType.text,
+        validator: required ? (v) => (v == null || v.isEmpty) ? 'Required' : null : null,
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        ),
       ),
     );
   }

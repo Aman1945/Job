@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/nexus_provider.dart';
 import '../utils/theme.dart';
+import '../utils/master_actions.dart';
 import '../models/models.dart';
+import '../config/api_config.dart';
 
 // Static distributor price data (from Excel)
 class _DistPrice {
@@ -203,6 +205,21 @@ class _DistributorPriceScreenState extends State<DistributorPriceScreen> {
               ),
             ),
           ),
+          // ── Action bar (Add / Import / Export) ──
+          MasterActions.actionBar(
+            context: context,
+            onAdd: () => _showAddDialog(context, provider),
+            onImport: () => MasterActions.importExcel(
+              context: context,
+              uploadRoute: '/distributor-prices/bulk-import',
+              onSuccess: provider.fetchDistributorPrices,
+            ),
+            onExport: () => MasterActions.downloadTemplate(
+              context: context,
+              templateRoute: '${ApiConfig.baseUrl}/distributor-prices/import-template',
+              fileName: 'Distributor_Price_Template.xlsx',
+            ),
+          ),
         ],
       ),
     );
@@ -375,6 +392,99 @@ class _DistributorPriceScreenState extends State<DistributorPriceScreen> {
           borderRadius: BorderRadius.circular(8),
         ),
         child: Icon(icon, size: 18, color: enabled ? Colors.white : const Color(0xFFCBD5E1)),
+      ),
+    );
+  }
+
+  // ─────────────────────── ADD NEW DISTRIBUTOR PRICE DIALOG ─────────────────────
+  void _showAddDialog(BuildContext context, NexusProvider provider) {
+    final formKey = GlobalKey<FormState>();
+    final code     = TextEditingController();
+    final name     = TextEditingController();
+    final matNum   = TextEditingController();
+    final inKg     = TextEditingController();
+    final mrp      = TextEditingController();
+    final gst      = TextEditingController(text: '5');
+    final retMargin  = TextEditingController();
+    final distCost   = TextEditingController();
+    final distMrp    = TextEditingController();
+    final billing    = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Add Distributor Price Entry', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+        content: SizedBox(
+          width: 380,
+          child: Form(
+            key: formKey,
+            child: SingleChildScrollView(
+              child: Column(
+                children: [
+                  _field('Code / SKU *', code, required: true),
+                  _field('Material Name *', name, required: true),
+                  _field('Material Number', matNum),
+                  _field('Pack Size (e.g. 5 Kg)', inKg),
+                  _field('MRP (₹) *', mrp, required: true, numeric: true),
+                  _field('GST %', gst, numeric: true),
+                  _field('Retailer Margin on MRP %', retMargin, numeric: true),
+                  _field('Dist Margin on Cost %', distCost, numeric: true),
+                  _field('Dist Margin on MRP %', distMrp, numeric: true),
+                  _field('Billing Rate (₹) *', billing, required: true, numeric: true),
+                ],
+              ),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('CANCEL')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0369A1), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+            onPressed: () async {
+              if (!formKey.currentState!.validate()) return;
+              final ok = await MasterActions.postRecord(
+                context: context,
+                route: '/distributor-prices',
+                data: {
+                  'code': code.text.trim(),
+                  'name': name.text.trim(),
+                  'materialNumber': matNum.text.trim(),
+                  'inKg': inKg.text.trim(),
+                  'mrp': double.tryParse(mrp.text) ?? 0,
+                  'gstPct': double.tryParse(gst.text) ?? 5,
+                  'retailerMarginOnMrp': double.tryParse(retMargin.text) ?? 0,
+                  'distMarginOnCost': double.tryParse(distCost.text) ?? 0,
+                  'distMarginOnMrp': double.tryParse(distMrp.text) ?? 0,
+                  'billingRate': double.tryParse(billing.text) ?? 0,
+                },
+              );
+              if (ok && ctx.mounted) {
+                Navigator.pop(ctx);
+                MasterActions.showSuccess(context, 'Entry created successfully');
+                provider.fetchDistributorPrices();
+              }
+            },
+            child: const Text('SAVE', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _field(String label, TextEditingController ctrl, {bool required = false, bool numeric = false}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: TextFormField(
+        controller: ctrl,
+        keyboardType: numeric ? TextInputType.number : TextInputType.text,
+        validator: required ? (v) => (v == null || v.isEmpty) ? 'Required' : null : null,
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        ),
       ),
     );
   }
