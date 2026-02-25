@@ -5,6 +5,9 @@ import '../providers/auth_provider.dart';
 import '../utils/theme.dart';
 import '../models/models.dart';
 import '../widgets/nexus_components.dart';
+import 'material_master_screen.dart';
+import 'distributor_price_screen.dart';
+import 'customer_master_screen.dart';
 import 'package:file_picker/file_picker.dart';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
@@ -51,10 +54,11 @@ class _MasterDataScreenState extends State<MasterDataScreen> {
             child: Row(
               children: [
                 _buildTerminalToggle('USER MASTER'),
-                _buildTerminalToggle('CUSTOMER MASTER'),
-                _buildTerminalToggle('MATERIAL MASTER'),
+                _buildTerminalToggle('CUSTOMER MASTER', navigateTo: '/customer-master'),
+                _buildTerminalToggle('MATERIAL MASTER', navigateTo: '/material-master'),
                 _buildTerminalToggle('DELIVERY PERSON'),
                 _buildTerminalToggle('OD MASTER'),
+                _buildTerminalToggle('DIST. PRICE', navigateTo: '/distributor-price'),
               ],
             ),
           ),
@@ -355,10 +359,16 @@ class _MasterDataScreenState extends State<MasterDataScreen> {
     );
   }
 
-  Widget _buildTerminalToggle(String title) {
+  Widget _buildTerminalToggle(String title, {String? navigateTo}) {
     bool isSelected = _selectedTab == title;
     return GestureDetector(
-      onTap: () => setState(() => _selectedTab = title),
+      onTap: () {
+        if (navigateTo != null) {
+          Navigator.pushNamed(context, navigateTo);
+        } else {
+          setState(() => _selectedTab = title);
+        }
+      },
       child: Container(
         margin: const EdgeInsets.only(right: 8),
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
@@ -373,14 +383,22 @@ class _MasterDataScreenState extends State<MasterDataScreen> {
                 : Colors.transparent,
           ),
         ),
-        child: Text(
-          title,
-          style: TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.w900,
-            color: isSelected ? NexusTheme.indigo600 : NexusTheme.slate400,
-            letterSpacing: 0.5,
-          ),
+        child: Row(
+          children: [
+            if (navigateTo != null) ...[
+              const Icon(Icons.open_in_new, size: 10, color: NexusTheme.indigo600),
+              const SizedBox(width: 4),
+            ],
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w900,
+                color: navigateTo != null ? NexusTheme.indigo600 : (isSelected ? NexusTheme.indigo600 : NexusTheme.slate400),
+                letterSpacing: 0.5,
+              ),
+            ),
+          ],
         ),
       ),
     );

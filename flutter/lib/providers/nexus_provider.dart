@@ -21,6 +21,7 @@ class NexusProvider with ChangeNotifier {
   List<Product> _products = [];
   List<User> _users = [];
   List<ProcurementItem> _procurementItems = [];
+  List<DistributorPrice> _distributorPrices = [];
   bool _isLoading = false;
 
   User? get currentUser => _currentUser;
@@ -29,6 +30,7 @@ class NexusProvider with ChangeNotifier {
   List<Product> get products => _products;
   List<User> get users => _users;
   List<ProcurementItem> get procurementItems => _procurementItems;
+  List<DistributorPrice> get distributorPrices => _distributorPrices;
   bool get isLoading => _isLoading;
 
   /// Returns orders visible to [user] based on sales hierarchy:
@@ -89,6 +91,7 @@ class NexusProvider with ChangeNotifier {
       fetchProducts(),
       fetchOrders(),
       fetchProcurementItems(),
+      fetchDistributorPrices(),
     ]);
     notifyListeners();
   }
@@ -194,6 +197,22 @@ class NexusProvider with ChangeNotifier {
       }
     } catch (e) {
       debugPrint('Error fetching customers: $e');
+    }
+  }
+
+  Future<void> fetchDistributorPrices() async {
+    try {
+      debugPrint('🛰️ Fetching distributor prices...');
+      final response = await http.get(Uri.parse('$_baseUrl/distributor-prices')).timeout(const Duration(seconds: 30));
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        _distributorPrices = data.map((json) => DistributorPrice.fromJson(json)).toList();
+        debugPrint('✅ Fetched ${_distributorPrices.length} distributor price entries');
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('⚠️ fetchDistributorPrices error (non-fatal): $e');
+      // Keep existing (or empty) list on error — screen falls back to static data
     }
   }
 

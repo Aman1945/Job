@@ -133,6 +133,7 @@ const Customer = require('./models/Customer');
 const Product = require('./models/Product');
 const Order = require('./models/Order');
 const Procurement = require('./models/Procurement');
+const DistributorPrice = require('./models/DistributorPrice');
 
 
 // ==================== HOME ROUTE ====================
@@ -458,12 +459,33 @@ app.patch('/api/customers/:id', async (req, res) => {
     }
 });
 
-// ==================== PRODUCTS ====================
+// ==================== PRODUCTS (MATERIAL MASTER) ====================
 app.get('/api/products', async (req, res) => {
     try {
-        res.json(await Product.find());
+        const { category, specie, search } = req.query;
+        const query = {};
+        if (category) query.category = category;
+        if (specie) query.specie = specie;
+        if (search) {
+            query.$or = [
+                { name: { $regex: search, $options: 'i' } },
+                { skuCode: { $regex: search, $options: 'i' } },
+                { hsnCode: { $regex: search, $options: 'i' } },
+            ];
+        }
+        res.json(await Product.find(query).sort({ category: 1, name: 1 }));
     } catch (error) {
         res.status(500).json({ message: 'Error fetching products' });
+    }
+});
+
+app.get('/api/products/:id', async (req, res) => {
+    try {
+        const product = await Product.findOne({ id: req.params.id });
+        if (product) return res.json(product);
+        res.status(404).json({ message: 'Product not found' });
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching product' });
     }
 });
 
@@ -476,22 +498,264 @@ app.post('/api/products', async (req, res) => {
         };
         const newProduct = new Product(productData);
         await newProduct.save();
+        console.log(`✅ Product created: ${newProduct.id}`);
         res.status(201).json(newProduct);
     } catch (error) {
-        res.status(500).json({ message: 'Error creating product' });
+        console.error('Product creation error:', error);
+        res.status(500).json({ message: 'Error creating product', error: error.message });
     }
 });
 
 app.patch('/api/products/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const product = await Product.findOneAndUpdate({ id }, req.body, { new: true });
+        const product = await Product.findOneAndUpdate({ id }, { $set: req.body }, { new: true });
         if (product) return res.json(product);
         res.status(404).json({ message: 'Product not found' });
     } catch (error) {
         res.status(500).json({ message: 'Error updating product' });
     }
 });
+
+app.delete('/api/products/:id', async (req, res) => {
+    try {
+        const product = await Product.findOneAndDelete({ id: req.params.id });
+        if (product) return res.json({ success: true, message: 'Product deleted' });
+        res.status(404).json({ message: 'Product not found' });
+    } catch (error) {
+        res.status(500).json({ message: 'Error deleting product' });
+    }
+});
+
+// Bulk import products from Excel (Material Master)
+app.post('/api/products/bulk-import', upload.single('file'), async (req, res) => {
+    try {
+        if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
+
+        const workbook = new ExcelJS.Workbook();
+        await workbook.xlsx.readFile(req.file.path);
+        const worksheet = workbook.getWorksheet(1);
+        const headerRow = worksheet.getRow(1);
+        const colMap = {};
+
+        headerRow.eachCell((cell, colNumber) => {
+            const header = cell.value?.toString().trim().toLowerCase();
+            if (!header) return;
+            if (header.includes('sku') || header.includes('code')) colMap.skuCode = colNumber;
+            else if (header.includes('name') || header.includes('product')) colMap.name = colNumber;
+            else if (header.includes('category') || header.includes('cat')) colMap.category = colNumber;
+            else if (header.includes('specie')) colMap.specie = colNumber;
+            else if (header.includes('packing') || header.includes('pack')) colMap.productPacking = colNumber;
+            else if (header.includes('hsn')) colMap.hsnCode = colNumber;
+            else if (header.includes('gst')) colMap.gst = colNumber;
+            else if (header.includes('mrp')) colMap.mrp = colNumber;
+            else if (header.includes('price') || header.includes('rate')) colMap.price = colNumber;
+            else if (header.includes('stock') || header.includes('qty')) colMap.stock = colNumber;
+            else if (header.includes('origin') || header.includes('country')) colMap.countryOfOrigin = colNumber;
+        });
+
+        const products = [];
+        worksheet.eachRow((row, rowNumber) => {
+            if (rowNumber === 1) return;
+            const rowData = {};
+            if (colMap.skuCode) rowData.skuCode = row.getCell(colMap.skuCode).value?.toString();
+            if (colMap.name) rowData.name = row.getCell(colMap.name).value?.toString();
+            if (colMap.category) rowData.category = row.getCell(colMap.category).value?.toString();
+            if (colMap.specie) rowData.specie = row.getCell(colMap.specie).value?.toString();
+            if (colMap.productPacking) rowData.productPacking = row.getCell(colMap.productPacking).value?.toString();
+            if (colMap.hsnCode) rowData.hsnCode = row.getCell(colMap.hsnCode).value?.toString();
+            if (colMap.gst) rowData.gst = parseFloat(row.getCell(colMap.gst).value) || 0;
+            if (colMap.mrp) rowData.mrp = parseFloat(row.getCell(colMap.mrp).value) || 0;
+            if (colMap.price) rowData.price = parseFloat(row.getCell(colMap.price).value) || 0;
+            if (colMap.stock) rowData.stock = parseInt(row.getCell(colMap.stock).value) || 0;
+            if (colMap.countryOfOrigin) rowData.countryOfOrigin = row.getCell(colMap.countryOfOrigin).value?.toString();
+            if (!rowData.id) rowData.id = rowData.skuCode || `PROD-${Date.now()}-${rowNumber}`;
+
+            if (rowData.name) products.push(rowData);
+        });
+
+        const bulkOps = products.map(p => ({
+            updateOne: {
+                filter: { id: p.id },
+                update: { $set: p },
+                upsert: true
+            }
+        }));
+
+        if (bulkOps.length > 0) await Product.bulkWrite(bulkOps);
+        fs.unlinkSync(req.file.path);
+        console.log(`🚀 Bulk imported ${products.length} products`);
+        res.json({ success: true, message: `Successfully imported ${products.length} products` });
+    } catch (error) {
+        console.error('Product bulk import error:', error);
+        res.status(500).json({ message: 'Error processing file', error: error.message });
+    }
+});
+
+// ==================== DISTRIBUTOR PRICE LIST ====================
+app.get('/api/distributor-prices', async (req, res) => {
+    try {
+        const { search, category } = req.query;
+        const query = { isActive: true };
+        if (category) query.category = category;
+        if (search) {
+            query.$or = [
+                { name: { $regex: search, $options: 'i' } },
+                { code: { $regex: search, $options: 'i' } },
+                { materialNumber: { $regex: search, $options: 'i' } },
+            ];
+        }
+        res.json(await DistributorPrice.find(query).sort({ category: 1, name: 1 }));
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching distributor prices' });
+    }
+});
+
+app.get('/api/distributor-prices/:id', async (req, res) => {
+    try {
+        const item = await DistributorPrice.findOne({ id: req.params.id });
+        if (item) return res.json(item);
+        res.status(404).json({ message: 'Distributor price entry not found' });
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching distributor price' });
+    }
+});
+
+app.post('/api/distributor-prices', async (req, res) => {
+    try {
+        const data = {
+            ...req.body,
+            id: req.body.id || req.body.code || `DP-${Date.now().toString().slice(-6)}`,
+        };
+        const entry = new DistributorPrice(data);
+        await entry.save();
+        console.log(`✅ Distributor price created: ${entry.id}`);
+        res.status(201).json(entry);
+    } catch (error) {
+        console.error('Distributor price creation error:', error);
+        res.status(500).json({ message: 'Error creating entry', error: error.message });
+    }
+});
+
+app.patch('/api/distributor-prices/:id', async (req, res) => {
+    try {
+        const item = await DistributorPrice.findOneAndUpdate(
+            { id: req.params.id },
+            { $set: req.body },
+            { new: true }
+        );
+        if (item) return res.json(item);
+        res.status(404).json({ message: 'Distributor price entry not found' });
+    } catch (error) {
+        res.status(500).json({ message: 'Error updating distributor price' });
+    }
+});
+
+app.delete('/api/distributor-prices/:id', async (req, res) => {
+    try {
+        const item = await DistributorPrice.findOneAndUpdate(
+            { id: req.params.id },
+            { isActive: false },
+            { new: true }
+        );
+        if (item) return res.json({ success: true, message: 'Soft-deleted' });
+        res.status(404).json({ message: 'Not found' });
+    } catch (error) {
+        res.status(500).json({ message: 'Error deleting distributor price' });
+    }
+});
+
+// Bulk import distributor prices from Excel
+app.post('/api/distributor-prices/bulk-import', upload.single('file'), async (req, res) => {
+    try {
+        if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
+
+        const workbook = new ExcelJS.Workbook();
+        await workbook.xlsx.readFile(req.file.path);
+        const worksheet = workbook.getWorksheet(1);
+        const headerRow = worksheet.getRow(1);
+        const colMap = {};
+
+        headerRow.eachCell((cell, colNumber) => {
+            const header = cell.value?.toString().trim().toLowerCase();
+            if (!header) return;
+            if (header.includes('code') || header.includes('sku')) colMap.code = colNumber;
+            else if (header.includes('name') || header.includes('material name')) colMap.name = colNumber;
+            else if (header.includes('material number') || header.includes('mat. no')) colMap.materialNumber = colNumber;
+            else if (header.includes('in kg') || header.includes('packing') || header.includes('pack size')) colMap.inKg = colNumber;
+            else if (header.includes('mrp')) colMap.mrp = colNumber;
+            else if (header.includes('gst')) colMap.gstPct = colNumber;
+            else if (header.includes('retailer margin') || header.includes('ret. margin')) colMap.retailerMarginOnMrp = colNumber;
+            else if (header.includes('dist margin on cost') || header === 'dist margin\non cost') colMap.distMarginOnCost = colNumber;
+            else if (header.includes('dist margin on mrp') || header === 'dist margin\non mrp') colMap.distMarginOnMrp = colNumber;
+            else if (header.includes('billing rate') || header.includes('billing') || header.includes('rate')) colMap.billingRate = colNumber;
+            else if (header.includes('category') || header.includes('cat')) colMap.category = colNumber;
+        });
+
+        const items = [];
+        worksheet.eachRow((row, rowNumber) => {
+            if (rowNumber === 1) return;
+            const rowData = {};
+            if (colMap.code) rowData.code = row.getCell(colMap.code).value?.toString();
+            if (colMap.name) rowData.name = row.getCell(colMap.name).value?.toString();
+            if (colMap.materialNumber) rowData.materialNumber = row.getCell(colMap.materialNumber).value?.toString();
+            if (colMap.inKg) rowData.inKg = row.getCell(colMap.inKg).value?.toString();
+            if (colMap.mrp) rowData.mrp = parseFloat(row.getCell(colMap.mrp).value) || 0;
+            if (colMap.gstPct) rowData.gstPct = parseFloat(row.getCell(colMap.gstPct).value) || 0;
+            if (colMap.retailerMarginOnMrp) rowData.retailerMarginOnMrp = parseFloat(row.getCell(colMap.retailerMarginOnMrp).value) || 0;
+            if (colMap.distMarginOnCost) rowData.distMarginOnCost = parseFloat(row.getCell(colMap.distMarginOnCost).value) || 0;
+            if (colMap.distMarginOnMrp) rowData.distMarginOnMrp = parseFloat(row.getCell(colMap.distMarginOnMrp).value) || 0;
+            if (colMap.billingRate) rowData.billingRate = parseFloat(row.getCell(colMap.billingRate).value) || 0;
+            if (colMap.category) rowData.category = row.getCell(colMap.category).value?.toString();
+            rowData.id = rowData.code || `DP-${Date.now()}-${rowNumber}`;
+            rowData.isActive = true;
+            if (rowData.name) items.push(rowData);
+        });
+
+        const bulkOps = items.map(item => ({
+            updateOne: {
+                filter: { id: item.id },
+                update: { $set: item },
+                upsert: true
+            }
+        }));
+
+        if (bulkOps.length > 0) await DistributorPrice.bulkWrite(bulkOps);
+        fs.unlinkSync(req.file.path);
+        console.log(`🚀 Bulk imported ${items.length} distributor prices`);
+        res.json({ success: true, message: `Successfully imported ${items.length} pricing entries` });
+    } catch (error) {
+        console.error('Distributor price bulk import error:', error);
+        res.status(500).json({ message: 'Error processing file', error: error.message });
+    }
+});
+
+// Download Excel template for distributor price import
+app.get('/api/distributor-prices/import-template', async (req, res) => {
+    try {
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet('Distributor Price Template');
+        const headers = [
+            'Code/SKU', 'Material Name', 'Material Number', 'In KG (Pack Size)',
+            'MRP', 'GST %', 'Retailer Margin on MRP %',
+            'Dist Margin on Cost %', 'Dist Margin on MRP %', 'Billing Rate', 'Category'
+        ];
+        const headerRow = worksheet.addRow(headers);
+        headerRow.font = { bold: true, color: { argb: 'FFFFFF' } };
+        headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '0F172A' } };
+        worksheet.columns = headers.map(() => ({ width: 22 }));
+        // Add example row
+        worksheet.addRow(['SKU-001', 'Example Product 5Kg', 'MAT-10001', '5 Kg', 850, 5, 15, 10, 8.5, 720, 'Poultry']);
+
+        const buffer = await workbook.xlsx.writeBuffer();
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', 'attachment; filename=Distributor_Price_Template.xlsx');
+        res.send(buffer);
+    } catch (error) {
+        res.status(500).json({ message: 'Error generating template' });
+    }
+});
+
 
 // ==================== ORDERS ====================
 app.get('/api/orders', async (req, res) => {

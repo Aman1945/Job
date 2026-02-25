@@ -53,14 +53,17 @@ class _BookOrderScreenState extends State<BookOrderScreen> {
   }
 
   void _updateLineItem(int index, Product product) {
+    final rate = product.price > 0 ? product.price : (product.mrp ?? 0.0);
     setState(() {
       cartItems[index] = {
         'productId': product.id,
         'productName': product.name,
         'skuCode': product.skuCode,
         'quantity': 1,
-        'price': product.price,
+        'price': rate,
         'prevRate': 0.0,
+        'mrp': product.mrp ?? rate,
+        'gst': product.gst ?? 18.0,
       };
     });
   }

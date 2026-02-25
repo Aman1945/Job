@@ -53,6 +53,8 @@ class Customer {
   final List<CustomerAddress>? addresses;
   final String? fssaiLicenseNo;
   final String? panCard;
+  final String? postalCode;
+  final String? customerEmail;
 
   Customer({
     required this.id,
@@ -79,6 +81,8 @@ class Customer {
     this.addresses,
     this.fssaiLicenseNo,
     this.panCard,
+    this.postalCode,
+    this.customerEmail,
   });
 
   factory Customer.fromJson(Map<String, dynamic> json) {
@@ -109,6 +113,8 @@ class Customer {
           : null,
       fssaiLicenseNo: json['fssaiLicenseNo'] ?? json['fssai'],
       panCard: json['panCard'] ?? json['pan'],
+      postalCode: json['postalCode'] ?? json['postal'] ?? json['zipCode'],
+      customerEmail: json['customerEmail'] ?? json['customerEmailId'] ?? json['email'],
     );
   }
 
@@ -138,6 +144,8 @@ class Customer {
       if (addresses != null) 'addresses': addresses?.map((a) => a.toJson()).toList(),
       if (fssaiLicenseNo != null) 'fssaiLicenseNo': fssaiLicenseNo,
       if (panCard != null) 'panCard': panCard,
+      if (postalCode != null) 'postalCode': postalCode,
+      if (customerEmail != null) 'customerEmail': customerEmail,
     };
   }
 }
@@ -280,6 +288,73 @@ class Product {
       if (countryOfOrigin != null) 'countryOfOrigin': countryOfOrigin,
     };
   }
+}
+
+// Distributor Price List model (maps to /api/distributor-prices)
+class DistributorPrice {
+  final String id;
+  final String code;
+  final String name;
+  final String? materialNumber;
+  final String? inKg;
+  final double mrp;
+  final double gstPct;
+  final double retailerMarginOnMrp;
+  final double distMarginOnCost;
+  final double distMarginOnMrp;
+  final double billingRate;
+  final String? category;
+  final bool isActive;
+
+  DistributorPrice({
+    required this.id,
+    required this.code,
+    required this.name,
+    this.materialNumber,
+    this.inKg,
+    required this.mrp,
+    required this.gstPct,
+    required this.retailerMarginOnMrp,
+    required this.distMarginOnCost,
+    required this.distMarginOnMrp,
+    required this.billingRate,
+    this.category,
+    this.isActive = true,
+  });
+
+  factory DistributorPrice.fromJson(Map<String, dynamic> json) {
+    return DistributorPrice(
+      id: json['id'] ?? json['code'] ?? '',
+      code: json['code'] ?? '',
+      name: json['name'] ?? '',
+      materialNumber: json['materialNumber'],
+      inKg: json['inKg'],
+      mrp: (json['mrp'] ?? 0).toDouble(),
+      gstPct: (json['gstPct'] ?? 0).toDouble(),
+      retailerMarginOnMrp: (json['retailerMarginOnMrp'] ?? 0).toDouble(),
+      distMarginOnCost: (json['distMarginOnCost'] ?? 0).toDouble(),
+      distMarginOnMrp: (json['distMarginOnMrp'] ?? 0).toDouble(),
+      billingRate: (json['billingRate'] ?? 0).toDouble(),
+      category: json['category'],
+      isActive: json['isActive'] ?? true,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'code': code,
+    'name': name,
+    if (materialNumber != null) 'materialNumber': materialNumber,
+    if (inKg != null) 'inKg': inKg,
+    'mrp': mrp,
+    'gstPct': gstPct,
+    'retailerMarginOnMrp': retailerMarginOnMrp,
+    'distMarginOnCost': distMarginOnCost,
+    'distMarginOnMrp': distMarginOnMrp,
+    'billingRate': billingRate,
+    if (category != null) 'category': category,
+    'isActive': isActive,
+  };
 }
 
 class OrderItem {

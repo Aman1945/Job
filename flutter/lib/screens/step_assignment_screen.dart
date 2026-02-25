@@ -19,18 +19,18 @@ class _StepAssignmentScreenState extends State<StepAssignmentScreen> {
   bool _isLoading = true;
 
   final List<Map<String, dynamic>> _workflowSteps = [
-    {'label': 'Master Creation', 'icon': Icons.app_registration_rounded, 'color': Colors.indigo},
-    {'label': 'Placed Order', 'icon': Icons.shopping_cart_checkout_rounded, 'color': Colors.lightBlue},
-    {'label': 'Sales Alignment', 'icon': Icons.group_add_rounded, 'color': Colors.teal},
-    {'label': 'Credit Approv.', 'icon': Icons.verified_rounded, 'color': Colors.orange},
-    {'label': 'Warehouse', 'icon': Icons.inventory_2_rounded, 'color': Colors.brown},
-    {'label': 'Packing', 'icon': Icons.inventory_rounded, 'color': Colors.amber},
-    {'label': 'QC', 'icon': Icons.verified_user_rounded, 'color': Colors.green},
-    {'label': 'Logistic Cost', 'icon': Icons.currency_rupee_rounded, 'color': Colors.deepPurple},
-    {'label': 'Invoice', 'icon': Icons.receipt_long_rounded, 'color': Colors.blue},
-    {'label': 'DA Assignment', 'icon': Icons.assignment_turned_in_rounded, 'color': Colors.blueGrey},
-    {'label': 'Loading', 'icon': Icons.local_shipping_rounded, 'color': Colors.purple},
-    {'label': 'Delivery Ack', 'icon': Icons.task_alt_rounded, 'color': Colors.redAccent},
+    {'label': 'Master Creation', 'icon': Icons.app_registration_rounded, 'color': const Color(0xFF6366F1)},
+    {'label': 'Placed Order', 'icon': Icons.shopping_cart_checkout_rounded, 'color': const Color(0xFF0EA5E9)},
+    {'label': 'Sales Alignment', 'icon': Icons.group_add_rounded, 'color': const Color(0xFF14B8A6)},
+    {'label': 'Credit Approv.', 'icon': Icons.verified_rounded, 'color': const Color(0xFFF97316)},
+    {'label': 'Warehouse', 'icon': Icons.inventory_2_rounded, 'color': const Color(0xFF78716C)},
+    {'label': 'Packing', 'icon': Icons.inventory_rounded, 'color': const Color(0xFFEAB308)},
+    {'label': 'QC', 'icon': Icons.verified_user_rounded, 'color': const Color(0xFF22C55E)},
+    {'label': 'Logistic Cost', 'icon': Icons.currency_rupee_rounded, 'color': const Color(0xFF8B5CF6)},
+    {'label': 'Invoice', 'icon': Icons.receipt_long_rounded, 'color': const Color(0xFF3B82F6)},
+    {'label': 'DA Assignment', 'icon': Icons.assignment_turned_in_rounded, 'color': const Color(0xFF64748B)},
+    {'label': 'Loading', 'icon': Icons.local_shipping_rounded, 'color': const Color(0xFFA855F7)},
+    {'label': 'Delivery Ack', 'icon': Icons.task_alt_rounded, 'color': const Color(0xFFEF4444)},
   ];
 
   @override
@@ -49,6 +49,8 @@ class _StepAssignmentScreenState extends State<StepAssignmentScreen> {
           _users = data.map((u) => User.fromJson(u)).toList();
           _isLoading = false;
         });
+      } else {
+        setState(() => _isLoading = false);
       }
     } catch (e) {
       setState(() => _isLoading = false);
@@ -67,12 +69,12 @@ class _StepAssignmentScreenState extends State<StepAssignmentScreen> {
       );
       if (response.statusCode == 200) {
         _fetchUsers();
-      } else {
-        debugPrint('Step access update failed: ${response.statusCode} ${response.body}');
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error updating access: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error updating access: $e')),
+        );
       }
     }
   }
@@ -82,19 +84,11 @@ class _StepAssignmentScreenState extends State<StepAssignmentScreen> {
       final auth = Provider.of<AuthProvider>(context, listen: false);
       final headers = Map<String, String>.from(auth.authHeaders);
       headers['Content-Type'] = 'application/json';
-      final response = await http.patch(
+      await http.patch(
         Uri.parse('${ApiConfig.baseUrl}/users/$userId'),
         headers: headers,
-        body: json.encode({
-          'zone': zone,
-          'role': role.label,
-        }),
+        body: json.encode({'zone': zone, 'role': role.label}),
       );
-      if (response.statusCode == 200) {
-        _fetchUsers();
-      } else {
-        debugPrint('User details update failed: ${response.statusCode} ${response.body}');
-      }
     } catch (e) {
       debugPrint('Error updating user details: $e');
     }
@@ -105,28 +99,21 @@ class _StepAssignmentScreenState extends State<StepAssignmentScreen> {
       final auth = Provider.of<AuthProvider>(context, listen: false);
       final headers = Map<String, String>.from(auth.authHeaders);
       headers['Content-Type'] = 'application/json';
-      final response = await http.patch(
+      await http.patch(
         Uri.parse('${ApiConfig.baseUrl}/users/$userId'),
         headers: headers,
         body: json.encode({'managerId': managerId}),
       );
-      if (response.statusCode == 200) {
-        _fetchUsers();
-      } else {
-        debugPrint('Manager update failed: ${response.statusCode} ${response.body}');
-      }
     } catch (e) {
       debugPrint('Error updating managerId: $e');
     }
   }
 
   void _showStepUsersDialog(String stepLabel, Color stepColor, IconData stepIcon) {
-    // Build userId -> access map for this step
     Map<String, String> userAccessMap = {};
-    // Local mutable maps for zone and role (so UI updates instantly)
     Map<String, String> userZoneMap = {};
     Map<String, UserRole> userRoleMap = {};
-    Map<String, String?> userManagerMap = {}; // reports-to managerId
+    Map<String, String?> userManagerMap = {};
 
     for (final user in _users) {
       if (user.role.label == 'Admin') continue;
@@ -136,31 +123,17 @@ class _StepAssignmentScreenState extends State<StepAssignmentScreen> {
       userManagerMap[user.id] = user.managerId;
     }
 
-    // Zone grouping — PAN INDIA excluded from tabs (those users still appear under their zone or are admin)
-    final zones = ['NORTH', 'WEST', 'EAST', 'SOUTH'];
-    Map<String, List<User>> groupedUsers = {for (var z in zones) z: []};
-    for (var u in _users) {
-      if (u.role.label == 'Admin') continue;
-      final z = u.zone.toUpperCase();
-      if (groupedUsers.containsKey(z)) {
-        groupedUsers[z]!.add(u);
-      } else {
-        // PAN INDIA and unknown zones go into a catch-all
-        groupedUsers.putIfAbsent('OTHER', () => []).add(u);
-      }
-    }
-    // Also show OTHER tab if it has users
-    final allTabZones = [...zones, if ((groupedUsers['OTHER']?.isNotEmpty ?? false)) 'OTHER'];
-    final activeZones = allTabZones.where((z) => (groupedUsers[z]?.isNotEmpty ?? false)).toList();
-    String selectedZone = activeZones.isNotEmpty ? activeZones[0] : '';
+    final nonAdminUsers = _users.where((u) => u.role.label != 'Admin').toList();
     String searchQuery = '';
+    bool isSaving = false;
+    int selectedTab = 0; // 0 = Access, 1 = Team Setup
 
     showGeneralDialog(
       context: context,
       barrierDismissible: true,
       barrierLabel: '',
-      barrierColor: Colors.black.withOpacity(0.35),
-      transitionDuration: const Duration(milliseconds: 380),
+      barrierColor: Colors.black.withOpacity(0.4),
+      transitionDuration: const Duration(milliseconds: 320),
       pageBuilder: (ctx, anim1, anim2) => const SizedBox(),
       transitionBuilder: (ctx, anim1, anim2, child) {
         final curved = CurvedAnimation(parent: anim1, curve: Curves.easeOutCubic);
@@ -168,83 +141,84 @@ class _StepAssignmentScreenState extends State<StepAssignmentScreen> {
           opacity: curved,
           child: SlideTransition(
             position: Tween<Offset>(
-              begin: const Offset(0, 0.12),
+              begin: const Offset(0, 0.08),
               end: Offset.zero,
             ).animate(curved),
             child: StatefulBuilder(
               builder: (ctx, setDialogState) {
-                // Helper: set all users in a zone to a given access level
-                void selectAllZone(String zone, String access) {
-                  setDialogState(() {
-                    for (final u in groupedUsers[zone] ?? []) {
-                      userAccessMap[u.id] = access;
-                    }
-                  });
-                }
+                final filteredUsers = searchQuery.isEmpty
+                    ? nonAdminUsers
+                    : nonAdminUsers
+                        .where((u) => u.name.toLowerCase().contains(searchQuery.toLowerCase()))
+                        .toList();
 
-                return StatefulBuilder(
-                  builder: (ctx2, setZoneState) {
-                    final rawZoneUsers = groupedUsers[selectedZone] ?? [];
-                    // Apply search filter
-                    final currentZoneUsers = searchQuery.isEmpty
-                        ? rawZoneUsers
-                        : rawZoneUsers.where((u) => u.name.toLowerCase().contains(searchQuery.toLowerCase())).toList();
-                    return Dialog(
-                      backgroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-                      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(
-                          maxHeight: MediaQuery.of(ctx2).size.height * 0.88
-                              - MediaQuery.of(ctx2).viewInsets.bottom,
+                final fullCount = userAccessMap.values.where((v) => v == 'full').length;
+                final viewCount = userAccessMap.values.where((v) => v == 'view').length;
+
+                return Dialog(
+                  backgroundColor: Colors.transparent,
+                  insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 36),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(28),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.18),
+                          blurRadius: 40,
+                          offset: const Offset(0, 12),
                         ),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                          // ── HEADER ──
+                      ],
+                    ),
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxHeight: MediaQuery.of(ctx).size.height * 0.88,
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // ── DIALOG HEADER ──
                           Container(
-                            padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+                            padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
                             decoration: BoxDecoration(
                               color: Colors.white,
                               borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
                               border: Border(bottom: BorderSide(color: Colors.grey.shade100)),
                             ),
                             child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Row(
                                   children: [
                                     Container(
                                       padding: const EdgeInsets.all(10),
                                       decoration: BoxDecoration(
-                                        color: stepColor.withOpacity(0.1),
+                                        color: stepColor.withOpacity(0.12),
                                         borderRadius: BorderRadius.circular(14),
                                       ),
-                                      child: Icon(stepIcon, color: stepColor, size: 26),
+                                      child: Icon(stepIcon, color: stepColor, size: 22),
                                     ),
-                                    const SizedBox(width: 14),
+                                    const SizedBox(width: 12),
                                     Expanded(
                                       child: Column(
                                         crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
                                           Text(
-                                            stepLabel.toUpperCase(),
+                                            stepLabel,
                                             style: const TextStyle(
                                               fontFamily: 'Montserrat',
-                                              fontSize: 14,
+                                              fontSize: 15,
                                               fontWeight: FontWeight.w900,
                                               color: Color(0xFF0F172A),
-                                              letterSpacing: 0.5,
                                             ),
                                           ),
                                           const SizedBox(height: 2),
-                                          Text(
-                                            'Zone-wise access control',
-                                            style: TextStyle(
-                                              fontFamily: 'Montserrat',
-                                              fontSize: 10,
-                                              color: Colors.grey.shade500,
-                                              fontWeight: FontWeight.w500,
-                                            ),
+                                          Row(
+                                            children: [
+                                              _statBadge('$fullCount Full', const Color(0xFF059669), const Color(0xFFD1FAE5)),
+                                              const SizedBox(width: 6),
+                                              _statBadge('$viewCount View', const Color(0xFF2563EB), const Color(0xFFDBEAFE)),
+                                            ],
                                           ),
                                         ],
                                       ),
@@ -252,48 +226,28 @@ class _StepAssignmentScreenState extends State<StepAssignmentScreen> {
                                     GestureDetector(
                                       onTap: () => Navigator.pop(ctx),
                                       child: Container(
-                                        padding: const EdgeInsets.all(6),
+                                        padding: const EdgeInsets.all(7),
                                         decoration: BoxDecoration(
                                           color: Colors.grey.shade100,
                                           shape: BoxShape.circle,
                                         ),
-                                        child: const Icon(Icons.close, size: 16, color: Color(0xFF64748B)),
+                                        child: const Icon(Icons.close, size: 15, color: Color(0xFF64748B)),
                                       ),
                                     ),
                                   ],
                                 ),
-                                const SizedBox(height: 16),
-                                // ── ZONE TABS ──
-                                SingleChildScrollView(
-                                  scrollDirection: Axis.horizontal,
-                                  child: Row(
-                                    children: activeZones.map((zone) {
-                                      final isSelected = zone == selectedZone;
-                                      return GestureDetector(
-                                        onTap: () => setZoneState(() { selectedZone = zone; searchQuery = ''; }),
-                                        child: AnimatedContainer(
-                                          duration: const Duration(milliseconds: 200),
-                                          curve: Curves.easeOut,
-                                          margin: const EdgeInsets.only(right: 8),
-                                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-                                          decoration: BoxDecoration(
-                                            color: isSelected ? const Color(0xFF0F172A) : Colors.grey.shade100,
-                                            borderRadius: BorderRadius.circular(20),
-                                          ),
-                                          child: Text(
-                                            zone,
-                                            style: TextStyle(
-                                              fontFamily: 'Montserrat',
-                                              fontSize: 10,
-                                              fontWeight: FontWeight.w800,
-                                              color: isSelected ? Colors.white : Colors.grey.shade600,
-                                              letterSpacing: 0.5,
-                                            ),
-                                          ),
-                                        ),
-                                      );
-                                    }).toList(),
-                                  ),
+                                const SizedBox(height: 14),
+                                // ── TABS ──
+                                Row(
+                                  children: [
+                                    _dialogTab('Access Control', Icons.shield_rounded, 0, selectedTab, stepColor, () {
+                                      setDialogState(() => selectedTab = 0);
+                                    }),
+                                    const SizedBox(width: 8),
+                                    _dialogTab('Team Setup', Icons.manage_accounts_rounded, 1, selectedTab, stepColor, () {
+                                      setDialogState(() => selectedTab = 1);
+                                    }),
+                                  ],
                                 ),
                               ],
                             ),
@@ -301,26 +255,30 @@ class _StepAssignmentScreenState extends State<StepAssignmentScreen> {
 
                           // ── SEARCH BAR ──
                           Padding(
-                            padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+                            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                             child: Container(
-                              height: 38,
+                              height: 40,
                               decoration: BoxDecoration(
-                                color: Colors.grey.shade50,
+                                color: Colors.white,
                                 borderRadius: BorderRadius.circular(12),
                                 border: Border.all(color: Colors.grey.shade200),
                               ),
                               child: Row(
                                 children: [
-                                  const SizedBox(width: 10),
-                                  Icon(Icons.search_rounded, size: 16, color: Colors.grey.shade400),
+                                  const SizedBox(width: 12),
+                                  Icon(Icons.search_rounded, size: 17, color: Colors.grey.shade400),
                                   const SizedBox(width: 8),
                                   Expanded(
                                     child: TextField(
-                                      onChanged: (val) => setZoneState(() => searchQuery = val),
-                                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
+                                      onChanged: (val) => setDialogState(() => searchQuery = val),
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                        color: Color(0xFF0F172A),
+                                      ),
                                       decoration: InputDecoration(
                                         hintText: 'Search user...',
-                                        hintStyle: TextStyle(fontSize: 11, color: Colors.grey.shade400, fontWeight: FontWeight.w400),
+                                        hintStyle: TextStyle(fontSize: 12, color: Colors.grey.shade400, fontWeight: FontWeight.w400),
                                         border: InputBorder.none,
                                         isDense: true,
                                         contentPadding: EdgeInsets.zero,
@@ -329,278 +287,96 @@ class _StepAssignmentScreenState extends State<StepAssignmentScreen> {
                                   ),
                                   if (searchQuery.isNotEmpty)
                                     GestureDetector(
-                                      onTap: () => setZoneState(() => searchQuery = ''),
-                                      child: Icon(Icons.close_rounded, size: 16, color: Colors.grey.shade500),
-                                    ),
-                                  const SizedBox(width: 10),
+                                      onTap: () => setDialogState(() => searchQuery = ''),
+                                      child: Padding(
+                                        padding: const EdgeInsets.only(right: 10),
+                                        child: Icon(Icons.close_rounded, size: 16, color: Colors.grey.shade400),
+                                      ),
+                                    )
+                                  else
+                                    const SizedBox(width: 12),
                                 ],
                               ),
                             ),
                           ),
 
-                          // ── SELECT ALL ROW ──
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
-                            child: Row(
-                              children: [
-                                Text(
-                                  '${currentZoneUsers.length} people',
-                                  style: TextStyle(
-                                    fontFamily: 'Montserrat',
-                                    fontSize: 10,
-                                    color: Colors.grey.shade500,
-                                    fontWeight: FontWeight.w600,
+                          if (selectedTab == 0) ...[
+                            // ── BULK ACTIONS ROW ──
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(18, 10, 18, 4),
+                              child: Row(
+                                children: [
+                                  Text(
+                                    '${filteredUsers.length} users',
+                                    style: TextStyle(fontSize: 11, color: Colors.grey.shade500, fontWeight: FontWeight.w600, fontFamily: 'Montserrat'),
                                   ),
-                                ),
-                                const Spacer(),
-                                _selectAllBtn('ALL FULL', const Color(0xFF059669), () => setZoneState(() => selectAllZone(selectedZone, 'full'))),
-                                const SizedBox(width: 6),
-                                _selectAllBtn('ALL VIEW', const Color(0xFF2563EB), () => setZoneState(() => selectAllZone(selectedZone, 'view'))),
-                                const SizedBox(width: 6),
-                                _selectAllBtn('CLEAR', Colors.grey.shade500, () => setZoneState(() => selectAllZone(selectedZone, 'no'))),
-                              ],
+                                  const Spacer(),
+                                  _bulkBtn('All Full', const Color(0xFF059669), Icons.check_circle_rounded, () {
+                                    setDialogState(() {
+                                      for (final u in filteredUsers) userAccessMap[u.id] = 'full';
+                                    });
+                                  }),
+                                  const SizedBox(width: 6),
+                                  _bulkBtn('All View', const Color(0xFF2563EB), Icons.visibility_rounded, () {
+                                    setDialogState(() {
+                                      for (final u in filteredUsers) userAccessMap[u.id] = 'view';
+                                    });
+                                  }),
+                                  const SizedBox(width: 6),
+                                  _bulkBtn('Clear', Colors.grey.shade500, Icons.block_rounded, () {
+                                    setDialogState(() {
+                                      for (final u in filteredUsers) userAccessMap[u.id] = 'no';
+                                    });
+                                  }),
+                                ],
+                              ),
                             ),
-                          ),
+                          ] else ...[
+                            const SizedBox(height: 8),
+                          ],
 
                           // ── USER LIST ──
-                          ConstrainedBox(
-                            constraints: const BoxConstraints(maxHeight: 320),
+                          Flexible(
                             child: ListView.builder(
                               shrinkWrap: true,
                               physics: const BouncingScrollPhysics(),
-                              padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-                              itemCount: currentZoneUsers.length,
-                                  itemBuilder: (_, i) {
-                                final user = currentZoneUsers[i];
+                              padding: const EdgeInsets.fromLTRB(14, 4, 14, 8),
+                              itemCount: filteredUsers.length,
+                              itemBuilder: (_, i) {
+                                final user = filteredUsers[i];
                                 final access = userAccessMap[user.id] ?? 'no';
-                                return TweenAnimationBuilder<double>(
-                                  key: ValueKey('${user.id}_$selectedZone'),
-                                  tween: Tween(begin: 0.0, end: 1.0),
-                                  duration: Duration(milliseconds: 180 + i * 40),
-                                  curve: Curves.easeOut,
-                                  builder: (_, v, child) => Opacity(
-                                    opacity: v,
-                                    child: Transform.translate(
-                                      offset: Offset(0, 12 * (1 - v)),
-                                      child: child,
+
+                                return AnimatedContainer(
+                                  duration: const Duration(milliseconds: 200),
+                                  margin: const EdgeInsets.only(bottom: 10),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(18),
+                                    border: Border.all(
+                                      color: selectedTab == 0
+                                          ? (access == 'full'
+                                              ? const Color(0xFF10B981).withOpacity(0.5)
+                                              : access == 'view'
+                                                  ? const Color(0xFF3B82F6).withOpacity(0.4)
+                                                  : Colors.grey.shade200)
+                                          : Colors.grey.shade200,
+                                      width: 1.5,
                                     ),
                                   ),
-                                  child: Container(
-                                    margin: const EdgeInsets.only(bottom: 12),
-                                    padding: const EdgeInsets.all(16),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      borderRadius: BorderRadius.circular(20),
-                                      border: Border.all(
-                                        color: access == 'full'
-                                            ? const Color(0xFF10B981)
-                                            : access == 'view'
-                                                ? const Color(0xFF3B82F6)
-                                                : Colors.grey.shade200,
-                                        width: 1.5,
-                                      ),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: Colors.black.withOpacity(0.03),
-                                          blurRadius: 8,
-                                          offset: const Offset(0, 4),
-                                        ),
-                                      ],
-                                    ),
-                                    child: Column(
-                                      children: [
-                                        Row(
-                                          children: [
-                                            AnimatedContainer(
-                                              duration: const Duration(milliseconds: 200),
-                                              width: 42, height: 42,
-                                              decoration: BoxDecoration(
-                                                shape: BoxShape.circle,
-                                                color: access == 'full'
-                                                    ? const Color(0xFF10B981)
-                                                    : access == 'view'
-                                                        ? const Color(0xFF3B82F6)
-                                                        : Colors.grey.shade200,
-                                              ),
-                                              child: Center(
-                                                child: Text(
-                                                  user.name[0].toUpperCase(),
-                                                  style: TextStyle(
-                                                    fontFamily: 'Montserrat',
-                                                    color: access == 'no' ? Colors.grey.shade500 : Colors.white,
-                                                    fontSize: 16,
-                                                    fontWeight: FontWeight.w800,
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                            const SizedBox(width: 14),
-                                            Expanded(
-                                              child: Column(
-                                                crossAxisAlignment: CrossAxisAlignment.start,
-                                                children: [
-                                                  Text(
-                                                    user.name,
-                                                    style: const TextStyle(
-                                                      fontFamily: 'Montserrat',
-                                                      fontWeight: FontWeight.w800,
-                                                      fontSize: 13,
-                                                      color: Color(0xFF0F172A),
-                                                    ),
-                                                  ),
-                                                  const SizedBox(height: 4),
-                                                  Row(
-                                                    children: ['full', 'view', 'no'].map((level) {
-                                                      final isActive = access == level;
-                                                      final color = level == 'full'
-                                                          ? const Color(0xFF059669)
-                                                          : level == 'view'
-                                                              ? const Color(0xFF2563EB)
-                                                              : Colors.grey.shade400;
-                                                      final label = level == 'full' ? 'FULL' : level == 'view' ? 'VIEW' : 'NONE';
-                                                      return GestureDetector(
-                                                        onTap: () => setZoneState(() => userAccessMap[user.id] = level),
-                                                        child: AnimatedContainer(
-                                                          duration: const Duration(milliseconds: 180),
-                                                          margin: const EdgeInsets.only(right: 6),
-                                                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                                                          decoration: BoxDecoration(
-                                                            color: isActive ? color : Colors.grey.shade100,
-                                                            borderRadius: BorderRadius.circular(10),
-                                                          ),
-                                                          child: Text(
-                                                            label,
-                                                            style: TextStyle(
-                                                              fontFamily: 'Montserrat',
-                                                              fontSize: 8,
-                                                              fontWeight: FontWeight.w900,
-                                                              color: isActive ? Colors.white : Colors.grey.shade500,
-                                                            ),
-                                                          ),
-                                                        ),
-                                                      );
-                                                    }).toList(),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        const Divider(height: 24, thickness: 1),
-                                        // Role & Zone Selection for "Team Building"
-                                        Row(
-                                          children: [
-                                            // Zone selector
-                                            Expanded(
-                                              child: Column(
-                                                crossAxisAlignment: CrossAxisAlignment.start,
-                                                children: [
-                                                  const Text('ASSIGN ZONE', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: Color(0xFF94A3B8))),
-                                                  const SizedBox(height: 6),
-                                                  Container(
-                                                    padding: const EdgeInsets.symmetric(horizontal: 10),
-                                                    height: 36,
-                                                    decoration: BoxDecoration(color: const Color(0xFFF8FAFC), borderRadius: BorderRadius.circular(10), border: Border.all(color: const Color(0xFFE2E8F0))),
-                                                    child: DropdownButtonHideUnderline(
-                                                      child: DropdownButton<String>(
-                                                        value: userZoneMap[user.id] ?? user.zone.toUpperCase(),
-                                                        isExpanded: true,
-                                                        icon: const Icon(Icons.arrow_drop_down, size: 16),
-                                                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
-                                                        onChanged: (val) {
-                                                          if (val != null) {
-                                                            setZoneState(() => userZoneMap[user.id] = val);
-                                                            _updateUserDetails(user.id, val, userRoleMap[user.id] ?? user.role);
-                                                          }
-                                                        },
-                                                        items: ['NORTH', 'WEST', 'EAST', 'SOUTH', 'PAN INDIA'].map((z) => DropdownMenuItem(value: z, child: Text(z))).toList(),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                            const SizedBox(width: 12),
-                                            // Role selector
-                                            Expanded(
-                                              child: Column(
-                                                crossAxisAlignment: CrossAxisAlignment.start,
-                                                children: [
-                                                  const Text('HIERARCHY ROLE', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: Color(0xFF94A3B8))),
-                                                  const SizedBox(height: 6),
-                                                  Container(
-                                                    padding: const EdgeInsets.symmetric(horizontal: 10),
-                                                    height: 36,
-                                                    decoration: BoxDecoration(color: const Color(0xFFF8FAFC), borderRadius: BorderRadius.circular(10), border: Border.all(color: const Color(0xFFE2E8F0))),
-                                                    child: DropdownButtonHideUnderline(
-                                                      child: DropdownButton<UserRole>(
-                                                        value: userRoleMap[user.id] ?? user.role,
-                                                        isExpanded: true,
-                                                        icon: const Icon(Icons.arrow_drop_down, size: 16),
-                                                        style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
-                                                        onChanged: (val) {
-                                                          if (val != null) {
-                                                            setZoneState(() => userRoleMap[user.id] = val);
-                                                            _updateUserDetails(user.id, userZoneMap[user.id] ?? user.zone, val);
-                                                          }
-                                                        },
-                                                        items: UserRole.values
-                                            .where((r) => r != UserRole.admin)
-                                            .map((r) => DropdownMenuItem(value: r, child: Text(r.label.toUpperCase())))
-                                            .toList(),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        const SizedBox(height: 10),
-                                        // ── REPORTS TO ──
-                                        Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            const Text('REPORTS TO', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: Color(0xFF94A3B8))),
-                                            const SizedBox(height: 6),
-                                            Container(
-                                              padding: const EdgeInsets.symmetric(horizontal: 10),
-                                              height: 36,
-                                              decoration: BoxDecoration(color: const Color(0xFFF8FAFC), borderRadius: BorderRadius.circular(10), border: Border.all(color: const Color(0xFFE2E8F0))),
-                                              child: DropdownButtonHideUnderline(
-                                                child: DropdownButton<String?>(
-                                                  value: userManagerMap[user.id],
-                                                  isExpanded: true,
-                                                  icon: const Icon(Icons.account_tree_rounded, size: 14),
-                                                  style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
-                                                  onChanged: (val) {
-                                                    setZoneState(() => userManagerMap[user.id] = val);
-                                                    // Save managerId to backend
-                                                    _updateManagerId(user.id, val);
-                                                  },
-                                                  items: [
-                                                    const DropdownMenuItem<String?>(value: null, child: Text('— No Manager —')),
-                                                    ..._users
-                                                        .where((u) => u.role == UserRole.rsm || u.role == UserRole.asm)
-                                                        .where((u) => u.id != user.id)
-                                                        .map((u) => DropdownMenuItem<String?>(value: u.id, child: Text('${u.role.label.toUpperCase()}: ${u.name}'))),
-                                                  ],
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ],
-                                    ),
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(14),
+                                    child: selectedTab == 0
+                                        ? _accessTabUserRow(user, access, stepColor, setDialogState, userAccessMap)
+                                        : _teamSetupTabUserRow(user, userZoneMap, userRoleMap, userManagerMap, setDialogState),
                                   ),
                                 );
                               },
                             ),
                           ),
 
-                          // ── ACTIONS ──
+                          // ── SAVE BUTTON ──
                           Container(
-                            padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+                            padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
                             decoration: BoxDecoration(
                               color: Colors.white,
                               border: Border(top: BorderSide(color: Colors.grey.shade100)),
@@ -612,19 +388,21 @@ class _StepAssignmentScreenState extends State<StepAssignmentScreen> {
                                   child: GestureDetector(
                                     onTap: () => Navigator.pop(ctx),
                                     child: Container(
-                                      height: 46,
+                                      height: 48,
                                       decoration: BoxDecoration(
                                         color: Colors.grey.shade100,
                                         borderRadius: BorderRadius.circular(14),
                                       ),
-                                      child: const Center(
-                                        child: Text('CANCEL',
-                                            style: TextStyle(
-                                              fontFamily: 'Montserrat',
-                                              fontWeight: FontWeight.w800,
-                                              fontSize: 11,
-                                              color: Color(0xFF64748B),
-                                            )),
+                                      child: Center(
+                                        child: Text(
+                                          'CANCEL',
+                                          style: TextStyle(
+                                            fontFamily: 'Montserrat',
+                                            fontWeight: FontWeight.w800,
+                                            fontSize: 12,
+                                            color: Colors.grey.shade600,
+                                          ),
+                                        ),
                                       ),
                                     ),
                                   ),
@@ -633,43 +411,81 @@ class _StepAssignmentScreenState extends State<StepAssignmentScreen> {
                                 Expanded(
                                   flex: 2,
                                   child: GestureDetector(
-                                    onTap: () async {
-                                      Navigator.pop(ctx);
-                                      for (final user in _users) {
-                                        if (user.role.label == 'Admin') continue;
-                                        final newAccess = userAccessMap[user.id] ?? 'no';
-                                        final oldAccess = user.stepAccess[stepLabel] ?? 'no';
-                                        if (newAccess != oldAccess) {
-                                          final updated = Map<String, String>.from(user.stepAccess);
-                                          updated[stepLabel] = newAccess;
-                                          await _updateStepAccess(user.id, updated);
-                                        }
-                                      }
-                                      if (mounted) {
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          const SnackBar(
-                                            content: Text('✅ Access updated!'),
-                                            backgroundColor: Color(0xFF0F172A),
-                                            behavior: SnackBarBehavior.floating,
-                                          ),
-                                        );
-                                      }
-                                    },
-                                    child: Container(
-                                      height: 46,
+                                    onTap: isSaving
+                                        ? null
+                                        : () async {
+                                            setDialogState(() => isSaving = true);
+                                            // Save access changes
+                                            for (final user in _users) {
+                                              if (user.role.label == 'Admin') continue;
+                                              final newAccess = userAccessMap[user.id] ?? 'no';
+                                              final oldAccess = user.stepAccess[stepLabel] ?? 'no';
+                                              if (newAccess != oldAccess) {
+                                                final updated = Map<String, String>.from(user.stepAccess);
+                                                updated[stepLabel] = newAccess;
+                                                await _updateStepAccess(user.id, updated);
+                                              }
+                                              // Save zone/role changes
+                                              final newZone = userZoneMap[user.id] ?? user.zone;
+                                              final newRole = userRoleMap[user.id] ?? user.role;
+                                              if (newZone != user.zone.toUpperCase() || newRole != user.role) {
+                                                await _updateUserDetails(user.id, newZone, newRole);
+                                              }
+                                              // Save manager changes
+                                              if (userManagerMap[user.id] != user.managerId) {
+                                                await _updateManagerId(user.id, userManagerMap[user.id]);
+                                              }
+                                            }
+                                            if (ctx.mounted) Navigator.pop(ctx);
+                                            if (mounted) {
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                SnackBar(
+                                                  content: const Row(
+                                                    children: [
+                                                      Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
+                                                      SizedBox(width: 10),
+                                                      Text('Changes saved successfully!', style: TextStyle(fontWeight: FontWeight.w600)),
+                                                    ],
+                                                  ),
+                                                  backgroundColor: const Color(0xFF059669),
+                                                  behavior: SnackBarBehavior.floating,
+                                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                                  duration: const Duration(seconds: 2),
+                                                ),
+                                              );
+                                            }
+                                          },
+                                    child: AnimatedContainer(
+                                      duration: const Duration(milliseconds: 200),
+                                      height: 48,
                                       decoration: BoxDecoration(
-                                        color: const Color(0xFF0F172A),
+                                        color: isSaving ? const Color(0xFF334155) : const Color(0xFF0F172A),
                                         borderRadius: BorderRadius.circular(14),
                                       ),
-                                      child: const Center(
-                                        child: Text('SAVE CHANGES',
-                                            style: TextStyle(
-                                              fontFamily: 'Montserrat',
-                                              fontWeight: FontWeight.w900,
-                                              fontSize: 11,
-                                              color: Colors.white,
-                                              letterSpacing: 0.5,
-                                            )),
+                                      child: Center(
+                                        child: isSaving
+                                            ? const SizedBox(
+                                                width: 20,
+                                                height: 20,
+                                                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
+                                              )
+                                            : const Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Icon(Icons.save_rounded, color: Colors.white, size: 16),
+                                                  SizedBox(width: 8),
+                                                  Text(
+                                                    'SAVE CHANGES',
+                                                    style: TextStyle(
+                                                      fontFamily: 'Montserrat',
+                                                      fontWeight: FontWeight.w900,
+                                                      fontSize: 12,
+                                                      color: Colors.white,
+                                                      letterSpacing: 0.5,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
                                       ),
                                     ),
                                   ),
@@ -679,8 +495,8 @@ class _StepAssignmentScreenState extends State<StepAssignmentScreen> {
                           ),
                         ],
                       ),
-                    ));
-                  },
+                    ),
+                  ),
                 );
               },
             ),
@@ -690,188 +506,653 @@ class _StepAssignmentScreenState extends State<StepAssignmentScreen> {
     );
   }
 
-  Widget _selectAllBtn(String label, Color color, VoidCallback onTap) {
+  Widget _accessTabUserRow(
+    User user,
+    String access,
+    Color stepColor,
+    StateSetter setDialogState,
+    Map<String, String> userAccessMap,
+  ) {
+    return Row(
+      children: [
+        // Avatar
+        Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: access == 'full'
+                ? stepColor
+                : access == 'view'
+                    ? const Color(0xFF3B82F6)
+                    : Colors.grey.shade200,
+          ),
+          child: Center(
+            child: Text(
+              user.name[0].toUpperCase(),
+              style: TextStyle(
+                fontFamily: 'Montserrat',
+                color: access == 'no' ? Colors.grey.shade500 : Colors.white,
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        // Name + Role
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                user.name,
+                style: const TextStyle(
+                  fontFamily: 'Montserrat',
+                  fontWeight: FontWeight.w800,
+                  fontSize: 13,
+                  color: Color(0xFF0F172A),
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 3),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      user.role.label.toUpperCase(),
+                      style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: Color(0xFF64748B)),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      user.zone.toUpperCase(),
+                      style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: Color(0xFF94A3B8)),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 10),
+        // Access Pill Toggle
+        _accessPillToggle(access, (newLevel) {
+          setDialogState(() => userAccessMap[user.id] = newLevel);
+        }),
+      ],
+    );
+  }
+
+  Widget _accessPillToggle(String currentAccess, Function(String) onChanged) {
+    final options = [
+      {'value': 'full', 'label': 'Full', 'icon': Icons.edit_rounded, 'color': const Color(0xFF059669), 'bg': const Color(0xFFD1FAE5)},
+      {'value': 'view', 'label': 'View', 'icon': Icons.visibility_rounded, 'color': const Color(0xFF2563EB), 'bg': const Color(0xFFDBEAFE)},
+      {'value': 'no', 'label': 'None', 'icon': Icons.block_rounded, 'color': const Color(0xFF94A3B8), 'bg': const Color(0xFFF1F5F9)},
+    ];
+
+    return Container(
+      height: 32,
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F5F9),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: options.map((opt) {
+          final isActive = currentAccess == opt['value'];
+          final color = opt['color'] as Color;
+          final bg = opt['bg'] as Color;
+          return GestureDetector(
+            onTap: () => onChanged(opt['value'] as String),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+              decoration: BoxDecoration(
+                color: isActive ? bg : Colors.transparent,
+                borderRadius: BorderRadius.circular(7),
+                border: isActive ? Border.all(color: color.withOpacity(0.3)) : null,
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    opt['icon'] as IconData,
+                    size: 11,
+                    color: isActive ? color : Colors.grey.shade400,
+                  ),
+                  const SizedBox(width: 3),
+                  Text(
+                    opt['label'] as String,
+                    style: TextStyle(
+                      fontFamily: 'Montserrat',
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      color: isActive ? color : Colors.grey.shade400,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _teamSetupTabUserRow(
+    User user,
+    Map<String, String> userZoneMap,
+    Map<String, UserRole> userRoleMap,
+    Map<String, String?> userManagerMap,
+    StateSetter setDialogState,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // User name + role badge
+        Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFF0F172A),
+              ),
+              child: Center(
+                child: Text(
+                  user.name[0].toUpperCase(),
+                  style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w800),
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    user.name,
+                    style: const TextStyle(
+                      fontFamily: 'Montserrat',
+                      fontWeight: FontWeight.w800,
+                      fontSize: 13,
+                      color: Color(0xFF0F172A),
+                    ),
+                  ),
+                  Text(
+                    user.role.label,
+                    style: TextStyle(fontSize: 10, color: Colors.grey.shade500, fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        // Zone + Role dropdowns
+        Row(
+          children: [
+            Expanded(
+              child: _labeledDropdown<String>(
+                label: 'ZONE',
+                value: userZoneMap[user.id] ?? user.zone.toUpperCase(),
+                items: ['NORTH', 'WEST', 'EAST', 'SOUTH', 'PAN INDIA']
+                    .map((z) => DropdownMenuItem(value: z, child: Text(z)))
+                    .toList(),
+                onChanged: (val) {
+                  if (val != null) setDialogState(() => userZoneMap[user.id] = val);
+                },
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _labeledDropdown<UserRole>(
+                label: 'ROLE',
+                value: userRoleMap[user.id] ?? user.role,
+                items: UserRole.values
+                    .where((r) => r != UserRole.admin)
+                    .map((r) => DropdownMenuItem(value: r, child: Text(r.label)))
+                    .toList(),
+                onChanged: (val) {
+                  if (val != null) setDialogState(() => userRoleMap[user.id] = val);
+                },
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        // Reports to
+        _labeledDropdown<String?>(
+          label: 'REPORTS TO',
+          value: userManagerMap[user.id],
+          items: [
+            const DropdownMenuItem<String?>(value: null, child: Text('— No Manager —')),
+            ..._users
+                .where((u) => u.role == UserRole.rsm || u.role == UserRole.asm)
+                .where((u) => u.id != user.id)
+                .map((u) => DropdownMenuItem<String?>(
+                      value: u.id,
+                      child: Text('${u.role.label}: ${u.name}'),
+                    )),
+          ],
+          onChanged: (val) {
+            setDialogState(() => userManagerMap[user.id] = val);
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _labeledDropdown<T>({
+    required String label,
+    required T value,
+    required List<DropdownMenuItem<T>> items,
+    required ValueChanged<T?> onChanged,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: Color(0xFF94A3B8), letterSpacing: 0.5)),
+        const SizedBox(height: 5),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          height: 38,
+          decoration: BoxDecoration(
+            color: const Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<T>(
+              value: value,
+              isExpanded: true,
+              icon: const Icon(Icons.unfold_more_rounded, size: 16, color: Color(0xFF94A3B8)),
+              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF1E293B), fontFamily: 'Montserrat'),
+              onChanged: onChanged,
+              items: items,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _statBadge(String label, Color textColor, Color bgColor) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: textColor, fontFamily: 'Montserrat'),
+      ),
+    );
+  }
+
+  Widget _dialogTab(String label, IconData icon, int index, int selectedTab, Color activeColor, VoidCallback onTap) {
+    final isSelected = index == selectedTab;
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: color.withOpacity(0.3)),
+          color: isSelected ? const Color(0xFF0F172A) : Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(10),
         ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontFamily: 'Montserrat',
-            fontSize: 8,
-            fontWeight: FontWeight.w800,
-            color: color,
-          ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 13, color: isSelected ? Colors.white : Colors.grey.shade500),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                fontFamily: 'Montserrat',
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                color: isSelected ? Colors.white : Colors.grey.shade500,
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Color _accessColor(String access) {
-    switch (access) {
-      case 'full': return NexusTheme.emerald500;
-      case 'view': return Colors.blue;
-      default: return NexusTheme.slate300;
-    }
-  }
-
-  String _accessLabel(String access) {
-    switch (access) {
-      case 'full': return 'FULL';
-      case 'view': return 'VIEW';
-      default: return 'NO';
-    }
+  Widget _bulkBtn(String label, Color color, IconData icon, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: color.withOpacity(0.25)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 11, color: color),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: TextStyle(fontFamily: 'Montserrat', fontSize: 10, fontWeight: FontWeight.w800, color: color),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final totalUsers = _users.where((u) => u.role.label != 'Admin').length;
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: const Text('STEP ASSIGNMENT', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 1)),
+        title: const Text(
+          'STEP ASSIGNMENT',
+          style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 1.2),
+        ),
         backgroundColor: Colors.white,
         elevation: 0,
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Container(height: 1, color: const Color(0xFFE2E8F0)),
+        ),
         actions: [
-          IconButton(onPressed: _fetchUsers, icon: const Icon(Icons.refresh)),
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: IconButton(
+              onPressed: _fetchUsers,
+              icon: const Icon(Icons.refresh_rounded),
+              tooltip: 'Refresh',
+              style: IconButton.styleFrom(
+                backgroundColor: const Color(0xFFF1F5F9),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+            ),
+          ),
         ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: NexusTheme.emerald500))
-          : ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: _workflowSteps.length,
-              itemBuilder: (context, index) {
-                final step = _workflowSteps[index];
-                final stepLabel = step['label'] as String;
-                final stepColor = step['color'] as Color;
-                final stepIcon = step['icon'] as IconData;
-
-                // Get users with access to this step
-                final fullUsers = _users.where((u) => u.stepAccess[stepLabel] == 'full').toList();
-                final viewUsers = _users.where((u) => u.stepAccess[stepLabel] == 'view').toList();
-
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 16),
+          : Column(
+              children: [
+                // Summary banner
+                Container(
+                  margin: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
                   decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(18),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  child: Row(
                     children: [
-                      // Step Header
-                      InkWell(
-                        onTap: () => _showStepUsersDialog(stepLabel, stepColor, stepIcon),
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-                        child: Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: stepColor.withAlpha(20),
-                            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-                          ),
-                          child: Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(10),
-                                decoration: BoxDecoration(
-                                  color: stepColor.withAlpha(30),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Icon(stepIcon, color: stepColor, size: 22),
+                      const Icon(Icons.admin_panel_settings_rounded, color: Colors.white, size: 28),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Workflow Access Control',
+                              style: TextStyle(
+                                fontFamily: 'Montserrat',
+                                color: Colors.white,
+                                fontWeight: FontWeight.w900,
+                                fontSize: 13,
                               ),
-                              const SizedBox(width: 14),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text('STAGE ${index + 1}', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: stepColor, letterSpacing: 1)),
-                                    const SizedBox(height: 2),
-                                    Text(stepLabel.toUpperCase(), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF1E293B))),
-                                  ],
-                                ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Tap any step to assign access to $totalUsers team members',
+                              style: TextStyle(
+                                fontFamily: 'Montserrat',
+                                color: Colors.white.withOpacity(0.6),
+                                fontSize: 10,
+                                fontWeight: FontWeight.w500,
                               ),
-                              // Access counts
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                                decoration: BoxDecoration(color: NexusTheme.emerald50, borderRadius: BorderRadius.circular(6)),
-                                child: Text('${fullUsers.length} FULL', style: const TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: NexusTheme.emerald600)),
-                              ),
-                              const SizedBox(width: 4),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                                decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(6)),
-                                child: Text('${viewUsers.length} VIEW', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: Colors.blue.shade600)),
-                              ),
-                              const SizedBox(width: 8),
-                              Icon(Icons.edit_note_rounded, color: stepColor, size: 24),
-                            ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          '$totalUsers Users',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            fontFamily: 'Montserrat',
                           ),
                         ),
                       ),
-
-                      // Users list
-                      if (fullUsers.isNotEmpty || viewUsers.isNotEmpty)
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-                          child: Wrap(
-                            spacing: 6,
-                            runSpacing: 6,
-                            children: [
-                              ...fullUsers.map((u) => _buildUserChip(u, 'full', stepColor)),
-                              ...viewUsers.map((u) => _buildUserChip(u, 'view', stepColor)),
-                            ],
-                          ),
-                        )
-                      else
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-                          child: Text('No users assigned — Tap to configure', style: TextStyle(fontSize: 11, color: Colors.grey.shade400, fontStyle: FontStyle.italic)),
-                        ),
                     ],
                   ),
-                );
-              },
+                ),
+                const SizedBox(height: 8),
+                Expanded(
+                  child: ListView.builder(
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+                    itemCount: _workflowSteps.length,
+                    itemBuilder: (context, index) {
+                      final step = _workflowSteps[index];
+                      final stepLabel = step['label'] as String;
+                      final stepColor = step['color'] as Color;
+                      final stepIcon = step['icon'] as IconData;
+
+                      final fullUsers = _users.where((u) => u.stepAccess[stepLabel] == 'full').toList();
+                      final viewUsers = _users.where((u) => u.stepAccess[stepLabel] == 'view').toList();
+                      final assignedCount = fullUsers.length + viewUsers.length;
+                      final progress = totalUsers > 0 ? assignedCount / totalUsers : 0.0;
+
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.03),
+                              blurRadius: 8,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: () => _showStepUsersDialog(stepLabel, stepColor, stepIcon),
+                            borderRadius: BorderRadius.circular(20),
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                children: [
+                                  Row(
+                                    children: [
+                                      // Step icon
+                                      Container(
+                                        width: 48,
+                                        height: 48,
+                                        decoration: BoxDecoration(
+                                          color: stepColor.withOpacity(0.1),
+                                          borderRadius: BorderRadius.circular(14),
+                                        ),
+                                        child: Icon(stepIcon, color: stepColor, size: 22),
+                                      ),
+                                      const SizedBox(width: 14),
+                                      // Stage info
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              'STAGE ${index + 1}',
+                                              style: TextStyle(
+                                                fontSize: 9,
+                                                fontWeight: FontWeight.w900,
+                                                color: stepColor,
+                                                letterSpacing: 1,
+                                                fontFamily: 'Montserrat',
+                                              ),
+                                            ),
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              stepLabel,
+                                              style: const TextStyle(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w900,
+                                                color: Color(0xFF1E293B),
+                                                fontFamily: 'Montserrat',
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      // Access stats
+                                      Column(
+                                        crossAxisAlignment: CrossAxisAlignment.end,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              if (fullUsers.isNotEmpty)
+                                                _miniCountBadge('${fullUsers.length}', const Color(0xFF059669), const Color(0xFFD1FAE5), Icons.edit_rounded),
+                                              if (fullUsers.isNotEmpty && viewUsers.isNotEmpty)
+                                                const SizedBox(width: 4),
+                                              if (viewUsers.isNotEmpty)
+                                                _miniCountBadge('${viewUsers.length}', const Color(0xFF2563EB), const Color(0xFFDBEAFE), Icons.visibility_rounded),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 6),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                            decoration: BoxDecoration(
+                                              color: stepColor.withOpacity(0.08),
+                                              borderRadius: BorderRadius.circular(8),
+                                            ),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(Icons.tune_rounded, size: 11, color: stepColor),
+                                                const SizedBox(width: 4),
+                                                Text(
+                                                  'MANAGE',
+                                                  style: TextStyle(
+                                                    fontFamily: 'Montserrat',
+                                                    fontSize: 9,
+                                                    fontWeight: FontWeight.w900,
+                                                    color: stepColor,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+                                  // Progress bar
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text(
+                                            assignedCount == 0
+                                                ? 'No users assigned yet'
+                                                : '$assignedCount of $totalUsers users have access',
+                                            style: TextStyle(
+                                              fontSize: 10,
+                                              color: Colors.grey.shade500,
+                                              fontWeight: FontWeight.w600,
+                                              fontStyle: assignedCount == 0 ? FontStyle.italic : FontStyle.normal,
+                                            ),
+                                          ),
+                                          Text(
+                                            '${(progress * 100).round()}%',
+                                            style: TextStyle(
+                                              fontSize: 10,
+                                              color: progress > 0 ? stepColor : Colors.grey.shade400,
+                                              fontWeight: FontWeight.w800,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 6),
+                                      ClipRRect(
+                                        borderRadius: BorderRadius.circular(4),
+                                        child: LinearProgressIndicator(
+                                          value: progress,
+                                          minHeight: 5,
+                                          backgroundColor: Colors.grey.shade100,
+                                          valueColor: AlwaysStoppedAnimation<Color>(
+                                            progress == 0 ? Colors.grey.shade200 : stepColor,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
             ),
     );
   }
 
-  Widget _buildUserChip(User user, String access, Color stepColor) {
-    final isFullAccess = access == 'full';
+  Widget _miniCountBadge(String count, Color textColor, Color bgColor, IconData icon) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
-        color: isFullAccess ? const Color(0xFF0F172A) : Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: isFullAccess ? null : Border.all(color: Colors.blue.shade200),
+        color: bgColor,
+        borderRadius: BorderRadius.circular(7),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          CircleAvatar(
-            radius: 9,
-            backgroundColor: isFullAccess ? stepColor : Colors.blue,
-            child: Text(user.name[0], style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold)),
-          ),
-          const SizedBox(width: 5),
+          Icon(icon, size: 10, color: textColor),
+          const SizedBox(width: 3),
           Text(
-            user.name.split(' ')[0].toUpperCase(),
-            style: TextStyle(
-              color: isFullAccess ? Colors.white : Colors.blue.shade700,
-              fontSize: 9,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          const SizedBox(width: 4),
-          Text(
-            isFullAccess ? '✅' : '👁️',
-            style: const TextStyle(fontSize: 9),
+            count,
+            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: textColor, fontFamily: 'Montserrat'),
           ),
         ],
       ),
