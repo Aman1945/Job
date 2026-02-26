@@ -9,6 +9,17 @@ const multer = require('multer');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 
+// ==================== HELPERS ====================
+// Ensure Mongoose Map / JS Map becomes JSON-friendly plain object
+function normalizeStepAccess(stepAccess) {
+    if (!stepAccess) return {};
+    if (stepAccess instanceof Map) {
+        return Object.fromEntries(stepAccess.entries());
+    }
+    if (typeof stepAccess === 'object') return stepAccess;
+    return {};
+}
+
 // ==================== ENVIRONMENT VALIDATION ====================
 if (!process.env.JWT_SECRET) {
     console.error('❌ FATAL: JWT_SECRET is missing in .env file');
@@ -263,7 +274,7 @@ app.post('/api/login', loginLimiter, async (req, res) => {
             isApprover: userDoc.isApprover,
             status: userDoc.status,
             permissions: userDoc.permissions || [],
-            stepAccess: userDoc.stepAccess || {},
+            stepAccess: normalizeStepAccess(userDoc.stepAccess),
             zone: userDoc.zone || 'PAN INDIA',
             location: userDoc.location || 'Pan India',
             department1: userDoc.department1,
@@ -294,6 +305,42 @@ app.get('/api/users', async (req, res) => {
         res.json(users);
     } catch (error) {
         res.status(500).json({ message: 'Error fetching users' });
+    }
+});
+
+// Get single user by ID (returns client-safe profile with permissions and stepAccess)
+app.get('/api/users/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const user = await User.findOne({ id }).select('-password');
+
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        const userDoc = user.toObject ? user.toObject() : user;
+        const userForClient = {
+            id: userDoc.id,
+            name: userDoc.name,
+            email: userDoc.email,
+            role: userDoc.role,
+            isApprover: userDoc.isApprover,
+            status: userDoc.status,
+            permissions: userDoc.permissions || [],
+            stepAccess: normalizeStepAccess(userDoc.stepAccess),
+            zone: userDoc.zone || 'PAN INDIA',
+            location: userDoc.location || 'Pan India',
+            department1: userDoc.department1,
+            department2: userDoc.department2,
+            channel: userDoc.channel,
+            whatsappNumber: userDoc.whatsappNumber,
+            managerId: userDoc.managerId
+        };
+
+        res.json(userForClient);
+    } catch (error) {
+        console.error('Error fetching user by id:', error);
+        res.status(500).json({ message: 'Error fetching user' });
     }
 });
 
