@@ -110,22 +110,14 @@ class _BookOrderScreenState extends State<BookOrderScreen> {
     final seen = <String>{};
     final unique = all.where((c) => seen.add(c.id)).toList();
 
-    if (_selectedZone == 'PAN INDIA') return unique;
-
-    // Filter by location matching zone keyword
-    return unique.where((c) {
-      final loc = (c.location ?? c.city ?? '').toUpperCase();
-      return loc.contains(_selectedZone);
-    }).toList();
+    // Zone selection removed for mission creation – always show all customers
+    return unique;
   }
 
   /// Users filtered by zone (non-admin)
   List<User> _zoneUsers(List<User> users) {
-    return users.where((u) {
-      if (u.role == UserRole.admin) return false;
-      if (_selectedZone == 'PAN INDIA') return true;
-      return u.zone.toUpperCase() == _selectedZone;
-    }).toList();
+    // Zone selection removed – allow assigning from all non-admin users
+    return users.where((u) => u.role != UserRole.admin).toList();
   }
 
   /// RSM list from zone users
@@ -166,12 +158,6 @@ class _BookOrderScreenState extends State<BookOrderScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── ZONE SELECTION ──────────────────────────────────────────
-            _buildSectionHeader('ZONE SELECTION'),
-            const SizedBox(height: 12),
-            _buildZoneChips(),
-            const SizedBox(height: 20),
-
             // ── SALES HIERARCHY (Admin only) ─────────────────────────────
             if (isAdmin) ...[
               _buildSectionHeader('ASSIGN SALES TEAM'),

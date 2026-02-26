@@ -226,7 +226,7 @@ class _TeamHierarchyScreenState extends State<TeamHierarchyScreen>
       body: TabBarView(
         controller: _pageTabCtrl,
         children: [
-          _buildHierarchyTab(allUsers),
+          _buildHierarchyTab(allUsers, currentUser, nexus),
           _buildWorkflowTab(nexus.users), // workflow uses ALL users for assignment check
         ],
       ),
@@ -235,9 +235,13 @@ class _TeamHierarchyScreenState extends State<TeamHierarchyScreen>
 
   // ── TAB 1: Hierarchy Tree ────────────────────────────────────
 
-  Widget _buildHierarchyTab(List<User> allUsers) {
+  Widget _buildHierarchyTab(List<User> allUsers, User? currentUser, NexusProvider nexus) {
     return Column(
       children: [
+        if (currentUser != null &&
+            (currentUser.role == UserRole.rsm || currentUser.role == UserRole.asm))
+          _buildMySalesOrgHeader(currentUser, allUsers, nexus),
+
         // Zone tabs
         Container(
           color: const Color(0xFF0F172A),
@@ -291,6 +295,166 @@ class _TeamHierarchyScreenState extends State<TeamHierarchyScreen>
           ),
         ),
       ],
+    );
+  }
+
+  // ── ROLE-BASED SALES ORG HEADER ──────────────────────────────
+
+  Widget _buildMySalesOrgHeader(User currentUser, List<User> allUsers, NexusProvider nexus) {
+    int asmCount = 0;
+    int seCount = 0;
+    String subtitle;
+
+    if (currentUser.role == UserRole.rsm) {
+      final teamIds = nexus.getTeamMemberIds(currentUser);
+      final teamUsers = allUsers
+          .where((u) => teamIds.contains(u.id) && u.id != currentUser.id)
+          .toList();
+      asmCount = teamUsers.where((u) => u.role == UserRole.asm).length;
+      seCount = teamUsers
+          .where((u) =>
+              u.role == UserRole.salesExecutive || u.role == UserRole.sales)
+          .length;
+      subtitle = 'Regional Sales Manager • ${currentUser.zone}';
+    } else {
+      // ASM view – show direct Sales Executives reporting into this ASM
+      final directExecs = allUsers.where((u) {
+        return u.managerId == currentUser.id &&
+            (u.role == UserRole.salesExecutive || u.role == UserRole.sales);
+      }).toList();
+      seCount = directExecs.length;
+
+      User? manager;
+      try {
+        manager = allUsers.firstWhere((u) => u.id == currentUser.managerId);
+      } catch (_) {
+        manager = null;
+      }
+
+      subtitle = manager != null
+          ? 'Area Sales Manager • Reports to ${manager.name}'
+          : 'Area Sales Manager • ${currentUser.zone}';
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+      decoration: const BoxDecoration(
+        color: Color(0xFF0F172A),
+      ),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFF020617),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.white.withOpacity(0.04)),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: const Color(0xFF22C55E).withOpacity(0.12),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.account_tree_rounded,
+                  color: Color(0xFF22C55E), size: 22),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    currentUser.name.toUpperCase(),
+                    style: const TextStyle(
+                      fontFamily: 'Montserrat',
+                      fontSize: 13,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.white,
+                      letterSpacing: 0.8,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      fontSize: 10,
+                      color: Color(0xFF9CA3AF),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      _statPill(
+                        label: 'ASM',
+                        value: asmCount.toString(),
+                        color: const Color(0xFF6366F1),
+                      ),
+                      const SizedBox(width: 8),
+                      _statPill(
+                        label: 'EXECUTIVES',
+                        value: seCount.toString(),
+                        color: const Color(0xFF22C55E),
+                      ),
+                      const SizedBox(width: 8),
+                      _statPill(
+                        label: 'ZONE',
+                        value: currentUser.zone,
+                        color: const Color(0xFFF97316),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _statPill({required String label, required String value, required Color color}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withOpacity(0.4)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 6,
+            height: 6,
+            margin: const EdgeInsets.only(right: 6),
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          ),
+          Text(
+            value,
+            style: TextStyle(
+              fontFamily: 'Montserrat',
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontFamily: 'Montserrat',
+              fontSize: 9,
+              fontWeight: FontWeight.w600,
+              color: color.withOpacity(0.9),
+              letterSpacing: 0.6,
+            ),
+          ),
+        ],
+      ),
     );
   }
 

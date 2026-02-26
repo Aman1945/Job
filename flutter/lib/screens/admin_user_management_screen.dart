@@ -213,7 +213,7 @@ class _PermissionDialogState extends State<PermissionDialog> {
     'invoicing': '📄 Invoicing',
     'fleet_loading': '🚛 Fleet Loading',
     'delivery': '🏠 Delivery',
-    'procurement': '🏭 Procurement',
+    'procurement': '🏭 Procurement',  
     'admin_bypass': '⚡ Admin Bypass',
     'user_management': '👥 User Management',
     'master_data': '🗄️ Master Data',
