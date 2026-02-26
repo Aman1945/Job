@@ -313,6 +313,15 @@ class _MasterDataScreenState extends State<MasterDataScreen> {
     } else if (_selectedTab == 'MATERIAL MASTER') {
       totalCount = provider.products.length.toString();
       metricIcon = Icons.inventory_2;
+    } else if (_selectedTab == 'OD MASTER') {
+      // Count only customers with some outstanding / OD exposure
+      final odCustomers = provider.customers
+          .where((c) => c.odAmt > 0 || c.osBalance > 0)
+          .toList();
+      totalCount = odCustomers.length.toString();
+      metricIcon = Icons.account_balance;
+      activeLabel = 'OD ACCOUNTS';
+      statusValue = 'RISK';
     }
 
     return GridView.count(
@@ -571,9 +580,15 @@ class _MasterDataScreenState extends State<MasterDataScreen> {
   Widget _buildDataTable() {
     final provider = Provider.of<NexusProvider>(context);
 
-    // ── CUSTOMER MASTER: frozen column + horizontal scroll + pagination ──
-    if (_selectedTab == 'CUSTOMER MASTER') {
-      final customers = provider.customers;
+    // ── CUSTOMER MASTER / OD MASTER: frozen column + horizontal scroll + pagination ──
+    if (_selectedTab == 'CUSTOMER MASTER' || _selectedTab == 'OD MASTER') {
+      final allCustomers = provider.customers;
+      // OD MASTER: focus only on customers with some OS / OD exposure
+      final customers = _selectedTab == 'OD MASTER'
+          ? allCustomers
+              .where((c) => c.odAmt > 0 || c.osBalance > 0)
+              .toList()
+          : allCustomers;
 
       // Skeleton loading while data is being fetched
       if (customers.isEmpty && _isLoading) {
@@ -581,15 +596,19 @@ class _MasterDataScreenState extends State<MasterDataScreen> {
       }
 
       if (customers.isEmpty) {
-        return const Padding(
-          padding: EdgeInsets.all(48),
+        return Padding(
+          padding: const EdgeInsets.all(48),
           child: Center(
-            child: Text('NO CUSTOMERS FOUND',
-                style: TextStyle(
-                    color: Color(0xFF94A3B8),
-                    fontWeight: FontWeight.w900,
-                    fontSize: 10,
-                    letterSpacing: 1)),
+            child: Text(
+              _selectedTab == 'OD MASTER'
+                  ? 'NO OD ACCOUNTS FOUND'
+                  : 'NO CUSTOMERS FOUND',
+              style: const TextStyle(
+                  color: Color(0xFF94A3B8),
+                  fontWeight: FontWeight.w900,
+                  fontSize: 10,
+                  letterSpacing: 1),
+            ),
           ),
         );
       }
