@@ -26,6 +26,37 @@ class AuthProvider with ChangeNotifier {
         if (_token != null) 'Authorization': 'Bearer $_token',
       };
 
+  /// Refresh current user profile from server so that latest role,
+  /// permissions and stepAccess assigned by Admin are reflected.
+  Future<void> refreshCurrentUserFromServer() async {
+    if (_currentUser == null) return;
+
+    try {
+      final response = await authenticatedRequest(
+        method: 'GET',
+        endpoint: '/users/${_currentUser!.id}',
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        _currentUser = User.fromJson(data);
+
+        // Persist updated profile
+        await _secureStorage.write(
+          key: 'user_data',
+          value: jsonEncode(_currentUser!.toJson()),
+        );
+
+        debugPrint('✅ Refreshed user from server: ${_currentUser?.name}');
+        notifyListeners();
+      } else {
+        debugPrint('ℹ️ Failed to refresh user: ${response.statusCode}');
+      }
+    } catch (e) {
+      debugPrint('❌ refreshCurrentUserFromServer error: $e');
+    }
+  }
+
   /// Auto-login on app start
   Future<void> tryAutoLogin() async {
     _isLoading = true;
@@ -42,6 +73,8 @@ class AuthProvider with ChangeNotifier {
         _isAuthenticated = true;
         
         debugPrint('✅ Auto-login successful: ${_currentUser?.name}');
+        // Ensure we have the latest role/permissions/stepAccess from backend
+        await refreshCurrentUserFromServer();
       } else {
         debugPrint('ℹ️ No saved session found');
       }
