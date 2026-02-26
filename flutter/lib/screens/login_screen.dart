@@ -26,8 +26,9 @@ class _LoginScreenState extends State<LoginScreen> {
       );
       
       if (success && mounted) {
-        // Trigger data refresh in NexusProvider
-        Provider.of<NexusProvider>(context, listen: false).refreshData();
+        final nexusProvider = Provider.of<NexusProvider>(context, listen: false);
+        nexusProvider.setCurrentUser(authProvider.currentUser);
+        nexusProvider.refreshData();
         debugPrint('🎯 Login successful, navigation will trigger via main.dart');
       }
     } catch (e) {

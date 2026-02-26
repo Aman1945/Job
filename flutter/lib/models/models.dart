@@ -193,8 +193,12 @@ class User {
       department2: json['department2'],
       channel: json['channel'],
       whatsappNumber: json['whatsappNumber'],
-      permissions: (json['permissions'] as List?)?.map((e) => e.toString()).toList() ?? [],
-      stepAccess: (json['stepAccess'] as Map?)?.map((k, v) => MapEntry(k.toString(), v.toString())) ?? {},
+      permissions: json['permissions'] is List
+          ? (json['permissions'] as List).map((e) => e.toString()).toList()
+          : [],
+      stepAccess: json['stepAccess'] is Map
+          ? (json['stepAccess'] as Map).map((k, v) => MapEntry(k.toString(), v.toString()))
+          : {},
       managerId: json['managerId'],
     );
   }

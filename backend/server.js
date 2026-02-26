@@ -253,17 +253,30 @@ app.post('/api/login', loginLimiter, async (req, res) => {
             req.get('user-agent')
         );
 
+        // Return full user profile so app gets latest role, permissions, stepAccess (assigned by Admin)
+        const userDoc = user.toObject ? user.toObject() : user;
+        const userForClient = {
+            id: userDoc.id,
+            name: userDoc.name,
+            email: userDoc.email,
+            role: userDoc.role,
+            isApprover: userDoc.isApprover,
+            status: userDoc.status,
+            permissions: userDoc.permissions || [],
+            stepAccess: userDoc.stepAccess || {},
+            zone: userDoc.zone || 'PAN INDIA',
+            location: userDoc.location || 'Pan India',
+            department1: userDoc.department1,
+            department2: userDoc.department2,
+            channel: userDoc.channel,
+            whatsappNumber: userDoc.whatsappNumber,
+            managerId: userDoc.managerId
+        };
+
         res.json({
             success: true,
             token,
-            user: {
-                id: user.id,
-                name: user.name,
-                email: user.email,
-                role: user.role,
-                isApprover: user.isApprover,
-                status: user.status
-            }
+            user: userForClient
         });
     } catch (error) {
         console.error('Login error:', error);

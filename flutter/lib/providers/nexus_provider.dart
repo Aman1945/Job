@@ -71,11 +71,19 @@ class NexusProvider with ChangeNotifier {
     _isLoading = true;
     notifyListeners();
 
-    // Check for saved user session (Legacy support - will eventually use AuthProvider)
+    // Check for saved user session (Legacy: use user object only; AuthProvider is source of truth)
     final prefs = await SharedPreferences.getInstance();
     final String? savedUser = prefs.getString('user_session');
     if (savedUser != null) {
-      _currentUser = User.fromJson(jsonDecode(savedUser));
+      try {
+        final decoded = jsonDecode(savedUser);
+        final userMap = decoded is Map && decoded['user'] != null
+            ? decoded['user'] as Map<String, dynamic>
+            : decoded as Map<String, dynamic>;
+        _currentUser = User.fromJson(userMap);
+      } catch (_) {
+        _currentUser = null;
+      }
     }
 
     await refreshData();
@@ -124,12 +132,13 @@ class NexusProvider with ChangeNotifier {
       ).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
-        final userData = jsonDecode(response.body);
-        _currentUser = User.fromJson(userData);
-        
-        // Save session
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('user_session', jsonEncode(userData));
+        final data = jsonDecode(response.body);
+        final userMap = data['user'];
+        if (userMap != null && userMap is Map<String, dynamic>) {
+          _currentUser = User.fromJson(userMap);
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('user_session', jsonEncode(userMap));
+        }
       } else {
         final data = jsonDecode(response.body);
         final errorMsg = data['message'] ?? data['error'] ?? 'Invalid credentials';
@@ -148,6 +157,12 @@ class NexusProvider with ChangeNotifier {
     _currentUser = null;
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('user_session');
+    notifyListeners();
+  }
+
+  /// Sync current user from AuthProvider after login so both providers show same user.
+  void setCurrentUser(User? user) {
+    _currentUser = user;
     notifyListeners();
   }
 

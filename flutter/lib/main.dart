@@ -61,9 +61,11 @@ class _NexusAppState extends State<NexusApp> {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     await authProvider.tryAutoLogin();
     
-    // If logged in, refresh all data
+    // If logged in, sync user to NexusProvider and refresh data
     if (authProvider.isAuthenticated && mounted) {
-      Provider.of<NexusProvider>(context, listen: false).refreshData();
+      final nexusProvider = Provider.of<NexusProvider>(context, listen: false);
+      nexusProvider.setCurrentUser(authProvider.currentUser);
+      nexusProvider.refreshData();
     }
     
     if (mounted) {
