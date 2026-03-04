@@ -1,41 +1,42 @@
 /**
- * NexusOMS - Cloudflare R2 Storage Service
- * File upload service using Cloudflare R2 (S3-compatible)
+ * NexusOMS - DigitalOcean Spaces Storage Service
+ * File upload service using DigitalOcean Spaces (S3-compatible)
  */
 
 const { S3Client, PutObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
 
-// Initialize R2 client
+// Initialize DigitalOcean Spaces client
 let s3Client;
 let isConfigured = false;
 
-if (process.env.R2_ACCOUNT_ID && process.env.R2_ACCESS_KEY_ID && process.env.R2_SECRET_ACCESS_KEY) {
+if (process.env.DO_SPACES_KEY && process.env.DO_SPACES_SECRET && process.env.DO_SPACES_REGION) {
     s3Client = new S3Client({
-        region: 'auto',
-        endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+        region: process.env.DO_SPACES_REGION,
+        endpoint: `https://${process.env.DO_SPACES_REGION}.digitaloceanspaces.com`,
         credentials: {
-            accessKeyId: process.env.R2_ACCESS_KEY_ID,
-            secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
-        }
+            accessKeyId: process.env.DO_SPACES_KEY,
+            secretAccessKey: process.env.DO_SPACES_SECRET,
+        },
+        forcePathStyle: false, // Required for DO Spaces
     });
     isConfigured = true;
-    console.log('✅ Cloudflare R2 storage initialized');
+    console.log('✅ DigitalOcean Spaces storage initialized');
 } else {
-    console.warn('⚠️  Cloudflare R2 not configured. Files will be stored as base64 in database.');
+    console.warn('⚠️  DigitalOcean Spaces not configured. Files will be stored as base64 in database.');
 }
 
 /**
- * Upload file to Cloudflare R2
+ * Upload file to DigitalOcean Spaces
  * @param {string} base64Data - Base64 encoded file data
  * @param {string} fileName - Original file name
  * @param {string} folder - Folder path (e.g., 'pod', 'invoices', 'procurement')
  * @returns {Promise<string>} Public URL of uploaded file
  */
 async function uploadFile(base64Data, fileName, folder = 'uploads') {
-    // If R2 not configured, return base64 (fallback)
+    // If Spaces not configured, return base64 (fallback)
     if (!isConfigured) {
-        console.warn('⚠️  R2 not configured, storing as base64');
-        return base64Data; // Return base64 as-is
+        console.warn('⚠️  DO Spaces not configured, storing as base64');
+        return base64Data;
     }
 
     try {
@@ -55,61 +56,63 @@ async function uploadFile(base64Data, fileName, folder = 'uploads') {
         // Determine content type
         const contentType = getContentType(fileName);
 
-        // Upload to R2
+        // Upload to DO Spaces
         const command = new PutObjectCommand({
-            Bucket: process.env.R2_BUCKET_NAME || 'nexusoms',
+            Bucket: process.env.DO_SPACES_BUCKET,
             Key: key,
             Body: buffer,
             ContentType: contentType,
+            ACL: 'public-read', // Make files publicly accessible via CDN
         });
 
         await s3Client.send(command);
 
-        // Generate public URL
-        const publicUrl = process.env.R2_PUBLIC_URL
-            ? `${process.env.R2_PUBLIC_URL}/${key}`
-            : `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com/${process.env.R2_BUCKET_NAME}/${key}`;
+        // Generate public URL (CDN URL if available, otherwise direct URL)
+        const bucket = process.env.DO_SPACES_BUCKET;
+        const region = process.env.DO_SPACES_REGION;
+        const publicUrl = process.env.DO_SPACES_CDN_URL
+            ? `${process.env.DO_SPACES_CDN_URL}/${key}`
+            : `https://${bucket}.${region}.digitaloceanspaces.com/${key}`;
 
-        console.log(`✅ File uploaded to R2: ${key}`);
+        console.log(`✅ File uploaded to DO Spaces: ${key}`);
         return publicUrl;
 
     } catch (error) {
-        console.error('R2 upload error:', error.message);
-
+        console.error('DO Spaces upload error:', error.message);
         // Fallback to base64 if upload fails
-        console.warn('⚠️  R2 upload failed, falling back to base64 storage');
+        console.warn('⚠️  Spaces upload failed, falling back to base64 storage');
         return base64Data;
     }
 }
 
 /**
- * Delete file from Cloudflare R2
+ * Delete file from DigitalOcean Spaces
  * @param {string} fileUrl - Public URL or key of file to delete
  * @returns {Promise<boolean>} Success status
  */
 async function deleteFile(fileUrl) {
     if (!isConfigured) {
-        console.warn('⚠️  R2 not configured, skipping delete');
+        console.warn('⚠️  DO Spaces not configured, skipping delete');
         return true;
     }
 
     try {
         // Extract key from URL
-        const key = fileUrl.includes('/')
-            ? fileUrl.split('/').slice(-2).join('/') // Get last two segments (folder/filename)
-            : fileUrl;
+        const urlParts = fileUrl.split('/');
+        // Key is everything after the bucket domain (last segments)
+        const key = urlParts.slice(-2).join('/'); // folder/filename
 
         const command = new DeleteObjectCommand({
-            Bucket: process.env.R2_BUCKET_NAME || 'nexusoms',
+            Bucket: process.env.DO_SPACES_BUCKET,
             Key: key,
         });
 
         await s3Client.send(command);
-        console.log(`✅ File deleted from R2: ${key}`);
+        console.log(`✅ File deleted from DO Spaces: ${key}`);
         return true;
 
     } catch (error) {
-        console.error('R2 delete error:', error.message);
+        console.error('DO Spaces delete error:', error.message);
         return false;
     }
 }
@@ -141,15 +144,15 @@ function getContentType(fileName) {
 }
 
 /**
- * Check if R2 is configured
+ * Check if Spaces is configured
  * @returns {boolean} Configuration status
  */
-function isR2Configured() {
+function isSpacesConfigured() {
     return isConfigured;
 }
 
 module.exports = {
     uploadFile,
     deleteFile,
-    isR2Configured
+    isSpacesConfigured,
 };
