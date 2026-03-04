@@ -11,6 +11,26 @@ const { verifyToken } = require('../middleware/auth');
 const { allowRoles } = require('../middleware/rbac');
 
 module.exports = (app) => {
+    // Get audit logs for a specific user (Accessible by Admin, NSM, RSM)
+    app.get('/api/audit/logs/user/:userId', verifyToken, allowRoles(['Admin', 'NSM', 'RSM']), async (req, res) => {
+        try {
+            const { userId } = req.params;
+            const { limit = 100 } = req.query;
+
+            const logs = await AuditLog.find({ userId })
+                .sort({ timestamp: -1 })
+                .limit(parseInt(limit))
+                .lean();
+
+            res.json({
+                success: true,
+                data: logs
+            });
+        } catch (error) {
+            res.status(500).json({ success: false, message: error.message });
+        }
+    });
+
     // Get audit logs with filters and pagination
     app.get('/api/audit/logs', verifyToken, allowRoles(['Admin']), async (req, res) => {
         try {
