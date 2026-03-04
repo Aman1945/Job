@@ -250,11 +250,21 @@ class NexusProvider with ChangeNotifier {
     return fetchAuditLogs(userId: userId);
   }
 
-  Future<List<Map<String, dynamic>>> fetchAuditLogs({String? userId, String? entityType, int limit = 100}) async {
+  Future<List<Map<String, dynamic>>> fetchAuditLogs({
+    String? userId, 
+    String? entityType, 
+    String? role,
+    DateTime? fromDate,
+    DateTime? toDate,
+    int limit = 100
+  }) async {
     try {
       String url = '$_baseUrl/audit/logs?limit=$limit';
-      if (userId != null) url += '&userId=$userId';
-      if (entityType != null) url += '&entityType=$entityType';
+      if (userId != null && userId.isNotEmpty) url += '&userId=$userId';
+      if (entityType != null && entityType.isNotEmpty) url += '&entityType=$entityType';
+      if (role != null && role.isNotEmpty) url += '&role=$role';
+      if (fromDate != null) url += '&fromDate=${fromDate.toIso8601String()}';
+      if (toDate != null) url += '&toDate=${toDate.toIso8601String()}';
       
       debugPrint('🛰️ Fetching audit logs: $url');
       final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 15));
