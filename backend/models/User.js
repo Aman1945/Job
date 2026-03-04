@@ -111,6 +111,6 @@ userSchema.methods.getJWTPayload = function () {
 };
 
 // Index for faster queries
-userSchema.index({ id: 1, email: 1, role: 1 });
+userSchema.index({ id: 1, email: 1, role: 1, orgPosition: 1 });
 
 module.exports = mongoose.model('User', userSchema);

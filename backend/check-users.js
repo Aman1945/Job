@@ -5,7 +5,7 @@ require('dotenv').config();
 async function checkUsers() {
     try {
         await mongoose.connect(process.env.MONGODB_URI);
-        const users = await User.find({}, 'name email id');
+        const users = await User.find({}, 'name email id role orgPosition');
         console.log('--- ALL USERS ---');
         console.log(users);
         process.exit(0);
