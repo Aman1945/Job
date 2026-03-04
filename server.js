@@ -281,7 +281,8 @@ app.post('/api/login', loginLimiter, async (req, res) => {
             department2: userDoc.department2,
             channel: userDoc.channel,
             whatsappNumber: userDoc.whatsappNumber,
-            managerId: userDoc.managerId
+            managerId: userDoc.managerId,
+            orgPosition: userDoc.orgPosition || null
         };
 
         res.json({
@@ -334,7 +335,8 @@ app.get('/api/users/:id', async (req, res) => {
             department2: userDoc.department2,
             channel: userDoc.channel,
             whatsappNumber: userDoc.whatsappNumber,
-            managerId: userDoc.managerId
+            managerId: userDoc.managerId,
+            orgPosition: userDoc.orgPosition || null
         };
 
         res.json(userForClient);
@@ -588,6 +590,33 @@ app.delete('/api/products/:id', async (req, res) => {
 });
 
 // Bulk import products from Excel (Material Master)
+// Download Excel template for product import
+app.get('/api/products/import-template', async (req, res) => {
+    try {
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet('Material Master Template');
+        const headers = [
+            'SKU Code', 'Material Name', 'Category', 'Specie',
+            'Packing (kg)', 'HSN Code', 'GST %', 'MRP', 'Billing Rate',
+            'Stock Qty', 'Country of Origin'
+        ];
+        const headerRow = worksheet.addRow(headers);
+        headerRow.font = { bold: true, color: { argb: 'FFFFFF' } };
+        headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '0F172A' } };
+        worksheet.columns = headers.map(() => ({ width: 18 }));
+        // Add example row
+        worksheet.addRow(['SKU-1001', 'Premium Dog Food', 'Pet Supplies', 'Dog', '5', '23091000', 18, 1200, 950, 100, 'India']);
+
+        const buffer = await workbook.xlsx.writeBuffer();
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', 'attachment; filename=Material_Master_Template.xlsx');
+        res.send(buffer);
+    } catch (error) {
+        console.error('❌ Template Generation Error:', error);
+        res.status(500).json({ message: 'Error generating template' });
+    }
+});
+
 app.post('/api/products/bulk-import', upload.single('file'), async (req, res) => {
     try {
         if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
