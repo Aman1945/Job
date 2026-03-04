@@ -846,6 +846,24 @@ app.get('/api/distributor-prices/import-template', async (req, res) => {
 });
 
 
+
+// ==================== PHOTO UPLOAD ====================
+// Accepts base64 encoded image and uploads to DigitalOcean Spaces
+app.post('/api/upload-photo', async (req, res) => {
+    try {
+        const { base64Image, fileName, folder } = req.body;
+        if (!base64Image || !fileName) {
+            return res.status(400).json({ message: 'base64Image and fileName are required' });
+        }
+        const { uploadFile } = require('./services/storageService');
+        const url = await uploadFile(base64Image, fileName, folder || 'uploads');
+        res.json({ url });
+    } catch (error) {
+        console.error('Photo upload error:', error);
+        res.status(500).json({ message: 'Failed to upload photo' });
+    }
+});
+
 // ==================== ORDERS ====================
 app.get('/api/orders', async (req, res) => {
     try {

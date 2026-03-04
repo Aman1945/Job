@@ -35,6 +35,8 @@ const orderSchema = new mongoose.Schema({
         shippingCost: { type: Number, default: 0 },
         highCostAlert: { type: Boolean, default: false }
     },
+    salesPhotos: [{ type: String }], // DO Spaces URLs for sales photos (max 3)
+    qcPhoto: { type: String },       // DO Spaces URL for QC proof photo
     createdAt: { type: Date, default: Date.now }
 }, { timestamps: true });
 
