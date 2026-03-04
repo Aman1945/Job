@@ -445,6 +445,16 @@ app.patch('/api/users/:id', async (req, res) => {
         delete updateData.password;
         delete updateData.id;
 
+        // If orgPosition is being updated to a non-null value, clear it from any other user first.
+        // This ensures "unique" occupancy for org slots.
+        if (updateData.orgPosition) {
+            await User.updateMany(
+                { id: { $ne: id }, orgPosition: updateData.orgPosition },
+                { $set: { orgPosition: null } }
+            );
+            console.log(`🔄 Cleared ${updateData.orgPosition} from other users.`);
+        }
+
         const user = await User.findOneAndUpdate(
             { id },
             { $set: updateData },
