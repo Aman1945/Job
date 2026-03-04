@@ -117,13 +117,14 @@ class _SalesOrgMapScreenState extends State<SalesOrgMapScreen> {
     ));
   }
 
-  // ── User picker bottom sheet ─────────────────────────────────────────────
+  // ── User picker bottom sheet with MULTI-SELECT ──────────────────────────
   void _openPicker({
     required String positionLabel,
     required String slotKey,
     required List<User> allUsers,
   }) {
     final avail = _available(allUsers);
+    final Set<String> selection = {}; // Track selected user IDs
     String query = '';
     StateSetter? setS;
 
@@ -141,7 +142,7 @@ class _SalesOrgMapScreenState extends State<SalesOrgMapScreen> {
                 u.zone.toLowerCase().contains(query.toLowerCase())).toList();
 
         return Container(
-          height: MediaQuery.of(ctx).size.height * 0.82,
+          height: MediaQuery.of(ctx).size.height * 0.85,
           decoration: const BoxDecoration(
             color: _bgCard,
             borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
@@ -182,11 +183,13 @@ class _SalesOrgMapScreenState extends State<SalesOrgMapScreen> {
                               fontWeight: FontWeight.w600,
                               color: _teal)),
                     ])),
-                Text('${filtered.length} available',
-                    style: const TextStyle(
-                        fontFamily: 'Montserrat',
-                        fontSize: 9,
-                        color: _txtSub)),
+                if (selection.isNotEmpty)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(color: _teal, borderRadius: BorderRadius.circular(12)),
+                    child: Text('${selection.length} selected',
+                        style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w800)),
+                  ),
               ]),
             ),
 
@@ -232,30 +235,22 @@ class _SalesOrgMapScreenState extends State<SalesOrgMapScreen> {
                                 fontWeight: FontWeight.w600)),
                       ]))
                   : ListView.separated(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
                       itemCount: filtered.length,
                       separatorBuilder: (_, __) =>
                           const Divider(color: _border, height: 1),
                       itemBuilder: (_, i) {
                         final u = filtered[i];
+                        final isSelected = selection.contains(u.id);
                         final init = u.name.trim().split(' ')
                             .take(2)
                             .map((p) => p.isNotEmpty ? p[0].toUpperCase() : '')
                             .join();
-                        return ListTile(
+                        return CheckboxListTile(
+                          value: isSelected,
+                          activeColor: _teal,
                           contentPadding: const EdgeInsets.symmetric(
-                              vertical: 6, horizontal: 4),
-                          leading: Container(
-                              width: 40, height: 40,
-                              decoration: BoxDecoration(
-                                  color: _teal.withValues(alpha: 0.12),
-                                  shape: BoxShape.circle),
-                              child: Center(child: Text(init,
-                                  style: const TextStyle(
-                                      fontFamily: 'Montserrat',
-                                      fontWeight: FontWeight.w900,
-                                      fontSize: 13,
-                                      color: _teal)))),
+                              vertical: 2, horizontal: 4),
                           title: Text(u.name,
                               style: const TextStyle(
                                   fontFamily: 'Montserrat',
@@ -268,16 +263,53 @@ class _SalesOrgMapScreenState extends State<SalesOrgMapScreen> {
                             _chip(u.zone,
                                 _zoneColors[u.zone.toUpperCase()] ?? _txtSub),
                           ]),
-                          trailing: const Icon(
-                              Icons.arrow_circle_right_rounded,
-                              color: _teal, size: 20),
-                          onTap: () async {
-                            Navigator.pop(ctx);
-                            await _assign(u, slotKey);
+                          secondary: Container(
+                              width: 36, height: 36,
+                              decoration: BoxDecoration(
+                                  color: _teal.withValues(alpha: 0.12),
+                                  shape: BoxShape.circle),
+                              child: Center(child: Text(init,
+                                  style: const TextStyle(
+                                      fontFamily: 'Montserrat',
+                                      fontWeight: FontWeight.w900,
+                                      fontSize: 12,
+                                      color: _teal)))),
+                          onChanged: (val) {
+                            setS?.call(() {
+                              if (val == true) selection.add(u.id);
+                              else selection.remove(u.id);
+                            });
                           },
                         );
                       }),
             ),
+            
+            // Action Button
+            if (selection.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      Navigator.pop(ctx);
+                      for (final userId in selection) {
+                        final u = avail.firstWhere((x) => x.id == userId);
+                        await _assign(u, slotKey);
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _teal,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: Text('ASSIGN ${selection.length} MEMBERS',
+                        style: const TextStyle(fontFamily: 'Montserrat', fontWeight: FontWeight.w900)),
+                  ),
+                ),
+              ),
           ]),
         );
       }),
@@ -659,7 +691,8 @@ class _SalesOrgMapScreenState extends State<SalesOrgMapScreen> {
   }) {
     final vacant = users.isEmpty;
     return Container(
-      padding: const EdgeInsets.all(10),
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
       decoration: BoxDecoration(
         color: vacant ? const Color(0xFFFFF5F5) : _bgCard,
         borderRadius: BorderRadius.circular(14),
@@ -767,11 +800,13 @@ class _SalesOrgMapScreenState extends State<SalesOrgMapScreen> {
                 ),
                 const SizedBox(width: 8),
                 Expanded( // Allow text to wrap/truncate
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
                     Text(user.name,
                         style: const TextStyle(
                             fontFamily: 'Montserrat',
-                            fontSize: 13,
+                            fontSize: 12.5,
                             fontWeight: FontWeight.w900,
                             color: _txtHead),
                         maxLines: 1,
