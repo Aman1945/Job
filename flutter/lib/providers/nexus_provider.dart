@@ -247,13 +247,21 @@ class NexusProvider with ChangeNotifier {
   }
 
   Future<List<Map<String, dynamic>>> fetchUserAuditLogs(String userId) async {
+    return fetchAuditLogs(userId: userId);
+  }
+
+  Future<List<Map<String, dynamic>>> fetchAuditLogs({String? userId, String? entityType, int limit = 100}) async {
     try {
-      debugPrint('🛰️ Fetching audit logs for: $userId');
-      final response = await http.get(Uri.parse('$_baseUrl/audit/logs/user/$userId')).timeout(const Duration(seconds: 15));
+      String url = '$_baseUrl/audit/logs?limit=$limit';
+      if (userId != null) url += '&userId=$userId';
+      if (entityType != null) url += '&entityType=$entityType';
+      
+      debugPrint('🛰️ Fetching audit logs: $url');
+      final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 15));
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        if (data['success'] == true && data['data'] is List) {
-          return List<Map<String, dynamic>>.from(data['data']);
+        if (data['success'] == true && data['data'] != null && data['data']['logs'] is List) {
+          return List<Map<String, dynamic>>.from(data['data']['logs']);
         }
       }
     } catch (e) {
