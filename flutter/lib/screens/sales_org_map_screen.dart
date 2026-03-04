@@ -326,6 +326,14 @@ class _SalesOrgMapScreenState extends State<SalesOrgMapScreen> {
                   color: _txtSub)),
         ]),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh_rounded, color: _teal, size: 20),
+            onPressed: () async {
+              setState(() => _saving = true);
+              await nexus.fetchUsers();
+              if (mounted) setState(() => _saving = false);
+            },
+          ),
           if (_saving)
             const Padding(
               padding: EdgeInsets.only(right: 16),
@@ -723,7 +731,7 @@ class _SalesOrgMapScreenState extends State<SalesOrgMapScreen> {
   Widget _userPill(User user, Color color, String slotKey) {
     final init = user.name.trim().split(' ')
         .take(2).map((p) => p.isNotEmpty ? p[0].toUpperCase() : '').join();
-    return Container(
+    return Container( 
       margin: const EdgeInsets.only(bottom: 2),
       decoration: BoxDecoration(
           color: color.withValues(alpha: 0.07),
@@ -758,19 +766,28 @@ class _SalesOrgMapScreenState extends State<SalesOrgMapScreen> {
               ),
               const SizedBox(width: 5),
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(user.name.split(' ').first,
+                Text(user.name,
                     style: const TextStyle(
                         fontFamily: 'Montserrat',
-                        fontSize: 9,
-                        fontWeight: FontWeight.w800,
+                        fontSize: 16, // Increased font size for name
+                        fontWeight: FontWeight.w900,
                         color: _txtHead)),
-                if (user.zone.isNotEmpty && user.zone.toUpperCase() != 'PAN INDIA')
+                const SizedBox(height: 1),
+                Text(user.id,
+                    style: TextStyle(
+                        fontFamily: 'Montserrat',
+                        fontSize: 8,
+                        fontWeight: FontWeight.w600,
+                        color: _txtSub)),
+                if (user.zone.isNotEmpty && user.zone.toUpperCase() != 'PAN INDIA') ...[
+                  const SizedBox(height: 1),
                   Text(user.zone.toUpperCase(),
                       style: TextStyle(
                           fontFamily: 'Montserrat',
-                          fontSize: 7,
-                          fontWeight: FontWeight.w600,
+                          fontSize: 7.5,
+                          fontWeight: FontWeight.w700,
                           color: color)),
+                ],
               ]),
             ]),
           ),
@@ -780,8 +797,7 @@ class _SalesOrgMapScreenState extends State<SalesOrgMapScreen> {
         GestureDetector(
           onTap: () => _confirmRemove(user),
           child: Container(
-            width: 26, height: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 5),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
             decoration: BoxDecoration(
                 color: _vacantC.withValues(alpha: 0.10),
                 borderRadius: const BorderRadius.only(
@@ -789,7 +805,7 @@ class _SalesOrgMapScreenState extends State<SalesOrgMapScreen> {
                     bottomRight: Radius.circular(9)),
                 border: Border(
                     left: BorderSide(color: _vacantC.withValues(alpha: 0.2)))),
-            child: const Icon(Icons.close_rounded, size: 12, color: _vacantC),
+            child: const Icon(Icons.close_rounded, size: 14, color: _vacantC),
           ),
         ),
       ]),

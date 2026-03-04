@@ -1,10 +1,8 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../providers/nexus_provider.dart';
 import '../models/models.dart';
-import '../config/api_config.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // OrgMemberDataSheet
@@ -200,9 +198,16 @@ class _OrgMemberDataSheetState extends State<OrgMemberDataSheet>
                       style: const TextStyle(
                           fontFamily: 'Montserrat',
                           fontWeight: FontWeight.w900,
-                          fontSize: 15,
+                          fontSize: 16,
                           color: _white)),
-                  const SizedBox(height: 3),
+                  const SizedBox(height: 2),
+                  Text(widget.member.id,
+                      style: TextStyle(
+                          fontFamily: 'Montserrat',
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: _sub)),
+                  const SizedBox(height: 4),
                   Row(children: [
                     _chip(widget.slotKey.toUpperCase().replaceAll('_', ' '),
                         widget.accentColor),
