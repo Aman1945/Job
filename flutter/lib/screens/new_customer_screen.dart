@@ -125,6 +125,11 @@ class _NewCustomerScreenState extends State<NewCustomerScreen> {
                   setState(() => _deliveryAddresses = addresses);
                 },
               ),
+              // Step 3: Document Repository
+              const SizedBox(height: 32),
+              _buildSectionHeader('STEP 3: DOCUMENT REPOSITORY'),
+              const SizedBox(height: 24),
+              _buildDocumentRepository(isMobile),
               const SizedBox(height: 48),
 
               // Footer Actions
@@ -285,6 +290,75 @@ class _NewCustomerScreenState extends State<NewCustomerScreen> {
     );
   }
 
+  Widget _buildDocumentRepository(bool isMobile) {
+    const docs = [
+      ('GST CERTIFICATE', Icons.description_outlined),
+      ('PAN CARD COPY', Icons.credit_card_outlined),
+      ('SECURITY CHEQUE', Icons.account_balance_outlined),
+    ];
+
+    Widget docBox(String label, IconData icon) {
+      return Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: const Color(0xFFCDD5E0),
+            width: 1.5,
+            // Dart doesn't have dashed border natively, use StrokeCap trick with custom paint
+          ),
+        ),
+        child: Column(
+          children: [
+            const SizedBox(height: 8),
+            Icon(icon, size: 36, color: const Color(0xFFCDD5E0)),
+            const SizedBox(height: 16),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w900,
+                color: Color(0xFF334155),
+                letterSpacing: 0.5,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'Snapshot Required',
+              style: TextStyle(
+                fontSize: 10,
+                fontStyle: FontStyle.italic,
+                color: Color(0xFF94A3B8),
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      );
+    }
+
+    if (isMobile) {
+      return Column(
+        children: docs.map((d) => Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: _DashedBox(child: docBox(d.$1, d.$2)),
+        )).toList(),
+      );
+    }
+
+    return Row(
+      children: docs.asMap().entries.map((e) => Expanded(
+        child: Padding(
+          padding: EdgeInsets.only(right: e.key < docs.length - 1 ? 16 : 0),
+          child: _DashedBox(child: docBox(e.value.$1, e.value.$2)),
+        ),
+      )).toList(),
+    );
+  }
+
   Widget _buildResponsiveFooter(bool isMobile) {
     final buttons = [
       Container(
@@ -391,4 +465,54 @@ class _NewCustomerScreenState extends State<NewCustomerScreen> {
       );
     }
   }
+}
+
+/// Draws a dashed rounded border around its child (matches the reference design).
+class _DashedBox extends StatelessWidget {
+  final Widget child;
+  const _DashedBox({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      painter: _DashedBorderPainter(),
+      child: child,
+    );
+  }
+}
+
+class _DashedBorderPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = const Color(0xFFCBD5E1)
+      ..strokeWidth = 1.5
+      ..style = PaintingStyle.stroke;
+
+    const radius = Radius.circular(20);
+    final rect = RRect.fromRectAndRadius(
+      Rect.fromLTWH(0, 0, size.width, size.height),
+      radius,
+    );
+
+    const dashWidth = 6.0;
+    const dashSpace = 5.0;
+    final path = Path()..addRRect(rect);
+    final metrics = path.computeMetrics();
+
+    for (final metric in metrics) {
+      double dist = 0;
+      while (dist < metric.length) {
+        final start = metric.getTangentForOffset(dist)?.position;
+        final end = metric.getTangentForOffset(dist + dashWidth)?.position;
+        if (start != null && end != null) {
+          canvas.drawLine(start, end, paint);
+        }
+        dist += dashWidth + dashSpace;
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

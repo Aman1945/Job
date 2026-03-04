@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'dart:io';
+import 'package:excel/excel.dart' as xl;
+import 'package:path_provider/path_provider.dart';
+import 'package:open_file/open_file.dart';
 import '../providers/nexus_provider.dart';
 import '../utils/theme.dart';
 import '../utils/master_actions.dart';
 import '../models/models.dart';
 import '../config/api_config.dart';
+import '../widgets/row_detail_panel.dart';
 
 class CustomerMasterScreen extends StatefulWidget {
   const CustomerMasterScreen({super.key});
@@ -20,10 +25,60 @@ class _CustomerMasterScreenState extends State<CustomerMasterScreen> {
   String _selectedStatus = 'ALL';
   int _currentPage = 0;
   static const int _pageSize = 15;
+  Customer? _selectedCustomer;
+
+  // Scroll controllers for frozen-column table
+  late final ScrollController _vFrozen;   // frozen name column (vertical)
+  late final ScrollController _vBody;     // scrollable body (vertical)
+  late final ScrollController _hHeader;   // header row (horizontal)
+  late final ScrollController _hBody;     // scrollable body (horizontal)
+  bool _syncingV = false;
+  bool _syncingH = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _vFrozen = ScrollController();
+    _vBody   = ScrollController();
+    _hHeader = ScrollController();
+    _hBody   = ScrollController();
+
+    // Keep frozen + body in vertical sync
+    _vFrozen.addListener(() {
+      if (_syncingV) return;
+      _syncingV = true;
+      if (_vBody.hasClients) _vBody.jumpTo(_vFrozen.offset);
+      _syncingV = false;
+    });
+    _vBody.addListener(() {
+      if (_syncingV) return;
+      _syncingV = true;
+      if (_vFrozen.hasClients) _vFrozen.jumpTo(_vBody.offset);
+      _syncingV = false;
+    });
+
+    // Keep header + body in horizontal sync
+    _hHeader.addListener(() {
+      if (_syncingH) return;
+      _syncingH = true;
+      if (_hBody.hasClients) _hBody.jumpTo(_hHeader.offset);
+      _syncingH = false;
+    });
+    _hBody.addListener(() {
+      if (_syncingH) return;
+      _syncingH = true;
+      if (_hHeader.hasClients) _hHeader.jumpTo(_hBody.offset);
+      _syncingH = false;
+    });
+  }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _vFrozen.dispose();
+    _vBody.dispose();
+    _hHeader.dispose();
+    _hBody.dispose();
     super.dispose();
   }
 
@@ -159,7 +214,38 @@ class _CustomerMasterScreenState extends State<CustomerMasterScreen> {
                         ),
                       )
                     else ...[
-                      Expanded(child: _buildTable(pageItems)),
+                      Expanded(
+                        child: AnimatedDetailWrapper(
+                          selectedKey: _selectedCustomer?.id,
+                          table: _buildTable(pageItems),
+                          detailPanel: _selectedCustomer == null ? null : () {
+                            final fmt = NumberFormat('#,##,###');
+                            final c = _selectedCustomer!;
+                            return RowDetailPanel(
+                              title: c.name,
+                              icon: Icons.person_outline,
+                              accentColor: const Color(0xFF6366F1),
+                              onClose: () => setState(() => _selectedCustomer = null),
+                              fields: [
+                                ('Customer Name', c.name),
+                                ('Customer ID', c.id),
+                                ('Sales Manager', c.salesManager ?? '-'),
+                                ('Status', c.status),
+                                ('Channel', c.distributionChannel ?? '-'),
+                                ('Class', c.customerClass ?? '-'),
+                                ('Credit Limit', '₹${fmt.format(c.limit)}'),
+                                ('Credit Days', '${c.exposureDays} days'),
+                                ('O/S Balance', '₹${fmt.format(c.osBalance)}'),
+                                ('OD Amount', '₹${fmt.format(c.odAmt)}'),
+                                ('Location', c.location ?? '-'),
+                                ('Postal Code', c.postalCode ?? '-'),
+                                ('Email', c.customerEmail ?? '-'),
+                                ('Address', c.address),
+                              ],
+                            );
+                          }(),
+                        ),
+                      ),
                       _buildPagination(filtered.length, totalPages, start, end),
                     ],
                   ],
@@ -176,11 +262,7 @@ class _CustomerMasterScreenState extends State<CustomerMasterScreen> {
               uploadRoute: '/customers/bulk-import',
               onSuccess: provider.fetchCustomers,
             ),
-            onExport: () => MasterActions.downloadTemplate(
-              context: context,
-              templateRoute: '${ApiConfig.baseUrl}/customers/import-template',
-              fileName: 'Customer_Master_Template.xlsx',
-            ),
+            onExport: () => _exportCustomersToExcel(context, provider),
           ),
         ],
       ),
@@ -291,52 +373,88 @@ class _CustomerMasterScreenState extends State<CustomerMasterScreen> {
       );
     }
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    // Header row OUTSIDE scroll views (truly sticky)
+    final headerRow = Row(
       children: [
-        // Frozen: Customer Name
-        SingleChildScrollView(
-          child: Column(
-            children: [
-              frozenCell('CUSTOMER NAME', isHeader: true),
-              ...items.map((c) => frozenCell(c.name)),
-            ],
-          ),
-        ),
-        // Scrollable
+        frozenCell('CUSTOMER NAME', isHeader: true),
         Expanded(
           child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(children: scrollCols.map((c) => scrollCell(c.$1, c.$2, isHeader: true)).toList()),
-                  ...items.map((c) => Row(
-                    children: [
-                      scrollCell(c.id, scrollCols[0].$2, textColor: NexusTheme.indigo600),
-                      scrollCell(c.salesManager ?? '-', scrollCols[1].$2),
-                      scrollCell(c.status, scrollCols[2].$2, child: statusBadge(c.status)),
-                      scrollCell(c.distributionChannel ?? '-', scrollCols[3].$2),
-                      scrollCell(c.customerClass ?? '-', scrollCols[4].$2),
-                      scrollCell('₹${NumberFormat('#,##,###').format(c.limit)}', scrollCols[5].$2, textColor: const Color(0xFF059669)),
-                      scrollCell('${c.exposureDays} days', scrollCols[6].$2),
-                      scrollCell('₹${NumberFormat('#,##,###').format(c.osBalance)}', scrollCols[7].$2, textColor: c.osBalance > c.limit ? Colors.redAccent : null),
-                      scrollCell('₹${NumberFormat('#,##,###').format(c.odAmt)}', scrollCols[8].$2, textColor: c.odAmt > 0 ? Colors.redAccent : null),
-                      scrollCell(c.location ?? '-', scrollCols[9].$2),
-                      scrollCell(c.postalCode ?? '-', scrollCols[10].$2),
-                      scrollCell(c.customerEmail ?? '-', scrollCols[11].$2),
-                      scrollCell(c.address, scrollCols[12].$2),
-                    ],
-                  )),
-                ],
-              ),
+            controller: _hHeader,
+            // Removed NeverScrollableScrollPhysics so user can swipe header too
+            child: Row(
+              children: scrollCols.map((c) => scrollCell(c.$1, c.$2, isHeader: true)).toList(),
             ),
           ),
         ),
       ],
     );
+
+    return Column(
+      children: [
+        headerRow,
+        Expanded(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Frozen name column (synced vertical scroll)
+              SingleChildScrollView(
+                controller: _vFrozen,
+                child: Column(
+                  children: items.map((c) => GestureDetector(
+                    onTap: () => setState(() =>
+                        _selectedCustomer = (_selectedCustomer?.id == c.id) ? null : c),
+                    child: Container(
+                      color: _selectedCustomer?.id == c.id ? const Color(0xFFEEF2FF) : Colors.transparent,
+                      child: frozenCell(c.name),
+                    ),
+                  )).toList(),
+                ),
+              ),
+              // Scrollable body (horizontal + synced vertical)
+              Expanded(
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  controller: _hBody,
+                  child: SingleChildScrollView(
+                    controller: _vBody,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: items.map((c) => GestureDetector(
+                        onTap: () => setState(() =>
+                            _selectedCustomer = (_selectedCustomer?.id == c.id) ? null : c),
+                        child: Container(
+                          color: _selectedCustomer?.id == c.id ? const Color(0xFFEEF2FF) : Colors.transparent,
+                          child: Row(
+                            children: [
+                              scrollCell(c.id, scrollCols[0].$2, textColor: NexusTheme.indigo600),
+                              scrollCell(c.salesManager ?? '-', scrollCols[1].$2),
+                              scrollCell(c.status, scrollCols[2].$2, child: statusBadge(c.status)),
+                              scrollCell(c.distributionChannel ?? '-', scrollCols[3].$2),
+                              scrollCell(c.customerClass ?? '-', scrollCols[4].$2),
+                              scrollCell('₹${NumberFormat('#,##,###').format(c.limit)}', scrollCols[5].$2, textColor: const Color(0xFF059669)),
+                              scrollCell('${c.exposureDays} days', scrollCols[6].$2),
+                              scrollCell('₹${NumberFormat('#,##,###').format(c.osBalance)}', scrollCols[7].$2, textColor: c.osBalance > c.limit ? Colors.redAccent : null),
+                              scrollCell('₹${NumberFormat('#,##,###').format(c.odAmt)}', scrollCols[8].$2, textColor: c.odAmt > 0 ? Colors.redAccent : null),
+                              scrollCell(c.location ?? '-', scrollCols[9].$2),
+                              scrollCell(c.postalCode ?? '-', scrollCols[10].$2),
+                              scrollCell(c.customerEmail ?? '-', scrollCols[11].$2),
+                              scrollCell(c.address, scrollCols[12].$2),
+                            ],
+                          ),
+                        ),
+                      )).toList(),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
   }
+
 
   Widget _buildPagination(int total, int totalPages, int start, int end) {
     return Container(
@@ -461,5 +579,91 @@ class _CustomerMasterScreenState extends State<CustomerMasterScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _exportCustomersToExcel(BuildContext context, NexusProvider provider) async {
+    final customers = provider.customers;
+    if (customers.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No customer data to export'), backgroundColor: Colors.orange),
+      );
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('📊 Preparing Excel export...'), backgroundColor: NexusTheme.indigo500, behavior: SnackBarBehavior.floating),
+    );
+
+    try {
+      final excel = xl.Excel.createExcel();
+      final sheet = excel['OD Master'];
+
+      // Headers from User Template
+      final headers = [
+        'Dist', 'Sales Manager', 'Class', 'Employee respons.', 'Customer Names',
+        'Code', 'Credit Days', 'Credit Limit', 'Security Chq', 'Dist Channel',
+        'O/s Amt', '< -30', '-30 to -15', '-15 to -7', '-7 to 0', 'OD Amt',
+        'Diffn btw ydy & tday', '0 to 7', '7 to 15', '15 to 30', '30 to 45',
+        '45 to 90', '90 to 120', '120 to 150', '150 to 180', '>180', 'Provision'
+      ];
+      sheet.appendRow(headers.map((h) => xl.TextCellValue(h)).toList());
+
+      // Data rows
+      for (final c in customers) {
+        final ag = c.agingData;
+        sheet.appendRow([
+          xl.TextCellValue(c.location ?? ''),                 // Dist
+          xl.TextCellValue(c.salesManager ?? ''),             // Sales Manager
+          xl.TextCellValue(c.customerClass ?? ''),            // Class
+          xl.TextCellValue(c.employeeResponsible ?? ''),      // Employee respons.
+          xl.TextCellValue(c.name),                           // Customer Names
+          xl.TextCellValue(c.id),                             // Code
+          xl.TextCellValue('${c.exposureDays} days'),         // Credit Days
+          xl.DoubleCellValue(c.limit),                        // Credit Limit
+          xl.TextCellValue(c.securityChq),                    // Security Chq
+          xl.TextCellValue(c.distributionChannel ?? ''),      // Dist Channel
+          xl.DoubleCellValue(c.osBalance),                    // O/s Amt
+          xl.TextCellValue('-'),                              // < -30 (Static or based on logic)
+          xl.TextCellValue('-'),                              // -30 to -15
+          xl.TextCellValue('-'),                              // -15 to -7
+          xl.TextCellValue('-'),                              // -7 to 0
+          xl.DoubleCellValue(c.odAmt),                        // OD Amt
+          xl.DoubleCellValue(c.diffYesterdayToday),           // Diffn btw ydy & tday
+          xl.DoubleCellValue((ag['0to7'] ?? ag['0 to 7'] ?? 0).toDouble()),
+          xl.DoubleCellValue((ag['7to15'] ?? ag['7 to 15'] ?? 0).toDouble()),
+          xl.DoubleCellValue((ag['15to30'] ?? ag['15 to 30'] ?? 0).toDouble()),
+          xl.DoubleCellValue((ag['30to45'] ?? ag['30 to 45'] ?? 0).toDouble()),
+          xl.DoubleCellValue((ag['45to90'] ?? ag['45 to 90'] ?? 0).toDouble()),
+          xl.DoubleCellValue((ag['90to120'] ?? ag['90 to 120'] ?? 0).toDouble()),
+          xl.DoubleCellValue((ag['120to150'] ?? ag['120 to 150'] ?? 0).toDouble()),
+          xl.DoubleCellValue((ag['150to180'] ?? ag['150 to 180'] ?? 0).toDouble()),
+          xl.DoubleCellValue((ag['>180'] ?? ag['above180'] ?? 0).toDouble()),
+          xl.TextCellValue('-'),                              // Provision
+        ]);
+      }
+
+      final dir = await getExternalStorageDirectory();
+      final filePath = '${dir!.path}/OD_Master_Export_${DateTime.now().millisecondsSinceEpoch}.xlsx';
+      final fileBytes = excel.encode();
+      if (fileBytes != null) {
+        await File(filePath).writeAsBytes(fileBytes);
+        await OpenFile.open(filePath);
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('✅ Exported ${customers.length} OD Master records!'),
+              backgroundColor: Colors.green,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('❌ Export failed: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
   }
 }

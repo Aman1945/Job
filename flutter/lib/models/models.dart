@@ -164,6 +164,7 @@ class User {
   final List<String> permissions;
   final Map<String, String> stepAccess; // 3-level: 'full', 'view', 'no'
   final String? managerId; // RSM/ASM hierarchy: ID of the manager this user reports to
+  final String? orgPosition; // Org map slot e.g. 'rsm_north_retail', 'asm_south_horeca'
 
   User({
     required this.id,
@@ -179,6 +180,7 @@ class User {
     this.permissions = const [],
     this.stepAccess = const {},
     this.managerId,
+    this.orgPosition,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -200,6 +202,7 @@ class User {
           ? (json['stepAccess'] as Map).map((k, v) => MapEntry(k.toString(), v.toString()))
           : {},
       managerId: json['managerId'],
+      orgPosition: json['orgPosition'],
     );
   }
 
@@ -218,6 +221,7 @@ class User {
       'stepAccess': stepAccess,
       if (password != null) 'password': password,
       if (managerId != null) 'managerId': managerId,
+      if (orgPosition != null) 'orgPosition': orgPosition,
     };
   }
 }

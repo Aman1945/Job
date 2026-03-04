@@ -6,7 +6,7 @@ import '../models/models.dart';
 class NexusComponents {
   // ... (previous components)
 
-  // 5. Detailed Credit Matrix (2-Part Table from Excel)
+  // 5. Detailed Credit Matrix (Stacked Boxes)
   static Widget creditMatrix(Customer? customer) {
     if (customer == null) return const SizedBox();
 
@@ -18,43 +18,37 @@ class NexusComponents {
       children: [
         // PART 1: Identity & Financials
         _buildSectionHeader('CREDIT IDENTITY & FINANCIALS'),
-        _buildTableContainer([
-          _buildHeaderRow(['Customer ID', 'Dist', 'Sales Manager', 'Class', 'Employee respons.', 'Customer Names', 'Credit Days', 'Credit Limit', 'Security Chq', 'Dist Channel', 'O/s Amt', 'OD Amt']),
-          _buildDataRow([
-            customer.id,
-            customer.location ?? '-',
-            customer.salesManager ?? '-',
-            customer.customerClass ?? '-',
-            customer.employeeResponsible ?? '-',
-            customer.name,
-            '${customer.exposureDays} days',
-            '₹${currencyFormat.format(customer.limit)}',
-            customer.securityChq,
-            customer.distributionChannel ?? '-',
-            '₹${currencyFormat.format(customer.osBalance)}',
-            '₹${currencyFormat.format(customer.odAmt)}',
-          ]),
+        _buildStackedBox([
+          ('Customer ID', customer.id),
+          ('Dist', customer.location ?? '-'),
+          ('Sales Manager', customer.salesManager ?? '-'),
+          ('Class', customer.customerClass ?? '-'),
+          ('Employee respons.', customer.employeeResponsible ?? '-'),
+          ('Customer Names', customer.name),
+          ('Credit Days', '${customer.exposureDays} days'),
+          ('Credit Limit', '₹${currencyFormat.format(customer.limit)}'),
+          ('Security Chq', customer.securityChq),
+          ('Dist Channel', customer.distributionChannel ?? '-'),
+          ('O/s Amt', '₹${currencyFormat.format(customer.osBalance)}'),
+          ('OD Amt', '₹${currencyFormat.format(customer.odAmt)}'),
         ]),
         
         const SizedBox(height: 24),
 
         // PART 2: Aging & Differences
         _buildSectionHeader('AGING BUCKETS & VARIANCE'),
-        _buildTableContainer([
-          _buildHeaderRow(['Diffn btw ydy & tday', '0 to 7', '7 to 15', '15 to 30', '30 to 45', '45 to 90', '90 to 120', '120 to 150', '150 to 180', '>180']),
-          _buildDataRow([
-            '₹${currencyFormat.format(customer.diffYesterdayToday)}',
-            '₹${currencyFormat.format(buckets['0 to 7'] ?? 0)}',
-            '₹${currencyFormat.format(buckets['7 to 15'] ?? 0)}',
-            '₹${currencyFormat.format(buckets['15 to 30'] ?? 0)}',
-            '₹${currencyFormat.format(buckets['30 to 45'] ?? 0)}',
-            '₹${currencyFormat.format(buckets['45 to 90'] ?? 0)}',
-            '₹${currencyFormat.format(buckets['90 to 120'] ?? 0)}',
-            '₹${currencyFormat.format(buckets['120 to 150'] ?? 0)}',
-            '₹${currencyFormat.format(buckets['150 to 180'] ?? 0)}',
-            '₹${currencyFormat.format(buckets['>180'] ?? 0)}',
-          ], isAging: true, buckets: buckets),
-        ]),
+        _buildStackedBox([
+          ('Diffn btw ydy & tday', '₹${currencyFormat.format(customer.diffYesterdayToday)}'),
+          ('0 to 7', '₹${currencyFormat.format(buckets['0 to 7'] ?? 0)}'),
+          ('7 to 15', '₹${currencyFormat.format(buckets['7 to 15'] ?? 0)}'),
+          ('15 to 30', '₹${currencyFormat.format(buckets['15 to 30'] ?? 0)}'),
+          ('30 to 45', '₹${currencyFormat.format(buckets['30 to 45'] ?? 0)}'),
+          ('45 to 90', '₹${currencyFormat.format(buckets['45 to 90'] ?? 0)}'),
+          ('90 to 120', '₹${currencyFormat.format(buckets['90 to 120'] ?? 0)}'),
+          ('120 to 150', '₹${currencyFormat.format(buckets['120 to 150'] ?? 0)}'),
+          ('150 to 180', '₹${currencyFormat.format(buckets['150 to 180'] ?? 0)}'),
+          ('>180', '₹${currencyFormat.format(buckets['>180'] ?? 0)}'),
+        ], isAging: true, buckets: buckets),
       ],
     );
   }
@@ -66,61 +60,54 @@ class NexusComponents {
     );
   }
 
-  static Widget _buildTableContainer(List<TableRow> rows) {
+  static Widget _buildStackedBox(List<(String, String)> fields, {bool isAging = false, Map<String, dynamic>? buckets}) {
     return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: NexusTheme.slate200),
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
-      clipBehavior: Clip.antiAlias,
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Table(
-          defaultColumnWidth: const IntrinsicColumnWidth(),
-          children: rows,
-        ),
+      child: Wrap(
+        spacing: 24,
+        runSpacing: 20,
+        children: fields.asMap().entries.map((entry) {
+          final idx = entry.key;
+          final field = entry.value;
+
+          Color textColor = const Color(0xFF1E293B);
+          
+          if (isAging && buckets != null) {
+            final val = field.$2;
+            if (idx == 9 && (buckets['>180'] ?? 0) > 0) { // '>180'
+              textColor = Colors.red.shade700;
+            } else if (idx >= 6 && idx <= 8 && val != '₹0') { // 90 to 180
+              textColor = Colors.orange.shade700;
+            }
+          }
+
+          return SizedBox(
+            width: 140,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  field.$1.toUpperCase(),
+                  style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF64748B), letterSpacing: 0.5),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  field.$2,
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: textColor),
+                ),
+              ],
+            ),
+          );
+        }).toList(),
       ),
-    );
-  }
-
-  static TableRow _buildHeaderRow(List<String> headers) {
-    return TableRow(
-      decoration: const BoxDecoration(color: Color(0xFFE2E8F0)), // Grey header like Excel
-      children: headers.map((h) => Container(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-        child: Text(h, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 10, color: NexusTheme.slate900)),
-      )).toList(),
-    );
-  }
-
-  static TableRow _buildDataRow(List<String> data, {bool isAging = false, Map<String, dynamic>? buckets}) {
-    return TableRow(
-      children: data.asMap().entries.map((entry) {
-        final idx = entry.key;
-        final val = entry.value;
-        
-        Color textColor = NexusTheme.slate900;
-        Color? bgColor;
-
-        if (isAging && buckets != null) {
-          // Highlight high risk (last bucket)
-          if (idx == 9 && (buckets['>180'] ?? 0) > 0) {
-            textColor = Colors.red.shade700;
-            bgColor = Colors.red.withOpacity(0.05);
-          }
-          // Highlight mid risk (90-180)
-          else if (idx >= 6 && idx <= 8 && val != '₹0') {
-            textColor = Colors.orange.shade700;
-          }
-        }
-
-        return Container(
-          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
-          decoration: BoxDecoration(color: bgColor),
-          child: Text(val, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: textColor)),
-        );
-      }).toList(),
     );
   }
 

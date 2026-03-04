@@ -113,37 +113,46 @@ class _CreditControlScreenState extends State<CreditControlScreen> {
         borderRadius: BorderRadius.circular(24),
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 4))],
       ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-        title: Row(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(order.id, style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF10B981), fontSize: 13)),
-            const Spacer(),
-            Text('₹${NumberFormat('#,##,###').format(order.total)}', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15)),
-          ],
-        ),
-        subtitle: Padding(
-          padding: const EdgeInsets.only(top: 8.0),
-          child: Row(
-            children: [
-              Text(order.customerName, style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
-              const Spacer(),
-              _buildSmallBadge('PENDING CREDIT APPROVAL', const Color(0xFFF1F5F9), const Color(0xFF475569)),
-            ],
-          ),
-        ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ElevatedButton(
-              onPressed: () => setState(() => selectedOrder = order),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF0F172A),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            Row(
+              children: [
+                Text(order.id, style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF10B981), fontSize: 13)),
+                const Spacer(),
+                Text('₹${NumberFormat('#,##,###').format(order.total)}', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    order.customerName,
+                    style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                _buildSmallBadge('PENDING CREDIT APPROVAL', const Color(0xFFF1F5F9), const Color(0xFF475569)),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Align(
+              alignment: Alignment.centerRight,
+              child: ElevatedButton(
+                onPressed: () => setState(() => selectedOrder = order),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF0F172A),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                ),
+                child: const Text('QUICK VIEW', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 10, letterSpacing: 1)),
               ),
-              child: const Text('QUICK VIEW', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 10)),
             ),
           ],
         ),
@@ -369,97 +378,7 @@ class _CreditControlScreenState extends State<CreditControlScreen> {
     );
   }
 
-  TableRow _buildMatrixHeaderRow() {
-    const headers = [
-      'Dist', 'Sales Mgr', 'Class', 'Emp Resp.', 'Credit Days', 
-      'Limit', 'Sec Chq', 'O/s Amt', 'OD Amt', 'Diff Ydy',
-      '0-7', '7-15', '15-30', '30-45', '45-90', '90-120', '120-150', '150-180', '>180'
-    ];
-    return TableRow(
-      children: headers.map((h) => Container(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
-        alignment: Alignment.center,
-        child: Text(h, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.w900)),
-      )).toList(),
-    );
-  }
 
-  TableRow _buildMatrixDataRow(Customer? customer) {
-    if (customer == null) {
-      return TableRow(children: List.generate(19, (i) => const SizedBox()));
-    }
-
-    final buckets = customer.agingData;
-    final data = [
-      customer.location ?? '-',
-      customer.salesManager ?? '-',
-      customer.customerClass ?? '-',
-      customer.employeeResponsible ?? '-',
-      '30 days',
-      '₹${NumberFormat('#,##,###').format(customer.limit)}',
-      customer.securityChq,
-      '₹${NumberFormat('#,##,###').format(customer.osBalance)}',
-      '₹${NumberFormat('#,##,###').format(customer.odAmt)}',
-      '₹${NumberFormat('#,##,###').format(customer.diffYesterdayToday)}',
-      '₹${NumberFormat('#,##,###').format(buckets['0 to 7'] ?? 0)}',
-      '₹${NumberFormat('#,##,###').format(buckets['7 to 15'] ?? 0)}',
-      '₹${NumberFormat('#,##,###').format(buckets['15 to 30'] ?? 0)}',
-      '₹${NumberFormat('#,##,###').format(buckets['30 to 45'] ?? 0)}',
-      '₹${NumberFormat('#,##,###').format(buckets['45 to 90'] ?? 0)}',
-      '₹${NumberFormat('#,##,###').format(buckets['90 to 120'] ?? 0)}',
-      '₹${NumberFormat('#,##,###').format(buckets['120 to 150'] ?? 0)}',
-      '₹${NumberFormat('#,##,###').format(buckets['150 to 180'] ?? 0)}',
-      '₹${NumberFormat('#,##,###').format(buckets['>180'] ?? 0)}',
-    ];
-
-    return TableRow(
-      children: data.asMap().entries.map((entry) {
-        final index = entry.key;
-        final value = entry.value;
-        
-        // Coloring logic
-        Color textCol = Colors.white;
-        Color? bgCol;
-        
-        if (index == 18 && (buckets['>180'] ?? 0) > 0) {
-           textCol = Colors.redAccent.shade100;
-           bgCol = Colors.redAccent.withOpacity(0.1);
-        } else if (index >= 15 && index <= 17 && (data[index] != '₹0')) {
-           textCol = Colors.orangeAccent;
-        }
-
-        return Container(
-          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 4),
-          alignment: Alignment.center,
-          decoration: BoxDecoration(color: bgCol),
-          child: Text(value, textAlign: TextAlign.center, style: TextStyle(color: textCol, fontWeight: FontWeight.bold, fontSize: 10)),
-        );
-      }).toList(),
-    );
-  }
-
-  Widget _buildMatrixTable(Customer? customer) {
-    return Container(
-      decoration: BoxDecoration(
-        border: Border.all(color: const Color(0xFF334155)), 
-        borderRadius: BorderRadius.circular(16)
-      ),
-      child: Table(
-        columnWidths: const {
-          0: IntrinsicColumnWidth(), // Dist
-          1: IntrinsicColumnWidth(), // Mgr
-          2: IntrinsicColumnWidth(), // Class
-          3: IntrinsicColumnWidth(), // Emp
-          4: IntrinsicColumnWidth(), // Days
-        },
-        border: TableBorder.all(color: const Color(0xFF334155), width: 1),
-        children: [
-          _buildMatrixHeaderRow(),
-          _buildMatrixDataRow(customer),
-        ],
-      ),
-    );
-  }
 
   Widget _buildActionButton(String label, Color color, IconData icon, VoidCallback onPressed) {
     return SizedBox(

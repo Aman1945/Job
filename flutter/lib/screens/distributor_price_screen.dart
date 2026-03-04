@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'dart:io';
+import 'package:excel/excel.dart' as xl;
+import 'package:path_provider/path_provider.dart';
+import 'package:open_file/open_file.dart';
 import '../providers/nexus_provider.dart';
 import '../utils/theme.dart';
 import '../utils/master_actions.dart';
 import '../models/models.dart';
 import '../config/api_config.dart';
+import '../widgets/row_detail_panel.dart';
 
 // Static distributor price data (from Excel)
 class _DistPrice {
@@ -57,10 +62,57 @@ class _DistributorPriceScreenState extends State<DistributorPriceScreen> {
   String _searchQuery = '';
   int _currentPage = 0;
   static const int _pageSize = 15;
+  _DistPrice? _selectedPrice;
+
+  late final ScrollController _vFrozen;
+  late final ScrollController _vBody;
+  late final ScrollController _hHeader;
+  late final ScrollController _hBody;
+  bool _syncingV = false;
+  bool _syncingH = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _vFrozen = ScrollController();
+    _vBody   = ScrollController();
+    _hHeader = ScrollController();
+    _hBody   = ScrollController();
+
+    _vFrozen.addListener(() {
+      if (_syncingV) return;
+      _syncingV = true;
+      if (_vBody.hasClients) _vBody.jumpTo(_vFrozen.offset);
+      _syncingV = false;
+    });
+    _vBody.addListener(() {
+      if (_syncingV) return;
+      _syncingV = true;
+      if (_vFrozen.hasClients) _vFrozen.jumpTo(_vBody.offset);
+      _syncingV = false;
+    });
+
+    _hHeader.addListener(() {
+      if (_syncingH) return;
+      _syncingH = true;
+      if (_hBody.hasClients) _hBody.jumpTo(_hHeader.offset);
+      _syncingH = false;
+    });
+    _hBody.addListener(() {
+      if (_syncingH) return;
+      _syncingH = true;
+      if (_hHeader.hasClients) _hHeader.jumpTo(_hBody.offset);
+      _syncingH = false;
+    });
+  }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _vFrozen.dispose();
+    _vBody.dispose();
+    _hHeader.dispose();
+    _hBody.dispose();
     super.dispose();
   }
 
@@ -197,7 +249,30 @@ class _DistributorPriceScreenState extends State<DistributorPriceScreen> {
                         ),
                       )
                     else ...[
-                      Expanded(child: _buildTable(pageItems)),
+                      Expanded(
+                        child: AnimatedDetailWrapper(
+                          selectedKey: _selectedPrice?.code,
+                          table: _buildTable(pageItems),
+                          detailPanel: _selectedPrice == null ? null : RowDetailPanel(
+                            title: _selectedPrice!.name,
+                            icon: Icons.price_change_outlined,
+                            accentColor: const Color(0xFF0369A1),
+                            onClose: () => setState(() => _selectedPrice = null),
+                            fields: [
+                              ('Material Name', _selectedPrice!.name),
+                              ('SKU Code', _selectedPrice!.code),
+                              ('Material Number', _selectedPrice!.materialNumber),
+                              ('In Kg', _selectedPrice!.inKg),
+                              ('MRP', '₹${_selectedPrice!.mrp.toStringAsFixed(2)}'),
+                              ('GST %', '${_selectedPrice!.gstPct.toStringAsFixed(0)}%'),
+                              ('Retailer Margin on MRP', '${_selectedPrice!.retailerMarginOnMrp.toStringAsFixed(1)}%'),
+                              ('Dist Margin on Cost', '${_selectedPrice!.distMarginOnCost.toStringAsFixed(1)}%'),
+                              ('Dist Margin on MRP', '${_selectedPrice!.distMarginOnMrp.toStringAsFixed(1)}%'),
+                              ('Billing Rate', '₹${_selectedPrice!.billingRate.toStringAsFixed(2)}'),
+                            ],
+                          ),
+                        ),
+                      ),
                       _buildPagination(filtered.length, totalPages, start, end),
                     ],
                   ],
@@ -214,11 +289,7 @@ class _DistributorPriceScreenState extends State<DistributorPriceScreen> {
               uploadRoute: '/distributor-prices/bulk-import',
               onSuccess: provider.fetchDistributorPrices,
             ),
-            onExport: () => MasterActions.downloadTemplate(
-              context: context,
-              templateRoute: '${ApiConfig.baseUrl}/distributor-prices/import-template',
-              fileName: 'Distributor_Price_Template.xlsx',
-            ),
+            onExport: () => _exportDistPricesToExcel(context, allItems),
           ),
         ],
       ),
@@ -313,48 +384,82 @@ class _DistributorPriceScreenState extends State<DistributorPriceScreen> {
       ),
     );
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    final headerRow = Row(
       children: [
-        // Frozen: Material Name
-        SingleChildScrollView(
-          child: Column(
-            children: [
-              frozenCell('MATERIAL NAME', isHeader: true),
-              ...items.map((p) => frozenCell(p.name)),
-            ],
-          ),
-        ),
-        // Scrollable
+        frozenCell('MATERIAL NAME', isHeader: true),
         Expanded(
           child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(children: scrollCols.map((c) => scrollCell(c.$1, c.$2, isHeader: true)).toList()),
-                  ...items.map((p) => Row(
-                    children: [
-                      scrollCell(p.code, scrollCols[0].$2, textColor: NexusTheme.indigo600),
-                      scrollCell(p.materialNumber, scrollCols[1].$2),
-                      scrollCell(p.inKg, scrollCols[2].$2),
-                      scrollCell('₹${p.mrp.toStringAsFixed(0)}', scrollCols[3].$2, textColor: const Color(0xFF059669)),
-                      scrollCell('${p.gstPct.toStringAsFixed(0)}%', scrollCols[4].$2),
-                      scrollCell('${p.retailerMarginOnMrp.toStringAsFixed(1)}%', scrollCols[5].$2, textColor: Colors.orange.shade700),
-                      scrollCell('${p.distMarginOnCost.toStringAsFixed(1)}%', scrollCols[6].$2, textColor: Colors.orange.shade700),
-                      scrollCell('${p.distMarginOnMrp.toStringAsFixed(1)}%', scrollCols[7].$2, textColor: Colors.orange.shade700),
-                      scrollCell('₹${p.billingRate.toStringAsFixed(0)}', scrollCols[8].$2, textColor: const Color(0xFF7C3AED)),
-                    ],
-                  )),
-                ],
-              ),
+            controller: _hHeader,
+            child: Row(
+              children: scrollCols.map((c) => scrollCell(c.$1, c.$2, isHeader: true)).toList(),
             ),
           ),
         ),
       ],
     );
+
+    return Column(
+      children: [
+        headerRow,
+        Expanded(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Frozen name column
+              SingleChildScrollView(
+                controller: _vFrozen,
+                child: Column(
+                  children: items.map((p) => GestureDetector(
+                    onTap: () => setState(() =>
+                        _selectedPrice = (_selectedPrice?.code == p.code) ? null : p),
+                    child: Container(
+                      color: _selectedPrice?.code == p.code ? const Color(0xFFEEF2FF) : Colors.transparent,
+                      child: frozenCell(p.name),
+                    ),
+                  )).toList(),
+                ),
+              ),
+              // Scrollable body
+              Expanded(
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  controller: _hBody,
+                  child: SingleChildScrollView(
+                    controller: _vBody,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: items.map((p) => GestureDetector(
+                        onTap: () => setState(() =>
+                            _selectedPrice = (_selectedPrice?.code == p.code) ? null : p),
+                        child: Container(
+                          color: _selectedPrice?.code == p.code ? const Color(0xFFEEF2FF) : Colors.transparent,
+                          child: Row(
+                            children: [
+                              scrollCell(p.code, scrollCols[0].$2, textColor: NexusTheme.indigo600),
+                              scrollCell(p.materialNumber, scrollCols[1].$2),
+                              scrollCell(p.inKg, scrollCols[2].$2),
+                              scrollCell('₹${p.mrp.toStringAsFixed(0)}', scrollCols[3].$2, textColor: const Color(0xFF059669)),
+                              scrollCell('${p.gstPct.toStringAsFixed(0)}%', scrollCols[4].$2),
+                              scrollCell('${p.retailerMarginOnMrp.toStringAsFixed(1)}%', scrollCols[5].$2, textColor: Colors.orange.shade700),
+                              scrollCell('${p.distMarginOnCost.toStringAsFixed(1)}%', scrollCols[6].$2, textColor: Colors.orange.shade700),
+                              scrollCell('${p.distMarginOnMrp.toStringAsFixed(1)}%', scrollCols[7].$2, textColor: Colors.orange.shade700),
+                              scrollCell('₹${p.billingRate.toStringAsFixed(0)}', scrollCols[8].$2, textColor: const Color(0xFF7C3AED)),
+                            ],
+                          ),
+                        ),
+                      )).toList(),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
   }
+
 
   Widget _buildPagination(int total, int totalPages, int start, int end) {
     return Container(
@@ -487,5 +592,68 @@ class _DistributorPriceScreenState extends State<DistributorPriceScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _exportDistPricesToExcel(BuildContext context, List<_DistPrice> items) async {
+    if (items.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No distributor price data to export'), backgroundColor: Colors.orange),
+      );
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('📊 Preparing Excel export...'), backgroundColor: NexusTheme.indigo500, behavior: SnackBarBehavior.floating),
+    );
+
+    try {
+      final excel = xl.Excel.createExcel();
+      final sheet = excel['Distributor Price List'];
+
+      // Headers from User Template
+      final headers = [
+        'Material', 'Material Number', 'MRP', 'in Kg', '% GST',
+        'Retailer Margin On MRP', 'Dist Margin On Cost', 'Dist Margin On MRP', 'Billing Rate'
+      ];
+      sheet.appendRow(headers.map((h) => xl.TextCellValue(h)).toList());
+
+      // Data rows
+      for (final p in items) {
+        sheet.appendRow([
+          xl.TextCellValue(p.code),                                // Material (SKU/Code)
+          xl.TextCellValue(p.materialNumber),                        // Material Number
+          xl.DoubleCellValue(p.mrp),                                 // MRP
+          xl.TextCellValue(p.inKg),                                  // in Kg
+          xl.TextCellValue('${p.gstPct.toStringAsFixed(0)}%'),       // % GST
+          xl.TextCellValue('${p.retailerMarginOnMrp.toStringAsFixed(1)}%'), // Retailer Margin On MRP
+          xl.TextCellValue('${p.distMarginOnCost.toStringAsFixed(1)}%'),    // Dist Margin On Cost
+          xl.TextCellValue('${p.distMarginOnMrp.toStringAsFixed(1)}%'),     // Dist Margin On MRP
+          xl.DoubleCellValue(p.billingRate),                         // Billing Rate
+        ]);
+      }
+
+      final dir = await getExternalStorageDirectory();
+      final filePath = '${dir!.path}/DistributorPrice_Export_${DateTime.now().millisecondsSinceEpoch}.xlsx';
+      final fileBytes = excel.encode();
+      if (fileBytes != null) {
+        await File(filePath).writeAsBytes(fileBytes);
+        await OpenFile.open(filePath);
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('✅ Exported ${items.length} records!'),
+              backgroundColor: Colors.green,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('❌ Export failed: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
   }
 }

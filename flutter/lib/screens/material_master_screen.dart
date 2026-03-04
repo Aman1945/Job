@@ -5,6 +5,7 @@ import '../utils/theme.dart';
 import '../utils/master_actions.dart';
 import '../models/models.dart';
 import '../config/api_config.dart';
+import '../widgets/row_detail_panel.dart';
 
 class MaterialMasterScreen extends StatefulWidget {
   const MaterialMasterScreen({super.key});
@@ -19,10 +20,57 @@ class _MaterialMasterScreenState extends State<MaterialMasterScreen> {
   String _selectedCategory = 'ALL';
   int _currentPage = 0;
   static const int _pageSize = 15;
+  Product? _selectedProduct;
+
+  late final ScrollController _vFrozen;
+  late final ScrollController _vBody;
+  late final ScrollController _hHeader;
+  late final ScrollController _hBody;
+  bool _syncingV = false;
+  bool _syncingH = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _vFrozen = ScrollController();
+    _vBody   = ScrollController();
+    _hHeader = ScrollController();
+    _hBody   = ScrollController();
+
+    _vFrozen.addListener(() {
+      if (_syncingV) return;
+      _syncingV = true;
+      if (_vBody.hasClients) _vBody.jumpTo(_vFrozen.offset);
+      _syncingV = false;
+    });
+    _vBody.addListener(() {
+      if (_syncingV) return;
+      _syncingV = true;
+      if (_vFrozen.hasClients) _vFrozen.jumpTo(_vBody.offset);
+      _syncingV = false;
+    });
+
+    _hHeader.addListener(() {
+      if (_syncingH) return;
+      _syncingH = true;
+      if (_hBody.hasClients) _hBody.jumpTo(_hHeader.offset);
+      _syncingH = false;
+    });
+    _hBody.addListener(() {
+      if (_syncingH) return;
+      _syncingH = true;
+      if (_hHeader.hasClients) _hHeader.jumpTo(_hBody.offset);
+      _syncingH = false;
+    });
+  }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _vFrozen.dispose();
+    _vBody.dispose();
+    _hHeader.dispose();
+    _hBody.dispose();
     super.dispose();
   }
 
@@ -160,7 +208,30 @@ class _MaterialMasterScreenState extends State<MaterialMasterScreen> {
                       )
                     else ...[
                       Expanded(
-                        child: _buildTable(pageItems),
+                        child: AnimatedDetailWrapper(
+                          selectedKey: _selectedProduct?.id,
+                          table: _buildTable(pageItems),
+                          detailPanel: _selectedProduct == null ? null : RowDetailPanel(
+                            title: _selectedProduct!.shortName ?? _selectedProduct!.name,
+                            icon: Icons.inventory_2_outlined,
+                            accentColor: const Color(0xFF059669),
+                            onClose: () => setState(() => _selectedProduct = null),
+                            fields: [
+                              ('Product Name', _selectedProduct!.name),
+                              ('Short Name', _selectedProduct!.shortName ?? '-'),
+                              ('SKU Code', _selectedProduct!.skuCode),
+                              ('Category', _selectedProduct!.category),
+                              ('Specie', _selectedProduct!.specie ?? '-'),
+                              ('Packing', _selectedProduct!.productPacking ?? '-'),
+                              ('HSN Code', _selectedProduct!.hsnCode ?? '-'),
+                              ('GST %', _selectedProduct!.gst != null ? '${_selectedProduct!.gst!.toStringAsFixed(1)}%' : '-'),
+                              ('MRP', _selectedProduct!.mrp != null ? '₹${_selectedProduct!.mrp!.toStringAsFixed(2)}' : '-'),
+                              ('Price', _selectedProduct!.price > 0 ? '₹${_selectedProduct!.price.toStringAsFixed(2)}' : '-'),
+                              ('Stock', _selectedProduct!.stock.toString()),
+                              ('Origin', _selectedProduct!.countryOfOrigin ?? '-'),
+                            ],
+                          ),
+                        ),
                       ),
                       _buildPagination(filtered.length, totalPages, start, end),
                     ],
@@ -280,52 +351,83 @@ class _MaterialMasterScreenState extends State<MaterialMasterScreen> {
       ),
     );
 
-    final scrollController = ScrollController();
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    final headerRow = Row(
       children: [
-        // Frozen: Product Name
-        SingleChildScrollView(
-          child: Column(
-            children: [
-              frozenCell('PRODUCT NAME', isHeader: true),
-              ...items.map((p) => frozenCell(p.shortName ?? p.name)),
-            ],
-          ),
-        ),
-        // Scrollable columns
+        frozenCell('PRODUCT NAME', isHeader: true),
         Expanded(
           child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
-            controller: scrollController,
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(children: scrollCols.map((c) => scrollCell(c.$1, c.$2, isHeader: true)).toList()),
-                  ...items.map((p) => Row(
-                    children: [
-                      scrollCell(p.skuCode, scrollCols[0].$2, textColor: NexusTheme.indigo600),
-                      scrollCell(p.category, scrollCols[1].$2),
-                      scrollCell(p.specie ?? '-', scrollCols[2].$2),
-                      scrollCell(p.productPacking ?? '-', scrollCols[3].$2),
-                      scrollCell(p.hsnCode ?? '-', scrollCols[4].$2),
-                      scrollCell(p.gst != null ? '${p.gst!.toStringAsFixed(0)}%' : '-', scrollCols[5].$2),
-                      scrollCell(p.mrp != null ? '₹${p.mrp!.toStringAsFixed(0)}' : '-', scrollCols[6].$2, textColor: const Color(0xFF059669)),
-                      scrollCell(p.price > 0 ? '₹${p.price.toStringAsFixed(0)}' : '-', scrollCols[7].$2, textColor: const Color(0xFF7C3AED)),
-                      scrollCell(p.stock.toString(), scrollCols[8].$2, textColor: p.stock > 0 ? const Color(0xFF059669) : Colors.redAccent),
-                      scrollCell(p.countryOfOrigin ?? '-', scrollCols[9].$2),
-                    ],
-                  )),
-                ],
-              ),
+            controller: _hHeader,
+            child: Row(
+              children: scrollCols.map((c) => scrollCell(c.$1, c.$2, isHeader: true)).toList(),
             ),
           ),
         ),
       ],
     );
+
+    return Column(
+      children: [
+        headerRow,
+        Expanded(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Frozen name column
+              SingleChildScrollView(
+                controller: _vFrozen,
+                child: Column(
+                  children: items.map((p) => GestureDetector(
+                    onTap: () => setState(() =>
+                        _selectedProduct = (_selectedProduct?.id == p.id) ? null : p),
+                    child: Container(
+                      color: _selectedProduct?.id == p.id ? const Color(0xFFEEF2FF) : Colors.transparent,
+                      child: frozenCell(p.shortName ?? p.name),
+                    ),
+                  )).toList(),
+                ),
+              ),
+              // Scrollable body
+              Expanded(
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  controller: _hBody,
+                  child: SingleChildScrollView(
+                    controller: _vBody,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: items.map((p) => GestureDetector(
+                        onTap: () => setState(() =>
+                            _selectedProduct = (_selectedProduct?.id == p.id) ? null : p),
+                        child: Container(
+                          color: _selectedProduct?.id == p.id ? const Color(0xFFEEF2FF) : Colors.transparent,
+                          child: Row(
+                            children: [
+                              scrollCell(p.skuCode, scrollCols[0].$2, textColor: NexusTheme.indigo600),
+                              scrollCell(p.category, scrollCols[1].$2),
+                              scrollCell(p.specie ?? '-', scrollCols[2].$2),
+                              scrollCell(p.productPacking ?? '-', scrollCols[3].$2),
+                              scrollCell(p.hsnCode ?? '-', scrollCols[4].$2),
+                              scrollCell(p.gst != null ? '${p.gst!.toStringAsFixed(0)}%' : '-', scrollCols[5].$2),
+                              scrollCell(p.mrp != null ? '₹${p.mrp!.toStringAsFixed(0)}' : '-', scrollCols[6].$2, textColor: const Color(0xFF059669)),
+                              scrollCell(p.price > 0 ? '₹${p.price.toStringAsFixed(0)}' : '-', scrollCols[7].$2, textColor: const Color(0xFF7C3AED)),
+                              scrollCell(p.stock.toString(), scrollCols[8].$2, textColor: p.stock > 0 ? const Color(0xFF059669) : Colors.redAccent),
+                              scrollCell(p.countryOfOrigin ?? '-', scrollCols[9].$2),
+                            ],
+                          ),
+                        ),
+                      )).toList(),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
   }
+
 
   Widget _buildPagination(int total, int totalPages, int start, int end) {
     return Container(

@@ -75,7 +75,8 @@ const userSchema = new mongoose.Schema({
     monthlyTarget: { type: Number, default: 0 },
     monthlyQtyTarget: { type: Number, default: 0 },
     lastLogin: { type: Date },
-    managerId: { type: String, default: null }  // RSM/ASM hierarchy: ID of the reporting manager
+    managerId: { type: String, default: null },  // RSM/ASM hierarchy: ID of the reporting manager
+    orgPosition: { type: String, default: null }  // Org map slot key e.g. 'rsm_north_retail', 'asm_south_horeca'
 }, { timestamps: true });
 
 // Pre-save hook: Hash password before saving

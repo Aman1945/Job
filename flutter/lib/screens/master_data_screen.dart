@@ -13,6 +13,8 @@ import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:open_file/open_file.dart';
 import 'package:excel/excel.dart' as xl;
+import '../widgets/row_detail_panel.dart';
+import 'package:excel/excel.dart' as xl;
 
 class MasterDataScreen extends StatefulWidget {
   const MasterDataScreen({super.key});
@@ -30,6 +32,7 @@ class _MasterDataScreenState extends State<MasterDataScreen> {
   // Pagination
   int _currentPage = 0;
   static const int _pageSize = 10;
+  Customer? _selectedOdCustomer;
 
   @override
   Widget build(BuildContext context) {
@@ -633,12 +636,12 @@ class _MasterDataScreenState extends State<MasterDataScreen> {
       const _dividerColor = Color(0xFFE2E8F0);
       const _rowDivider = Color(0xFFE8EDF2);
 
-      Widget buildCell(String text, double width, {bool isHeader = false, bool rightBorder = true}) =>
+      Widget buildCell(String text, double width, {bool isHeader = false, bool rightBorder = true, bool isSelected = false}) =>
           Container(
             width: width,
             height: 48,
             decoration: BoxDecoration(
-              color: isHeader ? _headerBg : Colors.white,
+              color: isHeader ? _headerBg : (isSelected ? NexusTheme.indigo500.withOpacity(0.08) : Colors.white),
               border: Border(
                 right: rightBorder
                     ? const BorderSide(color: _dividerColor, width: 1)
@@ -662,12 +665,12 @@ class _MasterDataScreenState extends State<MasterDataScreen> {
             ),
           );
 
-      Widget buildFrozenCell(String text, {bool isHeader = false, bool rightBorder = true}) =>
+      Widget buildFrozenCell(String text, {bool isHeader = false, bool rightBorder = true, bool isSelected = false}) =>
           Container(
             width: 130,
             height: 48,
             decoration: BoxDecoration(
-              color: isHeader ? _headerBg : Colors.white,
+              color: isHeader ? _headerBg : (isSelected ? NexusTheme.indigo500.withOpacity(0.08) : Colors.white),
               border: Border(
                 right: rightBorder
                     ? const BorderSide(color: _dividerColor, width: 1)
@@ -706,7 +709,14 @@ class _MasterDataScreenState extends State<MasterDataScreen> {
                 Column(
                   children: [
                     buildFrozenCell('CUSTOMER', isHeader: true),
-                    ...pageItems.map((c) => buildFrozenCell(c.name)),
+                    ...pageItems.map((c) => GestureDetector(
+                          onTap: () {
+                            setState(() => _selectedOdCustomer =
+                                _selectedOdCustomer?.id == c.id ? null : c);
+                          },
+                          child: buildFrozenCell(c.name,
+                              isSelected: _selectedOdCustomer?.id == c.id),
+                        )),
                   ],
                 ),
 
@@ -727,6 +737,7 @@ class _MasterDataScreenState extends State<MasterDataScreen> {
                         // Data rows
                         ...pageItems.map((c) {
                           final ag = c.agingData;
+                          final isSelected = _selectedOdCustomer?.id == c.id;
                           // Dist is first scrollable col
                           final vals = [
                             c.location ?? '-',
@@ -746,10 +757,17 @@ class _MasterDataScreenState extends State<MasterDataScreen> {
                             (ag['150to180'] ?? ag['150 to 180'] ?? '').toString(),
                             (ag['>180'] ?? ag['above180'] ?? '').toString(),
                           ];
-                          return Row(
-                            children: List.generate(
-                              cols.length,
-                              (i) => buildCell(vals[i], cols[i].$2),
+                          return GestureDetector(
+                            onTap: () {
+                              setState(() => _selectedOdCustomer =
+                                  _selectedOdCustomer?.id == c.id ? null : c);
+                            },
+                            child: Row(
+                              children: List.generate(
+                                cols.length,
+                                (i) => buildCell(vals[i], cols[i].$2,
+                                    isSelected: isSelected),
+                              ),
                             ),
                           );
                         }),
@@ -760,6 +778,41 @@ class _MasterDataScreenState extends State<MasterDataScreen> {
               ],
             ),
           ),
+
+          // ── DETAIL PANEL ──
+          if (_selectedTab == 'OD MASTER') // Only drop down in OD MASTER tab to not conflict if user wants others
+            ClipRect(
+              child: AnimatedSize(
+                duration: const Duration(milliseconds: 260),
+                curve: Curves.easeOutCubic,
+                child: _selectedOdCustomer == null
+                    ? const SizedBox.shrink()
+                    : RowDetailPanel(
+                        title: _selectedOdCustomer!.name,
+                        icon: Icons.account_balance,
+                        fields: [
+                          ('Customer ID', _selectedOdCustomer!.id),
+                          ('Location', _selectedOdCustomer!.location ?? '-'),
+                          ('Class', _selectedOdCustomer!.customerClass ?? '-'),
+                          ('Exposure Days', _selectedOdCustomer!.exposureDays.toString()),
+                          ('Credit Limit', '₹${_selectedOdCustomer!.limit.toStringAsFixed(0)}'),
+                          ('Security Chq', _selectedOdCustomer!.securityChq),
+                          ('O/s Balance', '₹${_selectedOdCustomer!.osBalance.toStringAsFixed(0)}'),
+                          ('OD Amount', '₹${_selectedOdCustomer!.odAmt.toStringAsFixed(0)}'),
+                          ('Aged 0-7', '₹${_selectedOdCustomer!.agingData['0to7'] ?? _selectedOdCustomer!.agingData['0 to 7'] ?? 0}'),
+                          ('Aged 7-15', '₹${_selectedOdCustomer!.agingData['7to15'] ?? _selectedOdCustomer!.agingData['7 to 15'] ?? 0}'),
+                          ('Aged 15-30', '₹${_selectedOdCustomer!.agingData['15to30'] ?? _selectedOdCustomer!.agingData['15 to 30'] ?? 0}'),
+                          ('Aged 30-45', '₹${_selectedOdCustomer!.agingData['30to45'] ?? _selectedOdCustomer!.agingData['30 to 45'] ?? 0}'),
+                          ('Aged 45-90', '₹${_selectedOdCustomer!.agingData['45to90'] ?? _selectedOdCustomer!.agingData['45 to 90'] ?? 0}'),
+                          ('Aged 90-120', '₹${_selectedOdCustomer!.agingData['90to120'] ?? _selectedOdCustomer!.agingData['90 to 120'] ?? 0}'),
+                          ('Aged 120-150', '₹${_selectedOdCustomer!.agingData['120to150'] ?? _selectedOdCustomer!.agingData['120 to 150'] ?? 0}'),
+                          ('Aged 150-180', '₹${_selectedOdCustomer!.agingData['150to180'] ?? _selectedOdCustomer!.agingData['150 to 180'] ?? 0}'),
+                          ('Aged >180', '₹${_selectedOdCustomer!.agingData['>180'] ?? _selectedOdCustomer!.agingData['above180'] ?? 0}'),
+                        ],
+                        onClose: () => setState(() => _selectedOdCustomer = null),
+                      ),
+              ),
+            ),
 
           // ── PAGINATION ──
           Container(

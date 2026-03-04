@@ -170,7 +170,14 @@ class _BookOrderScreenState extends State<BookOrderScreen> {
             _buildSectionHeader('CUSTOMER SELECTION'),
             const SizedBox(height: 16),
             _buildCustomerDropdown(filteredCustomers),
-            const SizedBox(height: 32),
+            const SizedBox(height: 20),
+
+            // ── CREDIT EXPOSURE TABLE ────────────────────────────────────
+            if (selectedCustomer != null) ...[
+              _buildCreditExposureTable(selectedCustomer!),
+              const SizedBox(height: 20),
+            ],
+            const SizedBox(height: 12),
 
             // ── SKU Selection & Pricing Hub ──────────────────────────────
             Container(
@@ -536,6 +543,9 @@ class _BookOrderScreenState extends State<BookOrderScreen> {
         if (mounted) setState(() => selectedCustomer = null);
       });
     }
+    // Deduplicate customers by ID to prevent DropdownButton duplicate value AssertionErrors
+    final seen = <String>{};
+    final uniqueCustomers = customers.where((c) => seen.add(c.id)).toList();
 
     return Container(
       decoration: BoxDecoration(
@@ -548,12 +558,12 @@ class _BookOrderScreenState extends State<BookOrderScreen> {
         child: DropdownButton2<Customer>(
           isExpanded: true,
           hint: Text(
-            customers.isEmpty
+            uniqueCustomers.isEmpty
                 ? 'No customers in $_selectedZone zone'
                 : 'Search Organization Client Base...',
             style: const TextStyle(fontSize: 14, color: NexusTheme.slate400, fontWeight: FontWeight.bold),
           ),
-          items: customers.map((Customer customer) => DropdownMenuItem<Customer>(
+          items: uniqueCustomers.map((Customer customer) => DropdownMenuItem<Customer>(
             value: customer,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -565,8 +575,8 @@ class _BookOrderScreenState extends State<BookOrderScreen> {
               ],
             ),
           )).toList(),
-          value: customers.any((c) => c.id == selectedCustomer?.id) ? selectedCustomer : null,
-          onChanged: customers.isEmpty ? null : (val) => setState(() => selectedCustomer = val),
+          value: uniqueCustomers.any((c) => c.id == selectedCustomer?.id) ? selectedCustomer : null,
+          onChanged: uniqueCustomers.isEmpty ? null : (val) => setState(() => selectedCustomer = val),
           buttonStyleData: ButtonStyleData(
             height: 64,
             padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -720,29 +730,188 @@ class _BookOrderScreenState extends State<BookOrderScreen> {
   Widget _buildQtyInput(int index, int qty) {
     return Container(
       height: 40,
-      decoration: BoxDecoration(color: const Color(0xFF334155), borderRadius: BorderRadius.circular(8)),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8F9FA),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: NexusTheme.slate200),
+      ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          IconButton(
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
-            icon: const Icon(Icons.remove, color: Colors.white, size: 16),
-            onPressed: () {
-              if (qty > 1) setState(() => cartItems[index]['quantity'] = qty - 1);
-            },
-          ),
+          // QTY value
           SizedBox(
-            width: 30,
-            child: Text(qty.toString(), textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+            width: 28,
+            child: Text(
+              qty.toString(),
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontWeight: FontWeight.w900,
+                fontSize: 13,
+                color: Color(0xFF1E293B),
+              ),
+            ),
           ),
-          IconButton(
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
-            icon: const Icon(Icons.add, color: Colors.white, size: 16),
-            onPressed: () => setState(() => cartItems[index]['quantity'] = qty + 1),
+          // Vertical up/down arrows
+          Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              GestureDetector(
+                onTap: () => setState(() => cartItems[index]['quantity'] = qty + 1),
+                child: const Icon(Icons.keyboard_arrow_up_rounded, size: 18, color: Color(0xFF64748B)),
+              ),
+              GestureDetector(
+                onTap: () {
+                  if (qty > 1) setState(() => cartItems[index]['quantity'] = qty - 1);
+                },
+                child: Icon(Icons.keyboard_arrow_down_rounded, size: 18,
+                    color: qty > 1 ? const Color(0xFF64748B) : const Color(0xFFCBD5E1)),
+              ),
+            ],
           ),
         ],
+      ),
+    );
+  }
+
+  // ── Credit Exposure Table ─────────────────────────────────────────────────
+
+  Widget _buildCreditExposureTable(Customer customer) {
+    final limit   = customer.limit;
+    final balance = customer.osBalance;
+    final overdue = customer.overdue;
+    // Pull aging buckets from agingData map if available
+    final aging = customer.agingData;
+    final bucket0  = (aging['0to7']   ?? aging['0-7']   ?? (overdue == 0 ? balance : 0)).toDouble();
+    final bucket7  = (aging['7to15']  ?? aging['7-15']  ?? 0).toDouble();
+    final bucket15 = (aging['15to30'] ?? aging['15-30'] ?? 0).toDouble();
+    final bucket30 = (aging['30to45'] ?? aging['30-45'] ?? 0).toDouble();
+    final bucket45 = (aging['45to90'] ?? aging['45-90'] ?? 0).toDouble();
+    final bucket90 = (aging['90to120']  ?? aging['90-120']  ?? 0).toDouble();
+    final bucket120= (aging['120to150'] ?? aging['120-150'] ?? 0).toDouble();
+    final bucket150= (aging['150to180'] ?? aging['150-180'] ?? 0).toDouble();
+    final bucket180= (aging['>180']     ?? aging['180+']    ?? 0).toDouble();
+
+    String fmt(double v) => v == 0 ? '-' : '₹${v.toStringAsFixed(0)}';
+
+    const headers = [
+      'Limit', 'O/s Balance', 'Overdue',
+      '0 to 7', '7 to 15', '15 to 30',
+      '30 to 45', '45 to 90', '90 to 120',
+      '120 to 150', '150 to 180', '>180',
+    ];
+
+    final values = [
+      '₹${(limit / 1000).toStringAsFixed(0)}K',
+      '₹${balance.toStringAsFixed(0)}',
+      overdue == 0 ? '₹0' : '₹${overdue.toStringAsFixed(0)}',
+      fmt(bucket0), fmt(bucket7), fmt(bucket15),
+      fmt(bucket30), fmt(bucket45), fmt(bucket90),
+      fmt(bucket120), fmt(bucket150), fmt(bucket180),
+    ];
+
+    final isOverdue = <bool>[
+      false, false, overdue > 0,
+      false, false, false, false, false, false, false, false, false,
+    ];
+
+    // Highlighted column indices (15-30 and 90-120 in image)
+    final highlighted = {5, 9};
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+        ),
+        child: Column(
+          children: [
+            // Dark header
+            Container(
+              color: const Color(0xFF0D2137),
+              child: Row(
+                children: [
+                  // Lightning bolt icon + label
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.bolt_rounded, color: Color(0xFFFFAB40), size: 14),
+                        const SizedBox(width: 6),
+                        const Text(
+                          'CREDIT EXPOSURE TABLE',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w900,
+                            color: Colors.white,
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Column headers row
+            Container(
+              color: const Color(0xFF1A3050),
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: headers.asMap().entries.map((e) {
+                    final isH = highlighted.contains(e.key);
+                    return Container(
+                      width: e.key < 3 ? 90 : 78,
+                      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
+                      decoration: BoxDecoration(
+                        border: Border(right: BorderSide(color: Colors.white.withOpacity(0.08))),
+                        color: isH ? const Color(0xFF1ABFA1).withOpacity(0.15) : Colors.transparent,
+                      ),
+                      child: Text(
+                        e.value,
+                        style: TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w700,
+                          color: e.key == 2 ? Colors.redAccent.shade100 : Colors.white70,
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ),
+            // Data row
+            Container(
+              color: Colors.white,
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: values.asMap().entries.map((e) {
+                    final isRed = isOverdue[e.key] && e.value != '-';
+                    final isH = highlighted.contains(e.key);
+                    return Container(
+                      width: e.key < 3 ? 90 : 78,
+                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+                      decoration: BoxDecoration(
+                        border: Border(right: BorderSide(color: const Color(0xFFE2E8F0))),
+                        color: isH ? const Color(0xFF1ABFA1).withOpacity(0.04) : Colors.white,
+                      ),
+                      child: Text(
+                        e.value,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: isRed ? Colors.red : const Color(0xFF1E293B),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -752,7 +921,7 @@ class _BookOrderScreenState extends State<BookOrderScreen> {
       height: 40,
       decoration: BoxDecoration(color: const Color(0xFF334155), borderRadius: BorderRadius.circular(8)),
       alignment: Alignment.center,
-      child: Text('${total.toInt()}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+      child: Text('₹${NumberFormat('#,##,###').format(total.toInt())}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
     );
   }
 
