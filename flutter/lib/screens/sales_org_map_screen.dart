@@ -79,18 +79,6 @@ class _SalesOrgMapScreenState extends State<SalesOrgMapScreen> {
     }
   }
 
-  Future<void> _assign(User user, String slotKey) async {
-    setState(() => _saving = true);
-    final ok = await _patchUser(user.id, {'orgPosition': slotKey});
-    if (mounted) {
-      await Provider.of<NexusProvider>(context, listen: false).fetchUsers();
-      setState(() => _saving = false);
-      _snack(ok
-          ? '✅ ${user.name} assigned to position'
-          : '❌ Failed to assign', error: !ok);
-    }
-  }
-
   // Batch assign multiple users at once — all PATCHes in parallel, one refresh
   Future<void> _assignBatch(List<User> users, String slotKey) async {
     setState(() => _saving = true);
@@ -295,8 +283,11 @@ class _SalesOrgMapScreenState extends State<SalesOrgMapScreen> {
                                       color: _teal)))),
                           onChanged: (val) {
                             setS?.call(() {
-                              if (val == true) selection.add(u.id);
-                              else selection.remove(u.id);
+                              if (val == true) {
+                                selection.add(u.id);
+                              } else {
+                                selection.remove(u.id);
+                              }
                             });
                           },
                         );

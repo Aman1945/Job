@@ -47,7 +47,9 @@ class _OrgMemberDataSheetState extends State<OrgMemberDataSheet>
   DateTime _focusMonth = DateTime.now();
   DateTime? _selectedDate;
   List<Order> _teamOrders = [];
+  List<Map<String, dynamic>> _auditLogs = [];
   bool _loading = true;
+  bool _loadingLogs = true;
 
   // ── Init ──────────────────────────────────────────────────────────────────
 
@@ -55,7 +57,15 @@ class _OrgMemberDataSheetState extends State<OrgMemberDataSheet>
   void initState() {
     super.initState();
     _tab = TabController(length: 3, vsync: this);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _loadOrders());
+    _tab.addListener(() {
+      if (_tab.index == 2 && _auditLogs.isEmpty) {
+        _loadAuditLogs();
+      }
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadOrders();
+      _loadAuditLogs();
+    });
   }
 
   @override
@@ -79,6 +89,17 @@ class _OrgMemberDataSheetState extends State<OrgMemberDataSheet>
         ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
       _loading = false;
     });
+  }
+
+  Future<void> _loadAuditLogs() async {
+    final nexus = Provider.of<NexusProvider>(context, listen: false);
+    final logs = await nexus.fetchUserAuditLogs(widget.member.id);
+    if (mounted) {
+      setState(() {
+        _auditLogs = logs;
+        _loadingLogs = false;
+      });
+    }
   }
 
   /// Collect salesperson IDs visible to this member based on slot + hierarchy
@@ -142,6 +163,15 @@ class _OrgMemberDataSheetState extends State<OrgMemberDataSheet>
       o.createdAt.year == d.year &&
       o.createdAt.month == d.month &&
       o.createdAt.day == d.day).length;
+
+  /// Check if there was any activity (Audit Log) on this day
+  bool _hasActivityOnDay(DateTime d) {
+    return _auditLogs.any((log) {
+      final ts = DateTime.tryParse(log['timestamp'] ?? '');
+      if (ts == null) return false;
+      return ts.year == d.year && ts.month == d.month && ts.day == d.day;
+    });
+  }
 
   double get _totalRevenue => _teamOrders.fold(0.0, (s, o) => s + (o.total));
   int get _pendingCount =>
@@ -489,7 +519,8 @@ class _OrgMemberDataSheetState extends State<OrgMemberDataSheet>
             if (i < startWeekday) return const SizedBox();
             final day = i - startWeekday + 1;
             final date = DateTime(_focusMonth.year, _focusMonth.month, day);
-            final count = _ordersOnDay(date);
+            final orderCount = _ordersOnDay(date);
+            final hasActivity = _hasActivityOnDay(date);
             final isSelected = _selectedDate?.year == date.year &&
                 _selectedDate?.month == date.month &&
                 _selectedDate?.day == date.day;
@@ -504,9 +535,11 @@ class _OrgMemberDataSheetState extends State<OrgMemberDataSheet>
                 decoration: BoxDecoration(
                   color: isSelected
                       ? widget.accentColor
-                      : count > 0
+                      : orderCount > 0
                           ? widget.accentColor.withValues(alpha: 0.12)
-                          : Colors.transparent,
+                          : hasActivity
+                              ? _sub.withValues(alpha: 0.05)
+                              : Colors.transparent,
                   borderRadius: BorderRadius.circular(8),
                   border: isToday && !isSelected
                       ? Border.all(
@@ -523,16 +556,21 @@ class _OrgMemberDataSheetState extends State<OrgMemberDataSheet>
                             fontSize: 11,
                             color: isSelected
                                 ? Colors.white
-                                : count > 0
+                                : orderCount > 0
                                     ? widget.accentColor
-                                    : _white.withValues(alpha: 0.5))),
-                    if (count > 0)
+                                    : hasActivity
+                                        ? _white
+                                        : _white.withValues(alpha: 0.5))),
+                    if (orderCount > 0 || hasActivity)
                       Container(
                         width: 4, height: 4,
+                        margin: const EdgeInsets.only(top: 1),
                         decoration: BoxDecoration(
                             color: isSelected
                                 ? Colors.white
-                                : widget.accentColor,
+                                : orderCount > 0
+                                    ? widget.accentColor
+                                    : _sub,
                             shape: BoxShape.circle),
                       ),
                   ],
@@ -572,25 +610,84 @@ class _OrgMemberDataSheetState extends State<OrgMemberDataSheet>
   // ── Archive tab ──────────────────────────────────────────────────────────
 
   Widget _archiveTab() {
-    final archived = _teamOrders.where((o) => _isDone(o.status)).toList();
-    if (archived.isEmpty) {
+    if (_loadingLogs) {
+      return Center(child: CircularProgressIndicator(color: widget.accentColor, strokeWidth: 2));
+    }
+    if (_auditLogs.isEmpty) {
       return Center(child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.archive_rounded, size: 40, color: _sub),
+            const Icon(Icons.history_rounded, size: 40, color: _sub),
             const SizedBox(height: 10),
-            const Text('No archived orders',
+            const Text('No activity history found',
                 style: TextStyle(
                     fontFamily: 'Montserrat',
                     color: _sub,
                     fontWeight: FontWeight.w600)),
           ]));
     }
+
     return ListView.separated(
       padding: const EdgeInsets.all(16),
-      itemCount: archived.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 8),
-      itemBuilder: (_, i) => _orderCard(archived[i]),
+      itemCount: _auditLogs.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      itemBuilder: (_, i) {
+        final log = _auditLogs[i];
+        final action = log['action'] ?? 'ACTIVITY';
+        final entity = log['entityType'] ?? 'SYSTEM';
+        final tsStr = log['timestamp'] ?? '';
+        final ts = DateTime.tryParse(tsStr) ?? DateTime.now();
+        
+        Color actionColor = widget.accentColor;
+        IconData icon = Icons.info_outline_rounded;
+
+        if (action.contains('CREATE')) { actionColor = _teal; icon = Icons.add_circle_outline_rounded; }
+        else if (action.contains('UPDATE')) { actionColor = const Color(0xFF3B82F6); icon = Icons.edit_note_rounded; }
+        else if (action.contains('DELETE')) { actionColor = Colors.redAccent; icon = Icons.delete_outline_rounded; }
+        else if (action.contains('LOGIN')) { actionColor = Colors.orange; icon = Icons.login_rounded; }
+
+        return Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+              color: _card, borderRadius: BorderRadius.circular(14)),
+          child: Row(children: [
+            Container(
+              width: 36, height: 36,
+              decoration: BoxDecoration(
+                  color: actionColor.withValues(alpha: 0.1),
+                  shape: BoxShape.circle),
+              child: Icon(icon, color: actionColor, size: 18),
+            ),
+            const SizedBox(width: 12),
+            Expanded(child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(action,
+                      style: TextStyle(
+                          fontFamily: 'Montserrat',
+                          fontWeight: FontWeight.w900,
+                          fontSize: 11,
+                          color: actionColor,
+                          letterSpacing: 0.5)),
+                  const SizedBox(height: 2),
+                  Text('${entity} - ${log['entityId'] ?? ''}',
+                      style: const TextStyle(
+                          fontFamily: 'Montserrat',
+                          fontWeight: FontWeight.w700,
+                          fontSize: 10,
+                          color: _white)),
+                  const SizedBox(height: 2),
+                  Text(DateFormat('dd MMM yyyy, hh:mm a').format(ts),
+                      style: const TextStyle(
+                          fontFamily: 'Montserrat',
+                          fontSize: 8,
+                          color: _sub)),
+                ])),
+            if (log['success'] == false)
+              const Icon(Icons.error_outline_rounded, color: Colors.redAccent, size: 14),
+          ]),
+        );
+      },
     );
   }
 

@@ -246,6 +246,22 @@ class NexusProvider with ChangeNotifier {
     }
   }
 
+  Future<List<Map<String, dynamic>>> fetchUserAuditLogs(String userId) async {
+    try {
+      debugPrint('🛰️ Fetching audit logs for: $userId');
+      final response = await http.get(Uri.parse('$_baseUrl/audit/logs/user/$userId')).timeout(const Duration(seconds: 15));
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true && data['data'] is List) {
+          return List<Map<String, dynamic>>.from(data['data']);
+        }
+      }
+    } catch (e) {
+      debugPrint('Error fetching audit logs: $e');
+    }
+    return [];
+  }
+
   // --- Operations & Workflow ---
 
   Future<bool> updateOrderStatus(String orderId, String newStatus) async {
