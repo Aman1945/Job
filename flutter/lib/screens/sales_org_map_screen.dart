@@ -737,59 +737,64 @@ class _SalesOrgMapScreenState extends State<SalesOrgMapScreen> {
           color: color.withValues(alpha: 0.07),
           borderRadius: BorderRadius.circular(10),
           border: Border.all(color: color.withValues(alpha: 0.22))),
-      child: Row(mainAxisSize: MainAxisSize.min, children: [
-        // Tap to view details
-        GestureDetector(
-          onTap: () => showModalBottomSheet(
-            context: context,
-            isScrollControlled: true,
-            backgroundColor: Colors.transparent,
-            builder: (_) => OrgMemberDataSheet(
-              member: user,
-              slotKey: slotKey,
-              accentColor: color,
-            ),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(6, 5, 6, 5),
-            child: Row(mainAxisSize: MainAxisSize.min, children: [
-              // Avatar
-              Container(
-                width: 22, height: 22,
-                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-                child: Center(child: Text(init,
-                    style: const TextStyle(
-                        fontFamily: 'Montserrat',
-                        fontSize: 8,
-                        fontWeight: FontWeight.w900,
-                        color: Colors.white))),
+      child: Row(children: [
+        // Tap to view details - Expanded to take available space
+        Expanded(
+          child: GestureDetector(
+            onTap: () => showModalBottomSheet(
+              context: context,
+              isScrollControlled: true,
+              backgroundColor: Colors.transparent,
+              builder: (_) => OrgMemberDataSheet(
+                member: user,
+                slotKey: slotKey,
+                accentColor: color,
               ),
-              const SizedBox(width: 5),
-              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(user.name,
-                    style: const TextStyle(
-                        fontFamily: 'Montserrat',
-                        fontSize: 16, // Increased font size for name
-                        fontWeight: FontWeight.w900,
-                        color: _txtHead)),
-                const SizedBox(height: 1),
-                Text(user.id,
-                    style: TextStyle(
-                        fontFamily: 'Montserrat',
-                        fontSize: 8,
-                        fontWeight: FontWeight.w600,
-                        color: _txtSub)),
-                if (user.zone.isNotEmpty && user.zone.toUpperCase() != 'PAN INDIA') ...[
-                  const SizedBox(height: 1),
-                  Text(user.zone.toUpperCase(),
-                      style: TextStyle(
+            ),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
+              child: Row(children: [
+                // Avatar
+                Container(
+                  width: 24, height: 24,
+                  decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+                  child: Center(child: Text(init,
+                      style: const TextStyle(
                           fontFamily: 'Montserrat',
-                          fontSize: 7.5,
-                          fontWeight: FontWeight.w700,
-                          color: color)),
-                ],
+                          fontSize: 8.5,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white))),
+                ),
+                const SizedBox(width: 8),
+                Expanded( // Allow text to wrap/truncate
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(user.name,
+                        style: const TextStyle(
+                            fontFamily: 'Montserrat',
+                            fontSize: 13,
+                            fontWeight: FontWeight.w900,
+                            color: _txtHead),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis),
+                    Text(user.id,
+                        style: TextStyle(
+                            fontFamily: 'Montserrat',
+                            fontSize: 8.5,
+                            fontWeight: FontWeight.w600,
+                            color: _txtSub),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis),
+                    if (user.zone.isNotEmpty && user.zone.toUpperCase() != 'PAN INDIA')
+                      Text(user.zone.toUpperCase(),
+                          style: TextStyle(
+                              fontFamily: 'Montserrat',
+                              fontSize: 7.5,
+                              fontWeight: FontWeight.w700,
+                              color: color)),
+                  ]),
+                ),
               ]),
-            ]),
+            ),
           ),
         ),
 
