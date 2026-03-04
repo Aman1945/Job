@@ -381,77 +381,77 @@ class _LifecycleGrid extends StatelessWidget {
         'icon': Icons.person_add_alt_1_rounded,
         'color': _teal,
         'screen': const NewCustomerScreen(),
-        'roles': ['Admin', 'Sales'],
+        'roles': ['Admin', 'Sales', 'RSM', 'ASM', 'NSM', 'Logistics Lead', 'Hub Lead'],
       },
       {
         'stage': 'STAGE 2',  'label': 'Placed Order',
         'icon': Icons.shopping_cart_checkout_rounded,
         'color': _indigo,
         'screen': const BookOrderScreen(),
-        'roles': ['Admin', 'Sales'],
+        'roles': ['Admin', 'Sales', 'RSM', 'ASM', 'NSM', 'Logistics Lead'],
       },
       {
         'stage': 'STAGE 3',  'label': 'Credit Approv.',
         'icon': Icons.verified_rounded,
         'color': _orange,
         'screen': const CreditControlScreen(),
-        'roles': ['Admin', 'Credit Control'],
+        'roles': ['Admin', 'Credit Control', 'RSM', 'ASM', 'NSM'],
       },
       {
         'stage': 'STAGE 4',  'label': 'Warehouse',
         'icon': Icons.inventory_2_rounded,
         'color': const Color(0xFF8B7355),
         'screen': const WarehouseOpsScreen(),
-        'roles': ['Admin', 'Warehouse', 'WH Manager'],
+        'roles': ['Admin', 'Warehouse', 'WH Manager', 'RSM', 'ASM', 'NSM'],
       },
       {
         'stage': 'STAGE 5',  'label': 'Packing',
         'icon': Icons.inventory_rounded,
         'color': const Color(0xFFE8A020),
         'screen': const WarehouseOpsScreen(),
-        'roles': ['Admin', 'Warehouse'],
+        'roles': ['Admin', 'Warehouse', 'RSM', 'ASM', 'NSM'],
       },
       {
         'stage': 'STAGE 6',  'label': 'QC',
         'icon': Icons.verified_user_rounded,
         'color': const Color(0xFF22C55E),
         'screen': const QualityControlScreen(),
-        'roles': ['Admin', 'QC Head'],
+        'roles': ['Admin', 'QC Head', 'RSM', 'ASM', 'NSM'],
       },
       {
         'stage': 'STAGE 7',  'label': 'Logistic Cost',
         'icon': Icons.currency_rupee_rounded,
         'color': _purple,
         'screen': const LogisticsOpsScreen(),
-        'roles': ['Admin', 'Logistics Lead'],
+        'roles': ['Admin', 'Logistics Lead', 'RSM', 'ASM', 'NSM', 'Hub Lead'],
       },
       {
         'stage': 'STAGE 8',  'label': 'Invoice',
         'icon': Icons.receipt_long_rounded,
         'color': const Color(0xFF3B82F6),
         'screen': const InvoicingScreen(),
-        'roles': ['Admin', 'Billing', 'ATL Executive'],
+        'roles': ['Admin', 'Billing', 'ATL Executive', 'RSM', 'ASM', 'NSM'],
       },
       {
         'stage': 'STAGE 9',  'label': 'DA Assignment',
         'icon': Icons.assignment_turned_in_rounded,
         'color': const Color(0xFF64748B),
         'screen': const InvoicingScreen(),
-        'roles': ['Admin', 'Billing'],
+        'roles': ['Admin', 'Billing', 'RSM', 'ASM', 'NSM'],
       },
       {
         'stage': 'STAGE 10', 'label': 'Loading',
         'icon': Icons.local_shipping_rounded,
         'color': _purple,
         'screen': const LogisticsHubScreen(),
-        'roles': ['Admin', 'Hub Lead'],
+        'roles': ['Admin', 'Hub Lead', 'Logistics Lead', 'RSM', 'ASM', 'NSM'],
       },
       {
         'stage': 'STAGE 11', 'label': 'Delivery Ack',
         'icon': Icons.task_alt_rounded,
         'color': Colors.redAccent,
         'screen': const DeliveryExecutionScreen(),
-        'roles': ['Admin', 'Delivery Team'],
+        'roles': ['Admin', 'Delivery Team', 'RSM', 'ASM', 'NSM', 'Hub Lead', 'Logistics Lead'],
       },
     ];
 
@@ -590,23 +590,24 @@ class _UtilityGrid extends StatelessWidget {
 
     final role = user!.role.label;
 
-    if (role == 'Credit Control') return const SizedBox.shrink();
+    // Only completely hide utilities for very restricted roles
+    if (role == 'Billing' || role == 'ATL Executive') return const SizedBox.shrink();
 
     final all = <Map<String, dynamic>>[
-      {'l': 'EXECUTIVE PULSE', 'i': Icons.query_stats_rounded,      's': const ExecutivePulseScreen(),        'roles': ['Admin', 'Sales']},
-      {'l': 'LIVE MISSIONS',   'i': Icons.radar_rounded,             's': const LiveMissionsScreen(),          'roles': ['Admin', 'Sales']},
-      {'l': 'STOCK TRANSFER',  'i': Icons.swap_horiz_rounded,        's': const StockTransferScreen(),         'roles': ['Admin', 'Sales']},
-      {'l': 'SKU MASTER',      'i': Icons.post_add_rounded,          's': const AddProductScreen(),            'roles': ['Admin', 'Sales']},
-      {'l': 'ORDER ARCHIVE',   'i': Icons.history_rounded,           's': const OrderArchiveScreen(),          'roles': ['Admin', 'Sales']},
-      {'l': 'PMS PERFORMANCE', 'i': Icons.emoji_events_rounded,      's': const PMSScreen(),                  'roles': ['Admin', 'Sales']},
-      {'l': 'INTELLIGENCE',    'i': Icons.insights_rounded,          's': const AnalyticsScreen(),            'roles': ['Admin', 'Sales', 'Credit Control']},
-      {'l': 'CREDIT ALERTS',   'i': Icons.warning_amber_rounded,     's': const CreditRiskScreen(),           'roles': ['Credit Control', 'Admin']},
-      {'l': 'PROCUREMENT',     'i': Icons.shopping_bag_outlined,     's': const ProcurementScreen(),          'roles': ['Admin']},
+      {'l': 'EXECUTIVE PULSE', 'i': Icons.query_stats_rounded,      's': const ExecutivePulseScreen(),        'roles': ['Admin', 'Sales', 'RSM', 'ASM', 'NSM', 'Logistics Lead', 'Hub Lead']},
+      {'l': 'LIVE MISSIONS',   'i': Icons.radar_rounded,             's': const LiveMissionsScreen(),          'roles': ['Admin', 'Sales', 'RSM', 'ASM', 'NSM', 'Logistics Lead', 'Hub Lead']},
+      {'l': 'STOCK TRANSFER',  'i': Icons.swap_horiz_rounded,        's': const StockTransferScreen(),         'roles': ['Admin', 'Sales', 'RSM', 'ASM', 'NSM']},
+      {'l': 'SKU MASTER',      'i': Icons.post_add_rounded,          's': const AddProductScreen(),            'roles': ['Admin', 'Sales', 'RSM', 'ASM', 'NSM']},
+      {'l': 'ORDER ARCHIVE',   'i': Icons.history_rounded,           's': const OrderArchiveScreen(),          'roles': ['Admin', 'Sales', 'RSM', 'ASM', 'NSM', 'Logistics Lead', 'Hub Lead']},
+      {'l': 'PMS PERFORMANCE', 'i': Icons.emoji_events_rounded,      's': const PMSScreen(),                  'roles': ['Admin', 'Sales', 'RSM', 'ASM', 'NSM']},
+      {'l': 'INTELLIGENCE',    'i': Icons.insights_rounded,          's': const AnalyticsScreen(),            'roles': ['Admin', 'Sales', 'RSM', 'ASM', 'NSM', 'Credit Control', 'Logistics Lead']},
+      {'l': 'CREDIT ALERTS',   'i': Icons.warning_amber_rounded,     's': const CreditRiskScreen(),           'roles': ['Credit Control', 'Admin', 'RSM', 'NSM']},
+      {'l': 'PROCUREMENT',     'i': Icons.shopping_bag_outlined,     's': const ProcurementScreen(),          'roles': ['Admin', 'RSM', 'NSM']},
       {'l': 'USER MANAGEMENT', 'i': Icons.manage_accounts_rounded,   's': const AdminUserManagementScreen(),  'roles': ['Admin']},
       {'l': 'STEP ASSIGNMENT', 'i': Icons.assignment_ind_rounded,    's': const StepAssignmentScreen(),       'roles': ['Admin']},
       {'l': 'MASTER DATA',     'i': Icons.storage_rounded,           's': const MasterDataScreen(),           'roles': ['Admin']},
-      {'l': 'TEAM HIERARCHY',  'i': Icons.account_tree_rounded,      's': const TeamHierarchyScreen(),        'roles': ['Admin', 'RSM', 'ASM']},
-      {'l': 'SALES ORG MAP',   'i': Icons.corporate_fare_rounded,   's': const SalesOrgMapScreen(),          'roles': ['Admin']},
+      {'l': 'TEAM HIERARCHY',  'i': Icons.account_tree_rounded,      's': const TeamHierarchyScreen(),        'roles': ['Admin', 'RSM', 'ASM', 'NSM', 'Logistics Lead', 'Hub Lead']},
+      {'l': 'SALES ORG MAP',   'i': Icons.corporate_fare_rounded,   's': const SalesOrgMapScreen(),          'roles': ['Admin', 'NSM', 'RSM']},
     ];
 
     final filtered = all.where((u) => (u['roles'] as List).contains(role)).toList();

@@ -8,26 +8,21 @@ import '../config/api_config.dart';
 import 'org_member_data_sheet.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SalesOrgMapScreen — Admin / CEO / Chairman ONLY
-//
-// Position key format: '{level}_{zone}_{channel}'
-//   e.g.  'chairman', 'ceo', 'nsm_retail', 'rsm_north_retail', 'asm_south_horeca'
-//
-// Each user has an `orgPosition` field.
-// Filtering is 100% slot-based — only the user whose orgPosition == slotKey
-// appears in that card.  Add → sets orgPosition.  Remove → clears it (null).
+// SalesOrgMapScreen — Admin / CEO / Chairman ONLY  (LIGHT THEME)
 // ─────────────────────────────────────────────────────────────────────────────
 
-// ── Theme constants ─────────────────────────────────────────────────────────
-const _bgPage  = Color(0xFF060E1A);
-const _teal    = Color(0xFF1ABFA1);
-const _retailC = Color(0xFF3B82F6);
-const _horecaC = Color(0xFF8B5CF6);
-const _vacantC = Color(0xFFDC2626);
-const _bypassC = Color(0xFFF97316);
-const _goldC   = Color(0xFFFFD700);
-const _txtHead = Colors.white;
-const _txtSub  = Color(0xFF64748B);
+// ── Light-theme palette (matches main app) ────────────────────────────────
+const _bgPage   = Color(0xFFEDF2F8);
+const _bgCard   = Colors.white;
+const _teal     = Color(0xFF1ABFA1);
+const _retailC  = Color(0xFF3B82F6);
+const _horecaC  = Color(0xFF8B5CF6);
+const _vacantC  = Color(0xFFDC2626);
+const _bypassC  = Color(0xFFF97316);
+const _goldC    = Color(0xFFFFD700);
+const _txtHead  = Color(0xFF0D2137);
+const _txtSub   = Color(0xFF7A8EA5);
+const _border   = Color(0xFFE2E8F0);
 
 class SalesOrgMapScreen extends StatefulWidget {
   const SalesOrgMapScreen({super.key});
@@ -52,12 +47,9 @@ class _SalesOrgMapScreenState extends State<SalesOrgMapScreen> {
     'MUMBAI': Color(0xFF8B5CF6),
   };
 
-  // ── Slot key builder ─────────────────────────────────────────────────────
-
-  /// Build the slot key for a given level + zone + channel.
-  /// Zone 'ALL' means no zone suffix (top-level positions).
+  // ── Slot key ─────────────────────────────────────────────────────────────
   String _slotKey(String level, String zone, String channel) {
-    final z = zone.toLowerCase().replaceAll(' ', '_');
+    final z  = zone.toLowerCase().replaceAll(' ', '_');
     final ch = channel.toLowerCase();
     final lv = level.toLowerCase();
     if (lv == 'chairman' || lv == 'ceo') return lv;
@@ -66,19 +58,14 @@ class _SalesOrgMapScreenState extends State<SalesOrgMapScreen> {
     return '${lv}_${z}_$ch';
   }
 
-  // ── Users for a slot ─────────────────────────────────────────────────────
-
   List<User> _inSlot(List<User> all, String slotKey) =>
       all.where((u) => u.orgPosition == slotKey).toList();
 
-  // ── All users NOT in any org-map slot (available to pick) ────────────────
   List<User> _available(List<User> all) =>
-      all.where((u) =>
-          u.orgPosition == null || u.orgPosition!.isEmpty).toList()
+      all.where((u) => u.orgPosition == null || u.orgPosition!.isEmpty).toList()
         ..sort((a, b) => a.name.compareTo(b.name));
 
   // ── PATCH helper ─────────────────────────────────────────────────────────
-
   Future<bool> _patchUser(String userId, Map<String, dynamic> payload) async {
     try {
       final r = await http.patch(
@@ -96,11 +83,12 @@ class _SalesOrgMapScreenState extends State<SalesOrgMapScreen> {
     setState(() => _saving = true);
     final ok = await _patchUser(user.id, {'orgPosition': slotKey});
     if (mounted) {
+      // Refresh users list from server
       await Provider.of<NexusProvider>(context, listen: false).fetchUsers();
+      setState(() => _saving = false);
       _snack(ok
           ? '✅ ${user.name} assigned to position'
           : '❌ Failed to assign', error: !ok);
-      setState(() => _saving = false);
     }
   }
 
@@ -109,10 +97,10 @@ class _SalesOrgMapScreenState extends State<SalesOrgMapScreen> {
     final ok = await _patchUser(user.id, {'orgPosition': null});
     if (mounted) {
       await Provider.of<NexusProvider>(context, listen: false).fetchUsers();
+      setState(() => _saving = false);
       _snack(ok
           ? '🗑 ${user.name} removed from position'
           : '❌ Failed to remove', error: !ok);
-      setState(() => _saving = false);
     }
   }
 
@@ -130,7 +118,6 @@ class _SalesOrgMapScreenState extends State<SalesOrgMapScreen> {
   }
 
   // ── User picker bottom sheet ─────────────────────────────────────────────
-
   void _openPicker({
     required String positionLabel,
     required String slotKey,
@@ -156,7 +143,7 @@ class _SalesOrgMapScreenState extends State<SalesOrgMapScreen> {
         return Container(
           height: MediaQuery.of(ctx).size.height * 0.82,
           decoration: const BoxDecoration(
-            color: Color(0xFF0D1829),
+            color: _bgCard,
             borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
           ),
           child: Column(children: [
@@ -164,7 +151,7 @@ class _SalesOrgMapScreenState extends State<SalesOrgMapScreen> {
             Container(width: 36, height: 4,
                 margin: const EdgeInsets.only(top: 12),
                 decoration: BoxDecoration(
-                    color: Colors.white12,
+                    color: _border,
                     borderRadius: BorderRadius.circular(2))),
 
             // Header
@@ -173,7 +160,7 @@ class _SalesOrgMapScreenState extends State<SalesOrgMapScreen> {
               child: Row(children: [
                 Container(width: 38, height: 38,
                     decoration: BoxDecoration(
-                        color: _teal.withValues(alpha: 0.12),
+                        color: _teal.withValues(alpha: 0.10),
                         borderRadius: BorderRadius.circular(10)),
                     child: const Icon(Icons.person_add_rounded,
                         color: _teal, size: 18)),
@@ -216,7 +203,7 @@ class _SalesOrgMapScreenState extends State<SalesOrgMapScreen> {
                   prefixIcon: const Icon(Icons.search_rounded,
                       color: _txtSub, size: 18),
                   filled: true,
-                  fillColor: const Color(0xFF142035),
+                  fillColor: _bgPage,
                   contentPadding: const EdgeInsets.symmetric(
                       horizontal: 14, vertical: 10),
                   border: OutlineInputBorder(
@@ -228,7 +215,7 @@ class _SalesOrgMapScreenState extends State<SalesOrgMapScreen> {
             ),
 
             const SizedBox(height: 8),
-            const Divider(color: Colors.white10, height: 1),
+            const Divider(color: _border, height: 1),
 
             Expanded(
               child: filtered.isEmpty
@@ -236,7 +223,7 @@ class _SalesOrgMapScreenState extends State<SalesOrgMapScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         const Icon(Icons.person_off_rounded,
-                            size: 40, color: Colors.white12),
+                            size: 40, color: _border),
                         const SizedBox(height: 10),
                         const Text('No unassigned users',
                             style: TextStyle(
@@ -248,7 +235,7 @@ class _SalesOrgMapScreenState extends State<SalesOrgMapScreen> {
                       padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
                       itemCount: filtered.length,
                       separatorBuilder: (_, __) =>
-                          const Divider(color: Colors.white10, height: 1),
+                          const Divider(color: _border, height: 1),
                       itemBuilder: (_, i) {
                         final u = filtered[i];
                         final init = u.name.trim().split(' ')
@@ -261,7 +248,7 @@ class _SalesOrgMapScreenState extends State<SalesOrgMapScreen> {
                           leading: Container(
                               width: 40, height: 40,
                               decoration: BoxDecoration(
-                                  color: _teal.withValues(alpha: 0.15),
+                                  color: _teal.withValues(alpha: 0.12),
                                   shape: BoxShape.circle),
                               child: Center(child: Text(init,
                                   style: const TextStyle(
@@ -300,7 +287,7 @@ class _SalesOrgMapScreenState extends State<SalesOrgMapScreen> {
   Widget _chip(String label, Color color) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
         decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.12),
+            color: color.withValues(alpha: 0.10),
             borderRadius: BorderRadius.circular(5),
             border: Border.all(color: color.withValues(alpha: 0.25))),
         child: Text(label,
@@ -312,7 +299,6 @@ class _SalesOrgMapScreenState extends State<SalesOrgMapScreen> {
       );
 
   // ── BUILD ────────────────────────────────────────────────────────────────
-
   @override
   Widget build(BuildContext context) {
     final nexus    = Provider.of<NexusProvider>(context);
@@ -321,9 +307,10 @@ class _SalesOrgMapScreenState extends State<SalesOrgMapScreen> {
     return Scaffold(
       backgroundColor: _bgPage,
       appBar: AppBar(
-        backgroundColor: _bgPage,
+        backgroundColor: _bgCard,
         foregroundColor: _txtHead,
         elevation: 0,
+        scrolledUnderElevation: 0,
         title: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           const Text('SALES ORG MAP',
               style: TextStyle(
@@ -336,7 +323,7 @@ class _SalesOrgMapScreenState extends State<SalesOrgMapScreen> {
               style: TextStyle(
                   fontFamily: 'Montserrat',
                   fontSize: 9,
-                  color: _txtHead.withValues(alpha: 0.4))),
+                  color: _txtSub)),
         ]),
         actions: [
           if (_saving)
@@ -351,9 +338,9 @@ class _SalesOrgMapScreenState extends State<SalesOrgMapScreen> {
               margin: const EdgeInsets.only(right: 14),
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
-                  color: _teal.withValues(alpha: 0.1),
+                  color: _teal.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: _teal.withValues(alpha: 0.3))),
+                  border: Border.all(color: _teal.withValues(alpha: 0.25))),
               child: const Row(children: [
                 Icon(Icons.lock_rounded, size: 11, color: _teal),
                 SizedBox(width: 4),
@@ -379,10 +366,9 @@ class _SalesOrgMapScreenState extends State<SalesOrgMapScreen> {
   }
 
   // ── Zone filter ──────────────────────────────────────────────────────────
-
   Widget _zoneFilter() => Container(
-        color: _bgPage,
-        padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+        color: _bgCard,
+        padding: const EdgeInsets.fromLTRB(14, 10, 14, 14),
         child: SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: Row(
@@ -397,10 +383,10 @@ class _SalesOrgMapScreenState extends State<SalesOrgMapScreen> {
                   padding: const EdgeInsets.symmetric(
                       horizontal: 16, vertical: 8),
                   decoration: BoxDecoration(
-                      color: sel ? col : col.withValues(alpha: 0.07),
+                      color: sel ? col : _bgCard,
                       borderRadius: BorderRadius.circular(24),
                       border: Border.all(
-                          color: sel ? col : col.withValues(alpha: 0.25))),
+                          color: sel ? col : _border)),
                   child: Text(z,
                       style: TextStyle(
                           fontFamily: 'Montserrat',
@@ -416,18 +402,15 @@ class _SalesOrgMapScreenState extends State<SalesOrgMapScreen> {
       );
 
   // ── Org tree ─────────────────────────────────────────────────────────────
-
   Widget _orgTree(List<User> all) {
     final z = _selectedZone;
     return Column(children: [
       _lvLabel('LEVEL 1', 'Executive Leadership'),
-      _fullCard('chairman', 'CHAIRMAN', all, _goldC,
-          Icons.stars_rounded),
+      _fullCard('chairman', 'CHAIRMAN', all, _goldC, Icons.stars_rounded),
       _conn('to CEO'),
 
       _lvLabel('LEVEL 2', 'Chief Executive'),
-      _fullCard('ceo', 'CEO', all, _teal,
-          Icons.corporate_fare_rounded),
+      _fullCard('ceo', 'CEO', all, _teal, Icons.corporate_fare_rounded),
       _conn('to NSM'),
 
       _channelHeader(),
@@ -452,7 +435,119 @@ class _SalesOrgMapScreenState extends State<SalesOrgMapScreen> {
     ]);
   }
 
-  // Full-width (Chairman / CEO)
+  Widget _lvLabel(String level, String sub) => Padding(
+        padding: const EdgeInsets.fromLTRB(0, 20, 0, 8),
+        child: Row(children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+                color: _teal.withValues(alpha: 0.10),
+                borderRadius: BorderRadius.circular(8)),
+            child: Text(level,
+                style: const TextStyle(
+                    fontFamily: 'Montserrat',
+                    fontSize: 9,
+                    fontWeight: FontWeight.w900,
+                    color: _teal,
+                    letterSpacing: 0.5)),
+          ),
+          const SizedBox(width: 8),
+          Text(sub,
+              style: const TextStyle(
+                  fontFamily: 'Montserrat',
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  color: _txtSub)),
+        ]),
+      );
+
+  Widget _conn(String label) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+          Container(width: 1, height: 16, color: _border),
+          const SizedBox(width: 6),
+          Text(label,
+              style: const TextStyle(
+                  fontFamily: 'Montserrat',
+                  fontSize: 8,
+                  color: _txtSub,
+                  fontWeight: FontWeight.w600)),
+        ]),
+      );
+
+  Widget _channelHeader() => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        child: Row(children: [
+          Expanded(child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            decoration: BoxDecoration(
+                color: _retailC.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: _retailC.withValues(alpha: 0.2))),
+            child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+              Icon(Icons.shopping_cart_rounded, size: 12, color: _retailC),
+              SizedBox(width: 4),
+              Text('RETAIL CHANNEL',
+                  style: TextStyle(
+                      fontFamily: 'Montserrat',
+                      fontSize: 9,
+                      fontWeight: FontWeight.w800,
+                      color: _retailC)),
+            ]),
+          )),
+          const SizedBox(width: 8),
+          Expanded(child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            decoration: BoxDecoration(
+                color: _horecaC.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: _horecaC.withValues(alpha: 0.2))),
+            child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+              Icon(Icons.restaurant_rounded, size: 12, color: _horecaC),
+              SizedBox(width: 4),
+              Text('HORECA CHANNEL',
+                  style: TextStyle(
+                      fontFamily: 'Montserrat',
+                      fontSize: 9,
+                      fontWeight: FontWeight.w800,
+                      color: _horecaC)),
+            ]),
+          )),
+        ]),
+      );
+
+  Widget _legend() => Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+            color: _bgCard,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: _border)),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Text('LEGEND',
+              style: TextStyle(
+                  fontFamily: 'Montserrat',
+                  fontSize: 9,
+                  fontWeight: FontWeight.w900,
+                  color: _txtSub,
+                  letterSpacing: 0.8)),
+          const SizedBox(height: 8),
+          Wrap(spacing: 12, runSpacing: 6, children: [
+            _legendItem(_retailC, 'Retail Channel'),
+            _legendItem(_horecaC, 'Horeca Channel'),
+            _legendItem(_vacantC, 'Vacant Position'),
+            _legendItem(_bypassC, 'Bypass Active'),
+            _legendItem(_goldC, 'Executive'),
+          ]),
+        ]),
+      );
+
+  Widget _legendItem(Color c, String label) => Row(mainAxisSize: MainAxisSize.min, children: [
+        Container(width: 8, height: 8, decoration: BoxDecoration(color: c, shape: BoxShape.circle)),
+        const SizedBox(width: 4),
+        Text(label, style: const TextStyle(fontFamily: 'Montserrat', fontSize: 8, color: _txtSub, fontWeight: FontWeight.w600)),
+      ]);
+
+  // ── Full-width card (Chairman / CEO) ─────────────────────────────────────
   Widget _fullCard(String slotKey, String title, List<User> all,
       Color color, IconData icon) {
     final users  = _inSlot(all, slotKey);
@@ -462,20 +557,19 @@ class _SalesOrgMapScreenState extends State<SalesOrgMapScreen> {
       margin: const EdgeInsets.only(bottom: 4),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: vacant
-            ? const Color(0xFF1A0000)
-            : color.withValues(alpha: 0.08),
+        color: vacant ? const Color(0xFFFFF5F5) : _bgCard,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
             color: vacant
-                ? _vacantC.withValues(alpha: 0.5)
-                : color.withValues(alpha: 0.35)),
+                ? _vacantC.withValues(alpha: 0.4)
+                : _border),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
       ),
       child: Row(children: [
         Container(
           width: 44, height: 44,
           decoration: BoxDecoration(
-              color: (vacant ? _vacantC : color).withValues(alpha: 0.15),
+              color: (vacant ? _vacantC : color).withValues(alpha: 0.12),
               shape: BoxShape.circle),
           child: Icon(vacant ? Icons.person_off_rounded : icon,
               color: vacant ? _vacantC : color, size: 22),
@@ -499,7 +593,6 @@ class _SalesOrgMapScreenState extends State<SalesOrgMapScreen> {
                     children: users.map((u) =>
                         _userPill(u, color, slotKey)).toList()),
             ])),
-        // ADD button
         GestureDetector(
           onTap: () => _openPicker(
               positionLabel: '$title (Pan India)',
@@ -511,9 +604,8 @@ class _SalesOrgMapScreenState extends State<SalesOrgMapScreen> {
     );
   }
 
-  // Dual-column row
-  Widget _dualRow(String level, String zone, String labelPrefix,
-      List<User> all) {
+  // ── Dual-column row ───────────────────────────────────────────────────────
+  Widget _dualRow(String level, String zone, String labelPrefix, List<User> all) {
     final retKey   = _slotKey(level, zone, 'retail');
     final horKey   = _slotKey(level, zone, 'horeca');
     final retUsers = _inSlot(all, retKey);
@@ -532,9 +624,9 @@ class _SalesOrgMapScreenState extends State<SalesOrgMapScreen> {
           bypassTo: retUsers.isEmpty ? 'NSM RETAIL' : null,
         )),
         Container(
-            width: 1, height: 130,
+            width: 1, height: 140,
             margin: const EdgeInsets.symmetric(horizontal: 6),
-            color: Colors.white.withValues(alpha: 0.06)),
+            color: _border),
         Expanded(child: _posCard(
           label:    '$labelPrefix — HORECA$zoneSuffix',
           users:    horUsers,
@@ -561,15 +653,12 @@ class _SalesOrgMapScreenState extends State<SalesOrgMapScreen> {
     return Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: vacant
-            ? const Color(0xFF1A0000)
-            : color.withValues(alpha: 0.07),
+        color: vacant ? const Color(0xFFFFF5F5) : _bgCard,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-            color: vacant
-                ? _vacantC.withValues(alpha: 0.35)
-                : color.withValues(alpha: 0.22),
+            color: vacant ? _vacantC.withValues(alpha: 0.3) : _border,
             width: vacant ? 1.5 : 1),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 6, offset: const Offset(0, 2))],
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         // Title row + Add btn
@@ -591,9 +680,9 @@ class _SalesOrgMapScreenState extends State<SalesOrgMapScreen> {
             child: Container(
               width: 22, height: 22,
               decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.15),
+                  color: color.withValues(alpha: 0.12),
                   shape: BoxShape.circle,
-                  border: Border.all(color: color.withValues(alpha: 0.4))),
+                  border: Border.all(color: color.withValues(alpha: 0.35))),
               child: Icon(Icons.add_rounded, size: 13, color: color),
             ),
           ),
@@ -607,8 +696,7 @@ class _SalesOrgMapScreenState extends State<SalesOrgMapScreen> {
             _bypassTag(bypassTo),
           ],
         ] else ...[
-          // User pills with remove button
-          Wrap(spacing: 4, runSpacing: 4,
+          Wrap(spacing: 4, runSpacing: 6,
               children: users.map((u) => _userPill(u, color, slotKey)).toList()),
           const SizedBox(height: 4),
           Align(
@@ -616,14 +704,14 @@ class _SalesOrgMapScreenState extends State<SalesOrgMapScreen> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.1),
+                  color: color.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(6)),
               child: Text('${users.length} member${users.length != 1 ? 's' : ''}',
                   style: TextStyle(
                       fontFamily: 'Montserrat',
                       fontSize: 7,
                       fontWeight: FontWeight.w700,
-                      color: color.withValues(alpha: 0.8))),
+                      color: color)),
             ),
           ),
         ],
@@ -631,80 +719,88 @@ class _SalesOrgMapScreenState extends State<SalesOrgMapScreen> {
     );
   }
 
-  // ── User pill WITH remove button ─────────────────────────────────────────
-
+  // ── User pill WITH visible remove button ──────────────────────────────────
   Widget _userPill(User user, Color color, String slotKey) {
     final init = user.name.trim().split(' ')
         .take(2).map((p) => p.isNotEmpty ? p[0].toUpperCase() : '').join();
-    return GestureDetector(
-      onTap: () => showModalBottomSheet(
-        context: context,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        builder: (_) => OrgMemberDataSheet(
-          member: user,
-          slotKey: slotKey,
-          accentColor: color,
-        ),
-      ),
-      child: Container(
-      padding: const EdgeInsets.fromLTRB(6, 5, 4, 5),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 2),
       decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.10),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: color.withValues(alpha: 0.28))),
+          color: color.withValues(alpha: 0.07),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: color.withValues(alpha: 0.22))),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
-        // Avatar
-        Container(
-          width: 20, height: 20,
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-          child: Center(child: Text(init,
-              style: const TextStyle(
-                  fontFamily: 'Montserrat',
-                  fontSize: 8,
-                  fontWeight: FontWeight.w900,
-                  color: Colors.white))),
+        // Tap to view details
+        GestureDetector(
+          onTap: () => showModalBottomSheet(
+            context: context,
+            isScrollControlled: true,
+            backgroundColor: Colors.transparent,
+            builder: (_) => OrgMemberDataSheet(
+              member: user,
+              slotKey: slotKey,
+              accentColor: color,
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(6, 5, 6, 5),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              // Avatar
+              Container(
+                width: 22, height: 22,
+                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+                child: Center(child: Text(init,
+                    style: const TextStyle(
+                        fontFamily: 'Montserrat',
+                        fontSize: 8,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.white))),
+              ),
+              const SizedBox(width: 5),
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(user.name.split(' ').first,
+                    style: const TextStyle(
+                        fontFamily: 'Montserrat',
+                        fontSize: 9,
+                        fontWeight: FontWeight.w800,
+                        color: _txtHead)),
+                if (user.zone.isNotEmpty && user.zone.toUpperCase() != 'PAN INDIA')
+                  Text(user.zone.toUpperCase(),
+                      style: TextStyle(
+                          fontFamily: 'Montserrat',
+                          fontSize: 7,
+                          fontWeight: FontWeight.w600,
+                          color: color)),
+              ]),
+            ]),
+          ),
         ),
-        const SizedBox(width: 5),
-        // Name + zone
-        Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(user.name.split(' ').first,
-              style: const TextStyle(
-                  fontFamily: 'Montserrat',
-                  fontSize: 9,
-                  fontWeight: FontWeight.w800,
-                  color: _txtHead)),
-          if (user.zone.isNotEmpty && user.zone.toUpperCase() != 'PAN INDIA')
-            Text(user.zone.toUpperCase(),
-                style: TextStyle(
-                    fontFamily: 'Montserrat',
-                    fontSize: 7,
-                    fontWeight: FontWeight.w600,
-                    color: color.withValues(alpha: 0.8))),
-        ]),
-        const SizedBox(width: 6),
-        // ✕ Remove button
+
+        // ✕ Remove button — clearly visible
         GestureDetector(
           onTap: () => _confirmRemove(user),
           child: Container(
-            width: 18, height: 18,
+            width: 26, height: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 5),
             decoration: BoxDecoration(
-                color: _vacantC.withValues(alpha: 0.15),
-                shape: BoxShape.circle),
-            child: const Icon(Icons.close_rounded, size: 10, color: _vacantC),
+                color: _vacantC.withValues(alpha: 0.10),
+                borderRadius: const BorderRadius.only(
+                    topRight: Radius.circular(9),
+                    bottomRight: Radius.circular(9)),
+                border: Border(
+                    left: BorderSide(color: _vacantC.withValues(alpha: 0.2)))),
+            child: const Icon(Icons.close_rounded, size: 12, color: _vacantC),
           ),
         ),
       ]),
-    ),   // closes Container (child of GestureDetector)
-    );   // closes GestureDetector → return
+    );
   }
 
-  /// Confirm before removing so admin doesn't remove by accident
   void _confirmRemove(User user) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF0D1829),
+        backgroundColor: _bgCard,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('Remove from Position?',
             style: TextStyle(
@@ -728,30 +824,33 @@ class _SalesOrgMapScreenState extends State<SalesOrgMapScreen> {
                     fontWeight: FontWeight.w700,
                     color: _txtSub)),
           ),
-          TextButton(
+          ElevatedButton(
             onPressed: () async {
               Navigator.pop(ctx);
               await _remove(user);
             },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _vacantC,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
             child: const Text('REMOVE',
                 style: TextStyle(
                     fontFamily: 'Montserrat',
-                    fontWeight: FontWeight.w900,
-                    color: _vacantC)),
+                    fontWeight: FontWeight.w900)),
           ),
         ],
       ),
     );
   }
 
-  // ── Small widgets ────────────────────────────────────────────────────────
-
+  // ── Small widgets ─────────────────────────────────────────────────────────
   Widget _addBtn(Color color) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
         decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.12),
+            color: color.withValues(alpha: 0.10),
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: color.withValues(alpha: 0.3))),
+            border: Border.all(color: color.withValues(alpha: 0.25))),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           Icon(Icons.person_add_alt_1_rounded, size: 13, color: color),
           const SizedBox(width: 4),
@@ -768,9 +867,9 @@ class _SalesOrgMapScreenState extends State<SalesOrgMapScreen> {
   Widget _vacantBadge() => Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
-            color: _vacantC.withValues(alpha: 0.12),
+            color: _vacantC.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(6),
-            border: Border.all(color: _vacantC.withValues(alpha: 0.35))),
+            border: Border.all(color: _vacantC.withValues(alpha: 0.3))),
         child: const Row(mainAxisSize: MainAxisSize.min, children: [
           Icon(Icons.error_outline_rounded, size: 10, color: _vacantC),
           SizedBox(width: 4),
@@ -798,133 +897,7 @@ class _SalesOrgMapScreenState extends State<SalesOrgMapScreen> {
                   fontFamily: 'Montserrat',
                   fontSize: 7,
                   fontWeight: FontWeight.w700,
-                  color: _bypassC),
-              overflow: TextOverflow.ellipsis)),
+                  color: _bypassC))),
         ]),
       );
-
-  Widget _lvLabel(String level, String sub) => Padding(
-        padding: const EdgeInsets.only(bottom: 6),
-        child: Row(children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-            decoration: BoxDecoration(
-                color: _teal.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(6)),
-            child: Text(level,
-                style: const TextStyle(
-                    fontFamily: 'Montserrat',
-                    fontSize: 8,
-                    fontWeight: FontWeight.w900,
-                    color: _teal,
-                    letterSpacing: 0.8)),
-          ),
-          const SizedBox(width: 8),
-          Text(sub,
-              style: TextStyle(
-                  fontFamily: 'Montserrat',
-                  fontSize: 9,
-                  fontWeight: FontWeight.w600,
-                  color: _txtHead.withValues(alpha: 0.3))),
-        ]),
-      );
-
-  Widget _channelHeader() => Padding(
-        padding: const EdgeInsets.only(bottom: 10, top: 4),
-        child: Row(children: [
-          Expanded(child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 7),
-            decoration: BoxDecoration(
-                color: _retailC.withValues(alpha: 0.07),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: _retailC.withValues(alpha: 0.2))),
-            child: const Center(child: Text('🛒  RETAIL CHANNEL',
-                style: TextStyle(
-                    fontFamily: 'Montserrat',
-                    fontSize: 9,
-                    fontWeight: FontWeight.w900,
-                    color: _retailC,
-                    letterSpacing: 0.5))),
-          )),
-          const SizedBox(width: 8),
-          Expanded(child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 7),
-            decoration: BoxDecoration(
-                color: _horecaC.withValues(alpha: 0.07),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: _horecaC.withValues(alpha: 0.2))),
-            child: const Center(child: Text('🍽  HORECA CHANNEL',
-                style: TextStyle(
-                    fontFamily: 'Montserrat',
-                    fontSize: 9,
-                    fontWeight: FontWeight.w900,
-                    color: _horecaC,
-                    letterSpacing: 0.5))),
-          )),
-        ]),
-      );
-
-  Widget _conn(String? label) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        child: Column(children: [
-          Container(width: 2, height: 12, color: Colors.white10),
-          if (label != null) ...[
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-              decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.04),
-                  borderRadius: BorderRadius.circular(14)),
-              child: Text(label,
-                  style: TextStyle(
-                      fontFamily: 'Montserrat',
-                      fontSize: 7,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white.withValues(alpha: 0.22),
-                      letterSpacing: 0.5)),
-            ),
-            Container(width: 2, height: 12, color: Colors.white10),
-          ],
-          Icon(Icons.keyboard_arrow_down_rounded,
-              size: 18, color: Colors.white.withValues(alpha: 0.15)),
-        ]),
-      );
-
-  Widget _legend() => Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.03),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.06))),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('LEGEND',
-              style: TextStyle(
-                  fontFamily: 'Montserrat',
-                  fontSize: 8,
-                  fontWeight: FontWeight.w900,
-                  color: Colors.white.withValues(alpha: 0.4),
-                  letterSpacing: 1)),
-          const SizedBox(height: 8),
-          Wrap(spacing: 12, runSpacing: 8, children: [
-            _li(_teal, 'Filled Position'),
-            _li(_vacantC, 'VACANT Position'),
-            _li(_bypassC, 'Bypass Routing'),
-            _li(_retailC, 'Retail Channel'),
-            _li(_horecaC, 'HORECA Channel'),
-            _li(_vacantC, '✕ = Remove user'),
-          ]),
-        ]),
-      );
-
-  Widget _li(Color c, String label) => Row(mainAxisSize: MainAxisSize.min, children: [
-        Container(width: 8, height: 8,
-            decoration: BoxDecoration(color: c, shape: BoxShape.circle)),
-        const SizedBox(width: 5),
-        Text(label,
-            style: TextStyle(
-                fontFamily: 'Montserrat',
-                fontSize: 8,
-                fontWeight: FontWeight.w600,
-                color: Colors.white.withValues(alpha: 0.4))),
-      ]);
 }
