@@ -7,6 +7,7 @@
 const express = require('express');
 const router = express.Router();
 const AuditLog = require('../models/AuditLog');
+const User = require('../models/User'); // Added User model
 const { verifyToken } = require('../middleware/auth');
 const { allowRoles } = require('../middleware/rbac');
 
@@ -49,7 +50,26 @@ module.exports = (app) => {
             // Build filter
             const filter = {};
 
-            if (userId) filter.userId = userId;
+            if (userId) {
+                if (userId.includes(',')) {
+                    filter.userId = { $in: userId.split(',').map(id => id.trim()) };
+                } else {
+                    filter.userId = userId;
+                }
+            }
+
+            if (req.query.role) {
+                const usersWithRole = await User.find({ role: req.query.role }).select('id').lean();
+                const userIds = usersWithRole.map(u => u.id);
+                if (filter.userId) {
+                    // Intersection of provided userId(s) and role users
+                    const currentIds = filter.userId.$in || [filter.userId];
+                    filter.userId = { $in: currentIds.filter(id => userIds.includes(id)) };
+                } else {
+                    filter.userId = { $in: userIds };
+                }
+            }
+
             if (action) filter.action = action;
             if (entityType) filter.entityType = entityType;
             if (entityId) filter.entityId = entityId;
