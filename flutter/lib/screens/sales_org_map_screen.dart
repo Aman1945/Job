@@ -83,12 +83,31 @@ class _SalesOrgMapScreenState extends State<SalesOrgMapScreen> {
     setState(() => _saving = true);
     final ok = await _patchUser(user.id, {'orgPosition': slotKey});
     if (mounted) {
-      // Refresh users list from server
       await Provider.of<NexusProvider>(context, listen: false).fetchUsers();
       setState(() => _saving = false);
       _snack(ok
           ? '✅ ${user.name} assigned to position'
           : '❌ Failed to assign', error: !ok);
+    }
+  }
+
+  // Batch assign multiple users at once — all PATCHes in parallel, one refresh
+  Future<void> _assignBatch(List<User> users, String slotKey) async {
+    setState(() => _saving = true);
+    // Patch all users in parallel
+    final results = await Future.wait(
+      users.map((u) => _patchUser(u.id, {'orgPosition': slotKey})),
+    );
+    if (mounted) {
+      // Single refresh after all patches
+      await Provider.of<NexusProvider>(context, listen: false).fetchUsers();
+      setState(() => _saving = false);
+      final failed = results.where((ok) => !ok).length;
+      if (failed == 0) {
+        _snack('✅ ${users.length} member${users.length > 1 ? 's' : ''} assigned!');
+      } else {
+        _snack('⚠️ ${users.length - failed} assigned, $failed failed', error: true);
+      }
     }
   }
 
@@ -294,10 +313,11 @@ class _SalesOrgMapScreenState extends State<SalesOrgMapScreen> {
                   child: ElevatedButton(
                     onPressed: () async {
                       Navigator.pop(ctx);
-                      for (final userId in selection) {
-                        final u = avail.firstWhere((x) => x.id == userId);
-                        await _assign(u, slotKey);
-                      }
+                      // Collect the User objects for selected IDs
+                      final selectedUsers = selection
+                          .map((id) => avail.firstWhere((x) => x.id == id))
+                          .toList();
+                      await _assignBatch(selectedUsers, slotKey);
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: _teal,
