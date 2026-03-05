@@ -439,6 +439,60 @@ app.patch('/api/users/:id/step-access', async (req, res) => {
     }
 });
 
+// ── Org Position: Atomic Add (uses $addToSet — safe for parallel calls) ──
+app.patch('/api/users/:id/org-add', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { slotKey } = req.body;
+
+        if (!slotKey || typeof slotKey !== 'string') {
+            return res.status(400).json({ message: 'slotKey (string) is required' });
+        }
+
+        const user = await User.findOneAndUpdate(
+            { id },
+            { $addToSet: { orgPositions: slotKey } },
+            { new: true }
+        ).select('-password');
+
+        if (user) {
+            console.log(`📌 Org position added: ${id} → ${slotKey}  |  All: [${user.orgPositions.join(', ')}]`);
+            return res.json(user);
+        }
+        res.status(404).json({ message: 'User not found' });
+    } catch (error) {
+        console.error('Error adding org position:', error);
+        res.status(500).json({ message: 'Error adding org position' });
+    }
+});
+
+// ── Org Position: Atomic Remove (uses $pull — only removes the specific slot) ──
+app.patch('/api/users/:id/org-remove', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { slotKey } = req.body;
+
+        if (!slotKey || typeof slotKey !== 'string') {
+            return res.status(400).json({ message: 'slotKey (string) is required' });
+        }
+
+        const user = await User.findOneAndUpdate(
+            { id },
+            { $pull: { orgPositions: slotKey } },
+            { new: true }
+        ).select('-password');
+
+        if (user) {
+            console.log(`🗑 Org position removed: ${id} ✕ ${slotKey}  |  Remaining: [${user.orgPositions.join(', ')}]`);
+            return res.json(user);
+        }
+        res.status(404).json({ message: 'User not found' });
+    } catch (error) {
+        console.error('Error removing org position:', error);
+        res.status(500).json({ message: 'Error removing org position' });
+    }
+});
+
 // Update any user field (generic endpoint)
 app.patch('/api/users/:id', async (req, res) => {
     try {
