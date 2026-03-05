@@ -100,7 +100,11 @@ module.exports = (app) => {
             if (fromDate || toDate) {
                 filter.timestamp = {};
                 if (fromDate) filter.timestamp.$gte = new Date(fromDate);
-                if (toDate) filter.timestamp.$lte = new Date(toDate);
+                if (toDate) {
+                    const end = new Date(toDate);
+                    end.setHours(23, 59, 59, 999);
+                    filter.timestamp.$lte = end;
+                }
             }
 
             // Calculate pagination
@@ -218,7 +222,11 @@ module.exports = (app) => {
             if (fromDate || toDate) {
                 filter.timestamp = {};
                 if (fromDate) filter.timestamp.$gte = new Date(fromDate);
-                if (toDate) filter.timestamp.$lte = new Date(toDate);
+                if (toDate) {
+                    const end = new Date(toDate);
+                    end.setHours(23, 59, 59, 999);
+                    filter.timestamp.$lte = end;
+                }
             }
 
             // Get logs (limit to 10000 for export)
