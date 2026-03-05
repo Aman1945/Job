@@ -11,18 +11,20 @@ import 'org_member_data_sheet.dart';
 // SalesOrgMapScreen — Admin / CEO / Chairman ONLY  (LIGHT THEME)
 // ─────────────────────────────────────────────────────────────────────────────
 
-// ── Light-theme palette (matches main app) ────────────────────────────────
-const _bgPage   = Color(0xFFEDF2F8);
+// ── Premium corporate palette ─────────────────────────────────────────────
+const _bgPage   = Color(0xFFF0F4F8);
 const _bgCard   = Colors.white;
-const _teal     = Color(0xFF1ABFA1);
-const _retailC  = Color(0xFF3B82F6);
-const _horecaC  = Color(0xFF8B5CF6);
+const _primary  = Color(0xFF0F2B46);  // Deep Navy
+const _accent   = Color(0xFF0EA5A0);  // Corporate Teal
+const _retailC  = Color(0xFF2563EB);  // Refined Blue
+const _horecaC  = Color(0xFF7C3AED);  // Refined Purple
 const _vacantC  = Color(0xFFDC2626);
-const _bypassC  = Color(0xFFF97316);
-const _goldC    = Color(0xFFFFD700);
-const _txtHead  = Color(0xFF0D2137);
-const _txtSub   = Color(0xFF7A8EA5);
-const _border   = Color(0xFFE2E8F0);
+const _bypassC  = Color(0xFFEA580C);
+const _goldC    = Color(0xFFD4A017);  // Muted Gold
+const _txtHead  = Color(0xFF0F172A);  // Slate 900
+const _txtSub   = Color(0xFF64748B);  // Slate 500
+const _border   = Color(0xFFE2E8F0);  // Slate 200
+const _cardShadow = Color(0x0A000000);
 
 class SalesOrgMapScreen extends StatefulWidget {
   const SalesOrgMapScreen({super.key});
@@ -36,15 +38,14 @@ class _SalesOrgMapScreenState extends State<SalesOrgMapScreen> {
   bool _saving = false;
 
   static const List<String> _zones = [
-    'ALL', 'NORTH', 'SOUTH', 'EAST', 'WEST', 'MUMBAI'
+    'ALL', 'NORTH', 'SOUTH', 'EAST', 'WEST',
   ];
   static const Map<String, Color> _zoneColors = {
-    'ALL':    _teal,
-    'NORTH':  Color(0xFF3B82F6),
-    'SOUTH':  Color(0xFFEF4444),
-    'EAST':   Color(0xFF10B981),
-    'WEST':   Color(0xFFF59E0B),
-    'MUMBAI': Color(0xFF8B5CF6),
+    'ALL':   _accent,
+    'NORTH': Color(0xFF2563EB),
+    'SOUTH': Color(0xFFDC2626),
+    'EAST':  Color(0xFF059669),
+    'WEST':  Color(0xFFD97706),
   };
 
   // ── Slot key ─────────────────────────────────────────────────────────────
@@ -61,8 +62,41 @@ class _SalesOrgMapScreenState extends State<SalesOrgMapScreen> {
   List<User> _inSlot(List<User> all, String slotKey) =>
       all.where((u) => u.orgPositions.contains(slotKey)).toList();
 
-  List<User> _available(List<User> all) =>
-      all.toList()..sort((a, b) => a.name.compareTo(b.name)); // All users are available for multi-zone
+  /// Returns users eligible for a slot.
+  /// For zone-specific slots (rsm_north_*, asm_south_*, etc.), users who
+  /// already hold a position in a *different* regional zone are excluded.
+  /// National-level slots (chairman, ceo, nsm_*) have no zone restriction.
+  List<User> _availableForSlot(List<User> all, String slotKey) {
+    // National-level slots — everyone is eligible
+    final lk = slotKey.toLowerCase();
+    if (lk == 'chairman' || lk == 'ceo' || lk.startsWith('nsm_')) {
+      return all.toList()..sort((a, b) => a.name.compareTo(b.name));
+    }
+    // Regional slots — extract zone from key  (e.g. 'rsm_north_retail' → 'north')
+    final parts = lk.split('_');
+    if (parts.length < 3) {
+      return all.toList()..sort((a, b) => a.name.compareTo(b.name));
+    }
+    final slotZone = parts[1]; // 'north', 'south', 'east', 'west', 'all'
+    if (slotZone == 'all') {
+      return all.toList()..sort((a, b) => a.name.compareTo(b.name));
+    }
+    // Filter out users who already have a position in a DIFFERENT zone
+    final regionalZones = {'north', 'south', 'east', 'west'};
+    return all.where((u) {
+      // Check each of the user's existing positions
+      for (final pos in u.orgPositions) {
+        final pp = pos.toLowerCase().split('_');
+        if (pp.length < 3) continue;  // skip national slots
+        final existingZone = pp[1];
+        if (existingZone == 'all') continue; // skip "all" positions
+        if (regionalZones.contains(existingZone) && existingZone != slotZone) {
+          return false; // user is already in a different regional zone
+        }
+      }
+      return true;
+    }).toList()..sort((a, b) => a.name.compareTo(b.name));
+  }
 
   // ── PATCH helpers (atomic org-position endpoints) ──────────────────────
   Future<bool> _orgAdd(String userId, String slotKey) async {
@@ -127,7 +161,7 @@ class _SalesOrgMapScreenState extends State<SalesOrgMapScreen> {
       content: Text(msg,
           style: const TextStyle(
               fontFamily: 'Montserrat', fontWeight: FontWeight.w700)),
-      backgroundColor: error ? _vacantC : _teal,
+      backgroundColor: error ? _vacantC : _accent,
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       margin: const EdgeInsets.all(16),
@@ -140,7 +174,7 @@ class _SalesOrgMapScreenState extends State<SalesOrgMapScreen> {
     required String slotKey,
     required List<User> allUsers,
   }) {
-    final avail = _available(allUsers);
+    final avail = _availableForSlot(allUsers, slotKey);
     final Set<String> selection = {}; // Track selected user IDs
     String query = '';
     StateSetter? setS;
@@ -178,10 +212,10 @@ class _SalesOrgMapScreenState extends State<SalesOrgMapScreen> {
               child: Row(children: [
                 Container(width: 38, height: 38,
                     decoration: BoxDecoration(
-                        color: _teal.withValues(alpha: 0.10),
+                        color: _accent.withValues(alpha: 0.10),
                         borderRadius: BorderRadius.circular(10)),
                     child: const Icon(Icons.person_add_rounded,
-                        color: _teal, size: 18)),
+                        color: _accent, size: 18)),
                 const SizedBox(width: 12),
                 Expanded(child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -198,12 +232,12 @@ class _SalesOrgMapScreenState extends State<SalesOrgMapScreen> {
                               fontFamily: 'Montserrat',
                               fontSize: 9,
                               fontWeight: FontWeight.w600,
-                              color: _teal)),
+                              color: _accent)),
                     ])),
                 if (selection.isNotEmpty)
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(color: _teal, borderRadius: BorderRadius.circular(12)),
+                    decoration: BoxDecoration(color: _accent, borderRadius: BorderRadius.circular(12)),
                     child: Text('${selection.length} selected',
                         style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w800)),
                   ),
@@ -265,7 +299,7 @@ class _SalesOrgMapScreenState extends State<SalesOrgMapScreen> {
                             .join();
                         return CheckboxListTile(
                           value: isSelected,
-                          activeColor: _teal,
+                          activeColor: _accent,
                           contentPadding: const EdgeInsets.symmetric(
                               vertical: 2, horizontal: 4),
                           title: Text(u.name,
@@ -275,7 +309,7 @@ class _SalesOrgMapScreenState extends State<SalesOrgMapScreen> {
                                   fontSize: 12,
                                   color: _txtHead)),
                           subtitle: Row(children: [
-                            _chip(u.role.label, _teal),
+                            _chip(u.role.label, _accent),
                             const SizedBox(width: 4),
                             _chip(u.zone,
                                 _zoneColors[u.zone.toUpperCase()] ?? _txtSub),
@@ -283,14 +317,14 @@ class _SalesOrgMapScreenState extends State<SalesOrgMapScreen> {
                           secondary: Container(
                               width: 36, height: 36,
                               decoration: BoxDecoration(
-                                  color: _teal.withValues(alpha: 0.12),
+                                  color: _accent.withValues(alpha: 0.12),
                                   shape: BoxShape.circle),
                               child: Center(child: Text(init,
                                   style: const TextStyle(
                                       fontFamily: 'Montserrat',
                                       fontWeight: FontWeight.w900,
                                       fontSize: 12,
-                                      color: _teal)))),
+                                      color: _accent)))),
                           onChanged: (val) {
                             setS?.call(() {
                               if (val == true) {
@@ -321,7 +355,7 @@ class _SalesOrgMapScreenState extends State<SalesOrgMapScreen> {
                       await _assignBatch(selectedUsers, slotKey);
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: _teal,
+                      backgroundColor: _accent,
                       foregroundColor: Colors.white,
                       elevation: 0,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -380,7 +414,7 @@ class _SalesOrgMapScreenState extends State<SalesOrgMapScreen> {
         ]),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh_rounded, color: _teal, size: 20),
+            icon: const Icon(Icons.refresh_rounded, color: _accent, size: 20),
             onPressed: () async {
               setState(() => _saving = true);
               await nexus.fetchUsers();
@@ -392,25 +426,25 @@ class _SalesOrgMapScreenState extends State<SalesOrgMapScreen> {
               padding: EdgeInsets.only(right: 16),
               child: SizedBox(width: 18, height: 18,
                   child: CircularProgressIndicator(
-                      color: _teal, strokeWidth: 2)),
+                      color: _accent, strokeWidth: 2)),
             )
           else
             Container(
               margin: const EdgeInsets.only(right: 14),
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
-                  color: _teal.withValues(alpha: 0.08),
+                  color: _accent.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: _teal.withValues(alpha: 0.25))),
+                  border: Border.all(color: _accent.withValues(alpha: 0.25))),
               child: const Row(children: [
-                Icon(Icons.lock_rounded, size: 11, color: _teal),
+                Icon(Icons.lock_rounded, size: 11, color: _accent),
                 SizedBox(width: 4),
                 Text('CONFIDENTIAL',
                     style: TextStyle(
                         fontFamily: 'Montserrat',
                         fontSize: 8,
                         fontWeight: FontWeight.w800,
-                        color: _teal,
+                        color: _accent,
                         letterSpacing: 0.5)),
               ]),
             ),
@@ -471,7 +505,7 @@ class _SalesOrgMapScreenState extends State<SalesOrgMapScreen> {
       _conn('to CEO'),
 
       _lvLabel('LEVEL 2', 'Chief Executive'),
-      _fullCard('ceo', 'CEO', all, _teal, Icons.corporate_fare_rounded),
+      _fullCard('ceo', 'CEO', all, _accent, Icons.corporate_fare_rounded),
       _conn('to NSM'),
 
       _channelHeader(),
@@ -502,14 +536,14 @@ class _SalesOrgMapScreenState extends State<SalesOrgMapScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-                color: _teal.withValues(alpha: 0.10),
+                color: _accent.withValues(alpha: 0.10),
                 borderRadius: BorderRadius.circular(8)),
             child: Text(level,
                 style: const TextStyle(
                     fontFamily: 'Montserrat',
                     fontSize: 9,
                     fontWeight: FontWeight.w900,
-                    color: _teal,
+                    color: _accent,
                     letterSpacing: 0.5)),
           ),
           const SizedBox(width: 8),
@@ -620,11 +654,10 @@ class _SalesOrgMapScreenState extends State<SalesOrgMapScreen> {
       decoration: BoxDecoration(
         color: vacant ? const Color(0xFFFFF5F5) : _bgCard,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-            color: vacant
-                ? _vacantC.withValues(alpha: 0.4)
-                : _border),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
+        border: vacant ? Border.all(color: _vacantC.withValues(alpha: 0.3)) : null,
+        boxShadow: [
+          if (!vacant) BoxShadow(color: _cardShadow, blurRadius: 16, offset: const Offset(0, 4))
+        ],
       ),
       child: Row(children: [
         Container(
@@ -717,10 +750,10 @@ class _SalesOrgMapScreenState extends State<SalesOrgMapScreen> {
       decoration: BoxDecoration(
         color: vacant ? const Color(0xFFFFF5F5) : _bgCard,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-            color: vacant ? _vacantC.withValues(alpha: 0.3) : _border,
-            width: vacant ? 1.5 : 1),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 6, offset: const Offset(0, 2))],
+        border: vacant ? Border.all(color: _vacantC.withValues(alpha: 0.3), width: 1.5) : null,
+        boxShadow: [
+          if (!vacant) BoxShadow(color: _cardShadow, blurRadius: 12, offset: const Offset(0, 4))
+        ],
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         // Title row + Add btn
