@@ -33,7 +33,11 @@ const orderSchema = new mongoose.Schema({
         vehicleProvider: { type: String },
         distanceKm: { type: Number },
         shippingCost: { type: Number, default: 0 },
-        highCostAlert: { type: Boolean, default: false }
+        highCostAlert: { type: Boolean, default: false },
+        manifestId: { type: String },   // Fleet manifest ID e.g. MAN-250305-1
+        ewayBill: { type: String },     // 12-digit GST E-Way Bill number
+        sealNo: { type: String },       // Container seal/security number
+        bookingDate: { type: Date },    // When dispatch was authenticated
     },
     salesPhotos: [{ type: String }], // DO Spaces URLs for sales photos (max 3)
     qcPhoto: { type: String },       // DO Spaces URL for QC proof photo

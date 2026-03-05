@@ -33,7 +33,8 @@ module.exports = (app) => {
     });
 
     // Get audit logs with filters and pagination
-    app.get('/api/audit/logs', verifyToken, allowRoles(['Admin']), async (req, res) => {
+    // Accessible by Admin (all logs), NSM (all), RSM/ASM (their team only)
+    app.get('/api/audit/logs', verifyToken, allowRoles(['Admin', 'NSM', 'RSM', 'ASM']), async (req, res) => {
         try {
             const {
                 page = 1,
@@ -50,21 +51,39 @@ module.exports = (app) => {
             // Build filter
             const filter = {};
 
+            // --- Hierarchy-aware filtering ---
+            // RSM and ASM can only see logs of their own team members
+            const requestingRole = req.user.role;
+            if (requestingRole === 'RSM' || requestingRole === 'ASM') {
+                // Find all subordinate users under this manager
+                const subordinates = await User.find({ managerId: req.user.userId }).select('id').lean();
+                const allowedIds = [req.user.userId, ...subordinates.map(u => u.id)];
+                filter.userId = { $in: allowedIds };
+            }
+
+            // Apply explicit userId filter (must still be within hierarchy)
             if (userId) {
-                if (userId.includes(',')) {
-                    filter.userId = { $in: userId.split(',').map(id => id.trim()) };
+                const requestedIds = userId.includes(',')
+                    ? userId.split(',').map(id => id.trim())
+                    : [userId];
+
+                if (filter.userId) {
+                    // Intersect with hierarchy-allowed IDs
+                    const hierarchyAllowed = filter.userId.$in;
+                    filter.userId = { $in: requestedIds.filter(id => hierarchyAllowed.includes(id)) };
                 } else {
-                    filter.userId = userId;
+                    filter.userId = requestedIds.length === 1 ? requestedIds[0] : { $in: requestedIds };
                 }
             }
 
-            if (req.query.role) {
+            // Role-based user filter (Admin/NSM only, since RSM/ASM already restricted)
+            if (req.query.role && (requestingRole === 'Admin' || requestingRole === 'NSM')) {
                 const usersWithRole = await User.find({ role: req.query.role }).select('id').lean();
                 const userIds = usersWithRole.map(u => u.id);
-                if (filter.userId) {
-                    // Intersection of provided userId(s) and role users
-                    const currentIds = filter.userId.$in || [filter.userId];
-                    filter.userId = { $in: currentIds.filter(id => userIds.includes(id)) };
+                if (filter.userId && filter.userId.$in) {
+                    filter.userId = { $in: filter.userId.$in.filter(id => userIds.includes(id)) };
+                } else if (filter.userId && typeof filter.userId === 'string') {
+                    filter.userId = userIds.includes(filter.userId) ? filter.userId : { $in: [] };
                 } else {
                     filter.userId = { $in: userIds };
                 }

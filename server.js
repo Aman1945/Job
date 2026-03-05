@@ -146,6 +146,10 @@ const Order = require('./models/Order');
 const Procurement = require('./models/Procurement');
 const DistributorPrice = require('./models/DistributorPrice');
 
+// Middleware
+const { verifyToken } = require('./middleware/auth');
+const { logCreate, logUpdate, logDelete } = require('./middleware/auditLogger');
+
 
 // ==================== HOME ROUTE ====================
 app.get('/', (req, res) => {
@@ -494,7 +498,7 @@ app.get('/api/customers', async (req, res) => {
     }
 });
 
-app.post('/api/customers', async (req, res) => {
+app.post('/api/customers', verifyToken, logCreate('CUSTOMER'), async (req, res) => {
     try {
         const customerData = {
             ...req.body,
@@ -504,17 +508,21 @@ app.post('/api/customers', async (req, res) => {
         };
         const newCustomer = new Customer(customerData);
         await newCustomer.save();
-        res.status(201).json(newCustomer);
+        res.status(201).json({ success: true, data: newCustomer });
     } catch (error) {
         res.status(500).json({ message: 'Error creating customer' });
     }
 });
 
-app.patch('/api/customers/:id', async (req, res) => {
+app.patch('/api/customers/:id', verifyToken, logUpdate('CUSTOMER'), async (req, res) => {
     try {
         const { id } = req.params;
+        // Fetch original data for audit log
+        req.originalData = await Customer.findOne({ id }).lean();
+        if (!req.originalData) return res.status(404).json({ message: 'Customer not found' });
+
         const customer = await Customer.findOneAndUpdate({ id }, req.body, { new: true });
-        if (customer) return res.json(customer);
+        if (customer) return res.json({ success: true, data: customer });
         res.status(404).json({ message: 'Customer not found' });
     } catch (error) {
         res.status(500).json({ message: 'Error updating customer' });
@@ -551,7 +559,7 @@ app.get('/api/products/:id', async (req, res) => {
     }
 });
 
-app.post('/api/products', async (req, res) => {
+app.post('/api/products', verifyToken, logCreate('PRODUCT'), async (req, res) => {
     try {
         const productData = {
             ...req.body,
@@ -561,27 +569,35 @@ app.post('/api/products', async (req, res) => {
         const newProduct = new Product(productData);
         await newProduct.save();
         console.log(`✅ Product created: ${newProduct.id}`);
-        res.status(201).json(newProduct);
+        res.status(201).json({ success: true, data: newProduct });
     } catch (error) {
         console.error('Product creation error:', error);
         res.status(500).json({ message: 'Error creating product', error: error.message });
     }
 });
 
-app.patch('/api/products/:id', async (req, res) => {
+app.patch('/api/products/:id', verifyToken, logUpdate('PRODUCT'), async (req, res) => {
     try {
         const { id } = req.params;
+        // Fetch original data for audit log
+        req.originalData = await Product.findOne({ id }).lean();
+        if (!req.originalData) return res.status(404).json({ message: 'Product not found' });
+
         const product = await Product.findOneAndUpdate({ id }, { $set: req.body }, { new: true });
-        if (product) return res.json(product);
+        if (product) return res.json({ success: true, data: product });
         res.status(404).json({ message: 'Product not found' });
     } catch (error) {
         res.status(500).json({ message: 'Error updating product' });
     }
 });
 
-app.delete('/api/products/:id', async (req, res) => {
+app.delete('/api/products/:id', verifyToken, logDelete('PRODUCT'), async (req, res) => {
     try {
-        const product = await Product.findOneAndDelete({ id: req.params.id });
+        const { id } = req.params;
+        req.originalData = await Product.findOne({ id }).lean();
+        if (!req.originalData) return res.status(404).json({ message: 'Product not found' });
+
+        const product = await Product.findOneAndDelete({ id });
         if (product) return res.json({ success: true, message: 'Product deleted' });
         res.status(404).json({ message: 'Product not found' });
     } catch (error) {
@@ -710,7 +726,7 @@ app.get('/api/distributor-prices/:id', async (req, res) => {
     }
 });
 
-app.post('/api/distributor-prices', async (req, res) => {
+app.post('/api/distributor-prices', verifyToken, logCreate('PRICE_LIST'), async (req, res) => {
     try {
         const data = {
             ...req.body,
@@ -726,24 +742,32 @@ app.post('/api/distributor-prices', async (req, res) => {
     }
 });
 
-app.patch('/api/distributor-prices/:id', async (req, res) => {
+app.patch('/api/distributor-prices/:id', verifyToken, logUpdate('PRICE_LIST'), async (req, res) => {
     try {
+        // Fetch original data for audit log
+        req.originalData = await DistributorPrice.findOne({ id: req.params.id }).lean();
+        if (!req.originalData) return res.status(404).json({ message: 'Distributor price entry not found' });
+
         const item = await DistributorPrice.findOneAndUpdate(
             { id: req.params.id },
             { $set: req.body },
             { new: true }
         );
-        if (item) return res.json(item);
+        if (item) return res.json({ success: true, data: item });
         res.status(404).json({ message: 'Distributor price entry not found' });
     } catch (error) {
         res.status(500).json({ message: 'Error updating distributor price' });
     }
 });
 
-app.delete('/api/distributor-prices/:id', async (req, res) => {
+app.delete('/api/distributor-prices/:id', verifyToken, logDelete('PRICE_LIST'), async (req, res) => {
     try {
+        const { id } = req.params;
+        req.originalData = await DistributorPrice.findOne({ id }).lean();
+        if (!req.originalData) return res.status(404).json({ message: 'Distributor price entry not found' });
+
         const item = await DistributorPrice.findOneAndUpdate(
-            { id: req.params.id },
+            { id },
             { isActive: false },
             { new: true }
         );
@@ -890,7 +914,7 @@ app.get('/api/orders/:id', async (req, res) => {
     }
 });
 
-app.post('/api/orders', async (req, res) => {
+app.post('/api/orders', verifyToken, logCreate('ORDER'), async (req, res) => {
     try {
         const orderData = {
             ...req.body,
@@ -905,17 +929,21 @@ app.post('/api/orders', async (req, res) => {
         const newOrder = new Order(orderData);
         await newOrder.save();
         console.log(`✅ Order created: ${newOrder.id}`);
-        res.status(201).json(newOrder);
+        res.status(201).json({ success: true, data: newOrder });
     } catch (error) {
         console.error('Order creation error:', error);
         res.status(500).json({ message: 'Error creating order' });
     }
 });
 
-app.patch('/api/orders/:id', async (req, res) => {
+app.patch('/api/orders/:id', verifyToken, logUpdate('ORDER'), async (req, res) => {
     try {
         const { id } = req.params;
         const updateData = { ...req.body };
+
+        // Fetch original data for audit log
+        req.originalData = await Order.findOne({ id }).lean();
+        if (!req.originalData) return res.status(404).json({ message: 'Order not found' });
 
         // Admin Bypass Logic: If req.body.isAdminBypass is true and user is Admin, allow any status
         if (updateData.isAdminBypass) {
@@ -960,7 +988,7 @@ app.patch('/api/orders/:id', async (req, res) => {
 
         if (order) {
             console.log(`✅ Order updated: ${id}`);
-            return res.json(order);
+            return res.json({ success: true, data: order });
         }
 
         res.status(404).json({ message: 'Order not found' });
@@ -970,14 +998,86 @@ app.patch('/api/orders/:id', async (req, res) => {
     }
 });
 
-app.delete('/api/orders/:id', async (req, res) => {
+app.delete('/api/orders/:id', verifyToken, logDelete('ORDER'), async (req, res) => {
     try {
         const { id } = req.params;
+        req.originalData = await Order.findOne({ id }).lean();
+        if (!req.originalData) return res.status(404).json({ message: 'Order not found' });
+
         const order = await Order.findOneAndDelete({ id });
-        if (order) return res.json({ message: 'Order deleted' });
+        if (order) return res.json({ success: true, message: 'Order deleted' });
         res.status(404).json({ message: 'Order not found' });
     } catch (error) {
         res.status(500).json({ message: 'Error deleting order' });
+    }
+});
+
+// ==================== LOGISTICS ====================
+
+// POST /api/logistics/bulk-assign
+// Assigns delivery agent + logistics details to multiple orders and sets status → "In Transit"
+app.post('/api/logistics/bulk-assign', verifyToken, async (req, res) => {
+    try {
+        const { orderIds, logisticsData } = req.body;
+
+        if (!Array.isArray(orderIds) || orderIds.length === 0) {
+            return res.status(400).json({ success: false, message: 'orderIds array is required and must not be empty' });
+        }
+        if (!logisticsData) {
+            return res.status(400).json({ success: false, message: 'logisticsData is required' });
+        }
+
+        const timestamp = new Date();
+        let updatedCount = 0;
+
+        for (const orderId of orderIds) {
+            const order = await Order.findOne({ id: orderId });
+            if (!order) {
+                console.warn(`⚠️ Logistics assign: Order not found — ${orderId}`);
+                continue;
+            }
+
+            await Order.findOneAndUpdate(
+                { id: orderId },
+                {
+                    $set: {
+                        status: 'In Transit',
+                        logistics: {
+                            deliveryAgentId: logisticsData.deliveryAgentId || '',
+                            vehicleNo: logisticsData.vehicleNo || '',
+                            vehicleProvider: logisticsData.vehicleProvider || 'Hub Manifest',
+                            distanceKm: logisticsData.distanceKm || 0,
+                            shippingCost: logisticsData.shippingCost || 0,
+                            highCostAlert: false,
+                            manifestId: logisticsData.manifestId || '',
+                            ewayBill: logisticsData.ewayBill || '',
+                            sealNo: logisticsData.sealNo || '',
+                            bookingDate: timestamp,
+                        }
+                    },
+                    $push: {
+                        statusHistory: {
+                            status: 'In Transit',
+                            timestamp: timestamp.toISOString()
+                        }
+                    }
+                },
+                { new: true }
+            );
+
+            console.log(`🚚 Logistics assigned: ${orderId} → In Transit | Agent: ${logisticsData.deliveryAgentId} | Manifest: ${logisticsData.manifestId}`);
+            updatedCount++;
+        }
+
+        res.json({
+            success: true,
+            message: `${updatedCount} order(s) dispatched successfully`,
+            updated: updatedCount
+        });
+
+    } catch (error) {
+        console.error('Logistics bulk-assign error:', error);
+        res.status(500).json({ success: false, message: 'Error assigning logistics', error: error.message });
     }
 });
 
