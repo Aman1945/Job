@@ -362,6 +362,7 @@ class NexusProvider with ChangeNotifier {
     List<Map<String, dynamic>> items, {
     List<File> photos = const [],
     String? remarks,
+    String? token, // Added token parameter for auth
   }) async {
     double subTotal = 0;
     for (var item in items) {
@@ -400,41 +401,29 @@ class NexusProvider with ChangeNotifier {
     try {
       final response = await http.post(
         Uri.parse('$_baseUrl/orders'),
-        headers: {'Content-Type': 'application/json'},
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
         body: jsonEncode(orderData),
       );
 
       if (response.statusCode == 201) {
         await fetchOrders();
         return true;
+      } else {
+        debugPrint('Failed to create order: ${response.statusCode} - ${response.body}');
+        throw Exception('Failed to create order: Server responded with ${response.statusCode}');
       }
     } catch (e) {
-      // Local fallback
-      final newOrder = Order(
-        id: 'ORD-${DateTime.now().millisecondsSinceEpoch}',
-        customerId: customerId,
-        customerName: customerName,
-        status: 'Pending Credit Approval',
-        total: total,
-        createdAt: DateTime.now(),
-        items: items.map((i) => OrderItem(
-          skuCode: i['skuCode'] ?? '',
-          name: i['productName'] ?? '',
-          quantity: i['quantity'] ?? 0,
-          price: (i['price'] as num).toDouble(),
-        )).toList(),
-        salespersonId: _currentUser?.id,
-      );
-      _orders.insert(0, newOrder);
-      notifyListeners();
-      return true;
+      debugPrint('Error creating order: $e');
+      throw Exception('Network or server error while creating order.');
     }
-    return false;
   }
 
   /// Uploads a single image [File] to DigitalOcean Spaces via backend.
   /// Returns the public CDN URL or null on failure.
-  Future<String?> uploadPhoto(File file, {String folder = 'uploads'}) async {
+  Future<String?> uploadPhoto(File file, {String folder = 'uploads', String? token}) async {
     try {
       debugPrint('📸 [uploadPhoto] START — file: ${file.path}');
       final bytes = await file.readAsBytes();
@@ -445,7 +434,10 @@ class NexusProvider with ChangeNotifier {
 
       final response = await http.post(
         Uri.parse('$_baseUrl/upload-photo'),
-        headers: {'Content-Type': 'application/json'},
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
         body: jsonEncode({
           'base64Image': base64Image,
           'fileName': fileName,
@@ -470,7 +462,7 @@ class NexusProvider with ChangeNotifier {
   }
 
 
-  Future<bool> createSTN(Map<String, dynamic> stnData) async {
+  Future<bool> createSTN(Map<String, dynamic> stnData, {String? token}) async {
     final payload = {
       ...stnData,
       'isSTN': true,
@@ -482,117 +474,95 @@ class NexusProvider with ChangeNotifier {
     try {
       final response = await http.post(
         Uri.parse('$_baseUrl/orders'),
-        headers: {'Content-Type': 'application/json'},
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
         body: jsonEncode(payload),
       );
 
       if (response.statusCode == 201) {
         await fetchOrders();
         return true;
+      } else {
+        debugPrint('Failed to create STN: ${response.statusCode} - ${response.body}');
+        throw Exception('Failed to create STN: Server responded with ${response.statusCode}');
       }
     } catch (e) {
-      // Local fallback
-      final newSTN = Order(
-        id: 'STN-${DateTime.now().millisecondsSinceEpoch}',
-        customerId: stnData['destinationWarehouse'] ?? 'WH-O',
-        customerName: stnData['destinationWarehouse'] ?? 'Warehouse',
-        status: 'In Transit',
-        total: 0,
-        createdAt: DateTime.now(),
-        items: (stnData['items'] as List).map((i) => OrderItem(
-          skuCode: i['skuCode'] ?? '',
-          name: i['productName'] ?? '',
-          quantity: i['quantity'] ?? 0,
-          price: 0,
-        )).toList(),
-        isSTN: true,
-        sourceWarehouse: stnData['sourceWarehouse'],
-        destinationWarehouse: stnData['destinationWarehouse'],
-        remarks: stnData['remarks'],
-      );
-      _orders.insert(0, newSTN);
-      notifyListeners();
-      return true;
+      debugPrint('Error creating STN: $e');
+      throw Exception('Network or server error while creating STN.');
     }
-    return false;
   }
 
-  Future<bool> createCustomer(Map<String, dynamic> customerData) async {
+  Future<bool> createCustomer(Map<String, dynamic> customerData, {String? token}) async {
     try {
       final response = await http.post(
         Uri.parse('$_baseUrl/customers'),
-        headers: {'Content-Type': 'application/json'},
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
         body: jsonEncode(customerData),
       );
 
       if (response.statusCode == 201) {
         await fetchCustomers();
         return true;
+      } else {
+        debugPrint('Failed to create customer: ${response.statusCode} - ${response.body}');
+        throw Exception('Failed to create customer: Server responded with ${response.statusCode}');
       }
-      return false;
     } catch (e) {
       debugPrint('Error creating customer: $e');
-      // Local fallback
-      final newCustomer = Customer.fromJson({
-        ...customerData,
-        'id': customerData['id'] ?? 'CUST-${_customers.length + 1}',
-      });
-      _customers.insert(0, newCustomer);
-      notifyListeners();
-      return true;
+      throw Exception('Network or server error while creating customer.');
     }
   }
 
-  Future<bool> createProduct(Map<String, dynamic> productData) async {
+  Future<bool> createProduct(Map<String, dynamic> productData, {String? token}) async {
     try {
       final response = await http.post(
         Uri.parse('$_baseUrl/products'),
-        headers: {'Content-Type': 'application/json'},
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
         body: jsonEncode(productData),
       );
 
       if (response.statusCode == 201) {
         await fetchProducts();
         return true;
+      } else {
+        debugPrint('Failed to create product: ${response.statusCode} - ${response.body}');
+        throw Exception('Failed to create product: Server responded with ${response.statusCode}');
       }
-      return false;
     } catch (e) {
       debugPrint('Error creating product: $e');
-      // Local fallback for materiality
-      final newProduct = Product.fromJson({
-        ...productData,
-        'id': productData['id'] ?? productData['skuCode'] ?? 'PROD-${DateTime.now().millisecondsSinceEpoch}',
-      });
-      _products.insert(0, newProduct);
-      notifyListeners();
-      return true;
+      throw Exception('Network or server error while creating product.');
     }
   }
 
-  Future<bool> createUser(Map<String, dynamic> userData) async {
+  Future<bool> createUser(Map<String, dynamic> userData, {String? token}) async {
     try {
       final response = await http.post(
         Uri.parse('$_baseUrl/users'),
-        headers: {'Content-Type': 'application/json'},
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
         body: jsonEncode(userData),
       );
 
       if (response.statusCode == 201) {
         await fetchUsers();
         return true;
+      } else {
+        debugPrint('Failed to create user: ${response.statusCode} - ${response.body}');
+        throw Exception('Failed to create user: Server responded with ${response.statusCode}');
       }
-      return false;
     } catch (e) {
       debugPrint('Error creating user: $e');
-      // Local fallback
-      final newUser = User.fromJson({
-        ...userData,
-        'id': userData['id'] ?? 'USER-${_users.length + 1}',
-        'role': userData['role'] ?? 'Sales',
-      });
-      _users.insert(0, newUser);
-      notifyListeners();
-      return true;
+      throw Exception('Network or server error while creating user.');
     }
   }
 
@@ -610,7 +580,7 @@ class NexusProvider with ChangeNotifier {
     return null;
   }
 
-  Future<Map<String, dynamic>?> fetchReportData({required String type, String? startDate, String? endDate}) async {
+  Future<bool> fetchReportData({required String type, String? startDate, String? endDate}) async {
     try {
       final queryParams = 'type=$type${startDate != null ? "&startDate=$startDate" : ""}${endDate != null ? "&endDate=$endDate" : ""}';
       final response = await http.get(Uri.parse('$_baseUrl/analytics/reports?$queryParams'));

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/nexus_provider.dart';
 import '../utils/theme.dart';
 import '../models/models.dart';
+import '../providers/auth_provider.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:dropdown_button2/dropdown_button2.dart';
 
@@ -78,18 +79,32 @@ class _StockTransferScreenState extends State<StockTransferScreen> {
     }
 
     final provider = Provider.of<NexusProvider>(context, listen: false);
-    final success = await provider.createSTN({
-      'sourceWarehouse': selectedSource,
-      'destinationWarehouse': selectedDestination,
-      'items': transferItems,
-      'remarks': _remarksController.text,
-      'customerName': selectedDestination, // For generic order tracking
-      'customerId': selectedDestination,
-    });
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
-    if (success && mounted) {
-      Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('STN Dispatched Successfully!')));
+    try {
+      final success = await provider.createSTN({
+        'sourceWarehouse': selectedSource,
+        'destinationWarehouse': selectedDestination,
+        'items': transferItems,
+        'remarks': _remarksController.text,
+        'customerName': selectedDestination, // For generic order tracking
+        'customerId': selectedDestination,
+      }, token: authProvider.token);
+
+      if (success && mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('STN Dispatched Successfully!')));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to submit STN: $e'),
+            backgroundColor: Colors.red.shade800,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
     }
   }
 

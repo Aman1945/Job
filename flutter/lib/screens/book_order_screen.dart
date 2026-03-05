@@ -92,21 +92,37 @@ class _BookOrderScreenState extends State<BookOrderScreen> {
     }
     setState(() => _isSubmitting = true);
     final provider = Provider.of<NexusProvider>(context, listen: false);
+    final authProvider = Provider.of<AuthProvider>(context, listen: false); // Added to get token
     final photos = _salesPhotos.whereType<File>().toList();
-    final success = await provider.createOrder(
-      selectedCustomer!.id,
-      selectedCustomer!.name,
-      cartItems,
-      photos: photos,
-      remarks: _remarksController.text,
-    );
-
-    if (mounted) setState(() => _isSubmitting = false);
-    if (success && mounted) {
-      Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Supply Request Committed Successfully! 🚀')),
+    
+    try {
+      final success = await provider.createOrder(
+        selectedCustomer!.id,
+        selectedCustomer!.name,
+        cartItems,
+        photos: photos,
+        remarks: _remarksController.text,
+        token: authProvider.token, // Passing token
       );
+
+      if (mounted) setState(() => _isSubmitting = false);
+      if (success && mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Supply Request Committed Successfully! 🚀')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to submit order: $e'),
+            backgroundColor: Colors.red.shade800,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
     }
   }
 

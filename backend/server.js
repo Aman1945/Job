@@ -544,7 +544,7 @@ app.patch('/api/users/:id/manager', async (req, res) => {
 });
 
 // ==================== CUSTOMERS ====================
-app.get('/api/customers', async (req, res) => {
+app.get('/api/customers', verifyToken, async (req, res) => {
     try {
         res.json(await Customer.find());
     } catch (error) {
@@ -557,6 +557,7 @@ app.post('/api/customers', verifyToken, logCreate('CUSTOMER'), async (req, res) 
         const customerData = {
             ...req.body,
             id: req.body.id || `CUST-${Date.now().toString().slice(-6)}`,
+            assignedSalespersonId: req.user.userId, // Mandatory attribution
             status: 'Active',
             createdAt: new Date().toISOString()
         };
@@ -584,7 +585,7 @@ app.patch('/api/customers/:id', verifyToken, logUpdate('CUSTOMER'), async (req, 
 });
 
 // ==================== PRODUCTS (MATERIAL MASTER) ====================
-app.get('/api/products', async (req, res) => {
+app.get('/api/products', verifyToken, async (req, res) => {
     try {
         const { category, specie, search } = req.query;
         const query = {};
@@ -603,7 +604,7 @@ app.get('/api/products', async (req, res) => {
     }
 });
 
-app.get('/api/products/:id', async (req, res) => {
+app.get('/api/products/:id', verifyToken, async (req, res) => {
     try {
         const product = await Product.findOne({ id: req.params.id });
         if (product) return res.json(product);
@@ -927,7 +928,7 @@ app.get('/api/distributor-prices/import-template', async (req, res) => {
 
 // ==================== PHOTO UPLOAD ====================
 // Accepts base64 encoded image and uploads to DigitalOcean Spaces
-app.post('/api/upload-photo', async (req, res) => {
+app.post('/api/upload-photo', verifyToken, logCreate('FILE_UPLOAD'), async (req, res) => {
     try {
         const { base64Image, fileName, folder } = req.body;
         if (!base64Image || !fileName) {
@@ -943,7 +944,7 @@ app.post('/api/upload-photo', async (req, res) => {
 });
 
 // ==================== ORDERS ====================
-app.get('/api/orders', async (req, res) => {
+app.get('/api/orders', verifyToken, async (req, res) => {
     try {
         const { status, salespersonId } = req.query;
         let query = {};
@@ -957,7 +958,7 @@ app.get('/api/orders', async (req, res) => {
     }
 });
 
-app.get('/api/orders/:id', async (req, res) => {
+app.get('/api/orders/:id', verifyToken, async (req, res) => {
     try {
         const { id } = req.params;
         const order = await Order.findOne({ id });
@@ -973,6 +974,7 @@ app.post('/api/orders', verifyToken, logCreate('ORDER'), async (req, res) => {
         const orderData = {
             ...req.body,
             id: req.body.id || (req.body.isSTN ? `STN-${Date.now().toString().slice(-6)}` : `ORD-${Date.now().toString().slice(-6)}`),
+            salespersonId: req.user.userId, // Mandatory attribution from token
             createdAt: req.body.createdAt || new Date().toISOString(),
             statusHistory: req.body.statusHistory || [{
                 status: req.body.status || 'Pending',
