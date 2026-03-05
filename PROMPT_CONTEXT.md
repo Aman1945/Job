@@ -64,9 +64,17 @@
    - Implemented `POST /api/logistics/bulk-assign` backend route to handle order dispatch with manifest, eway-bill, and seal details.
    - Updated `Order.js` schema to include missing logistics fields (`manifestId`, `ewayBill`, `sealNo`, `bookingDate`).
    - Verified the "Ready for Dispatch" -> "In Transit" status transition via API testing.
+   - **UI Fix**: Resolved a "Bottom Overflow by 280px" on the mobile `LogisticsHubScreen` by wrapping the split Mission List and Manifest Terminal into a unified `SingleChildScrollView` with `shrinkWrap: true`.
 8. **Book Order UI Refinement**:
    - Removed the "Assign Sales Team" hierarchy panel from `BookOrderScreen.dart` to simplify the mission creation flow.
    - Enhanced Sales Photos section: Replaced hardcoded sources with a selection modal (Camera/Gallery) for all three slots (PO Copy, Photo 2, Photo 3).
+9. **Sales Org Map Multi-Zone Assignment Bug**:
+   - Updated the `User` model on both the backend (Node/Mongoose) and frontend (Flutter) to use an `orgPositions` array of strings instead of a single string.
+   - Refactored `SalesOrgMapScreen`'s assignment logic to append new zones to a user's `orgPositions` array rather than overwriting.
+   - Refactored `OrgMemberDataSheet` to include a "Remove From This Position" button, allowing safe removal of a single zone without wiping the user's other assignments.
+10. **Deployment & CI/CD Setup**:
+    - Created `digitalocean_deployment_guide.md` covering PM2, Nginx reverse proxy, and SSL configuration.
+    - Successfully synced and pushed all recent layout, bug-fix, and backend features to the remote GitHub repository (`main` branch).
 
 ## 🏁 Next Steps / Remaining Tasks
 - [x] Implement Bulk Dispatch API for Logistics Hub.

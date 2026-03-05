@@ -433,21 +433,14 @@ class _LifecycleGrid extends StatelessWidget {
         'roles': ['Admin', 'Billing', 'ATL Executive', 'RSM', 'ASM', 'NSM'],
       },
       {
-        'stage': 'STAGE 9',  'label': 'DA Assignment',
+        'stage': 'STAGE 9',  'label': 'Dispatch & Load',
         'icon': Icons.local_shipping_rounded,
         'color': const Color(0xFF0EA5E9),
         'screen': const LogisticsHubScreen(),
         'roles': ['Admin', 'Hub Lead', 'Logistics Lead', 'RSM', 'ASM', 'NSM'],
       },
       {
-        'stage': 'STAGE 10', 'label': 'Loading',
-        'icon': Icons.inventory_2_rounded,
-        'color': _purple,
-        'screen': const LogisticsHubScreen(),
-        'roles': ['Admin', 'Hub Lead', 'Logistics Lead', 'RSM', 'ASM', 'NSM'],
-      },
-      {
-        'stage': 'STAGE 11', 'label': 'Delivery Ack',
+        'stage': 'STAGE 10', 'label': 'Delivery Ack',
         'icon': Icons.task_alt_rounded,
         'color': Colors.redAccent,
         'screen': const DeliveryExecutionScreen(),

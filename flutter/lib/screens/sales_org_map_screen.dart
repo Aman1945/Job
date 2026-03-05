@@ -64,13 +64,26 @@ class _SalesOrgMapScreenState extends State<SalesOrgMapScreen> {
   List<User> _available(List<User> all) =>
       all.toList()..sort((a, b) => a.name.compareTo(b.name)); // All users are available for multi-zone
 
-  // ── PATCH helper ─────────────────────────────────────────────────────────
-  Future<bool> _patchUser(String userId, Map<String, dynamic> payload) async {
+  // ── PATCH helpers (atomic org-position endpoints) ──────────────────────
+  Future<bool> _orgAdd(String userId, String slotKey) async {
     try {
       final r = await http.patch(
-        Uri.parse('${ApiConfig.baseUrl}/users/$userId'),
+        Uri.parse('${ApiConfig.baseUrl}/users/$userId/org-add'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode(payload),
+        body: jsonEncode({'slotKey': slotKey}),
+      ).timeout(const Duration(seconds: 10));
+      return r.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> _orgRemove(String userId, String slotKey) async {
+    try {
+      final r = await http.patch(
+        Uri.parse('${ApiConfig.baseUrl}/users/$userId/org-remove'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'slotKey': slotKey}),
       ).timeout(const Duration(seconds: 10));
       return r.statusCode == 200;
     } catch (_) {
@@ -81,18 +94,10 @@ class _SalesOrgMapScreenState extends State<SalesOrgMapScreen> {
   // Batch assign multiple users at once — all PATCHes in parallel, one refresh
   Future<void> _assignBatch(List<User> users, String slotKey) async {
     setState(() => _saving = true);
-    // Patch all users in parallel
     final results = await Future.wait(
-      users.map((u) {
-        final newPositions = List<String>.from(u.orgPositions);
-        if (!newPositions.contains(slotKey)) {
-          newPositions.add(slotKey);
-        }
-        return _patchUser(u.id, {'orgPositions': newPositions});
-      }),
+      users.map((u) => _orgAdd(u.id, slotKey)),
     );
     if (mounted) {
-      // Single refresh after all patches
       await Provider.of<NexusProvider>(context, listen: false).fetchUsers();
       setState(() => _saving = false);
       final failed = results.where((ok) => !ok).length;
@@ -106,8 +111,7 @@ class _SalesOrgMapScreenState extends State<SalesOrgMapScreen> {
 
   Future<void> _remove(User user, String slotKey) async {
     setState(() => _saving = true);
-    final newPositions = List<String>.from(user.orgPositions)..remove(slotKey);
-    final ok = await _patchUser(user.id, {'orgPositions': newPositions});
+    final ok = await _orgRemove(user.id, slotKey);
     if (mounted) {
       await Provider.of<NexusProvider>(context, listen: false).fetchUsers();
       setState(() => _saving = false);
@@ -857,7 +861,7 @@ class _SalesOrgMapScreenState extends State<SalesOrgMapScreen> {
 
         // ✕ Remove button — clearly visible
         GestureDetector(
-          onTap: () => _confirmRemove(user),
+          onTap: () => _confirmRemove(user, slotKey),
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
             decoration: BoxDecoration(
@@ -874,7 +878,7 @@ class _SalesOrgMapScreenState extends State<SalesOrgMapScreen> {
     );
   }
 
-  void _confirmRemove(User user) {
+  void _confirmRemove(User user, String slotKey) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -905,7 +909,7 @@ class _SalesOrgMapScreenState extends State<SalesOrgMapScreen> {
           ElevatedButton(
             onPressed: () async {
               Navigator.pop(ctx);
-              await _remove(user);
+              await _remove(user, slotKey);
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: _vacantC,
