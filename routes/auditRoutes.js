@@ -33,8 +33,8 @@ module.exports = (app) => {
     });
 
     // Get audit logs with filters and pagination
-    // Accessible by Admin (all logs), NSM (all), RSM/ASM (their team only)
-    app.get('/api/audit/logs', verifyToken, allowRoles(['Admin', 'NSM', 'RSM', 'ASM']), async (req, res) => {
+    // Accessible by Admin (all logs), NSM (all), RSM/ASM (their team only), Sales (own only)
+    app.get('/api/audit/logs', verifyToken, allowRoles(['Admin', 'NSM', 'RSM', 'ASM', 'Sales']), async (req, res) => {
         try {
             const {
                 page = 1,
@@ -59,6 +59,9 @@ module.exports = (app) => {
                 const subordinates = await User.find({ managerId: req.user.userId }).select('id').lean();
                 const allowedIds = [req.user.userId, ...subordinates.map(u => u.id)];
                 filter.userId = { $in: allowedIds };
+            } else if (requestingRole === 'Sales') {
+                // Sales executives can only see their own logs
+                filter.userId = req.user.userId;
             }
 
             // Apply explicit userId filter (must still be within hierarchy)
