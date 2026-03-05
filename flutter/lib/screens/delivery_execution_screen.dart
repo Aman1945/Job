@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../providers/nexus_provider.dart';
+import '../providers/auth_provider.dart';
 import '../utils/theme.dart';
 import '../models/models.dart';
 import 'package:lucide_icons/lucide_icons.dart';
@@ -275,8 +276,10 @@ class _DeliveryExecutionScreenState extends State<DeliveryExecutionScreen> {
     );
 
     // Final status update
-    final success = await provider.updateOrderStatus(order.id, 'Delivered');
-    if (success && mounted) {
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final success = await provider.updateOrderStatus(order.id, 'Delivered', token: auth.token);
+    if (!mounted) return;                          // ← guard for both branches
+    if (success) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Mission Accomplished! E-POD synced to Hub.'), backgroundColor: Color(0xFF10B981)));
       setState(() {
         selectedOrder = null;

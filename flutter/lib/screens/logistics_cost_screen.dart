@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../providers/nexus_provider.dart';
+import '../providers/auth_provider.dart';
 import '../utils/theme.dart';
 import '../models/models.dart';
 import 'package:lucide_icons/lucide_icons.dart';
@@ -329,7 +330,8 @@ class _LogisticsCostScreenState extends State<LogisticsCostScreen> {
       );
     }
 
-    final success = await provider.updateOrderStatus(order.id, 'Ready for Invoice');
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final success = await provider.updateOrderStatus(order.id, 'Ready for Invoice', token: auth.token);
     if (success && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(high ? 'High-cost override recorded. Order ${order.id} cleared!' : 'Freight approved for ${order.id}!'), backgroundColor: Colors.green));
       setState(() {

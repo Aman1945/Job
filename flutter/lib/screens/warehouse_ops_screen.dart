@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/nexus_provider.dart';
+import '../providers/auth_provider.dart';
 import '../models/models.dart';
 import '../widgets/nexus_components.dart';
 import 'package:lucide_icons/lucide_icons.dart';
@@ -491,7 +492,8 @@ class _WarehouseOpsScreenState extends State<WarehouseOpsScreen> with SingleTick
     final provider = Provider.of<NexusProvider>(context, listen: false);
     
     // 1. Update Order Status
-    await provider.updateOrderStatus(order.id, 'Pending Packing'); 
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    await provider.updateOrderStatus(order.id, 'Pending Packing', token: auth.token); 
     
     // 2. Email Notification (CC to Operations for Tracking)
     final Uri emailLaunchUri = Uri(
@@ -522,7 +524,8 @@ class _WarehouseOpsScreenState extends State<WarehouseOpsScreen> with SingleTick
 
   Future<void> _pushToQC(Order order) async {
     final provider = Provider.of<NexusProvider>(context, listen: false);
-    await provider.updateOrderStatus(order.id, 'Pending Quality Control');
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    await provider.updateOrderStatus(order.id, 'Pending Quality Control', token: auth.token);
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: const Row(children: [Icon(LucideIcons.checkCircle, color: Colors.white, size: 16), SizedBox(width: 8), Text('Dispatched to Quality Control')]),

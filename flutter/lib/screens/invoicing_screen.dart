@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:nexus_oms_mobile/providers/auth_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../providers/nexus_provider.dart';
@@ -327,15 +328,17 @@ class _InvoicingScreenState extends State<InvoicingScreen> {
     // Simulate API Delay for ERP Sync
     await Future.delayed(const Duration(seconds: 2));
     
-    final success = await provider.updateOrderStatus(order.id, 'Invoiced');
-    if (success && mounted) {
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final success = await provider.updateOrderStatus(order.id, 'Invoiced', token: auth.token);
+    if (!mounted) return;                          // ← guard for both branches
+    if (success) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Tax Invoice generated and synced to Tally ERP!'), backgroundColor: Color(0xFF10B981)));
       setState(() {
         selectedOrder = null;
         isSyncing = false;
       });
     } else {
-       setState(() => isSyncing = false);
+      setState(() => isSyncing = false);
     }
   }
 }

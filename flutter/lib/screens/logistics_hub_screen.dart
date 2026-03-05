@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../providers/nexus_provider.dart';
+import '../providers/auth_provider.dart';
 import '../models/models.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
@@ -44,11 +45,14 @@ class _LogisticsHubScreenState extends State<LogisticsHubScreen> {
           final isMobile = constraints.maxWidth < 900;
           
           if (isMobile) {
-            return Column(
-              children: [
-                Expanded(child: _buildMissionList(readyMissions)),
-                _buildManifestTerminal(agents, provider, isMobile),
-              ],
+            return SingleChildScrollView(
+              padding: const EdgeInsets.only(bottom: 300), // Extra space for keyboard/scrolling
+              child: Column(
+                children: [
+                  _buildMissionList(readyMissions, isMobile: true),
+                  _buildManifestTerminal(agents, provider, isMobile),
+                ],
+              ),
             );
           }
           
@@ -69,7 +73,7 @@ class _LogisticsHubScreenState extends State<LogisticsHubScreen> {
     );
   }
 
-  Widget _buildMissionList(List<Order> missions) {
+  Widget _buildMissionList(List<Order> missions, {bool isMobile = false}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -87,19 +91,31 @@ class _LogisticsHubScreenState extends State<LogisticsHubScreen> {
             ],
           ),
         ),
-        Expanded(
-          child: missions.isEmpty
-              ? _buildEmptyState()
-              : ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  itemCount: missions.length,
-                  itemBuilder: (context, index) {
-                    final order = missions[index];
-                    bool isSelected = _selectedMissions.contains(order.id);
-                    return _buildMissionCard(order, isSelected);
-                  },
-                ),
-        ),
+        isMobile 
+          ? (missions.isEmpty ? _buildEmptyState() : ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              itemCount: missions.length,
+              itemBuilder: (context, index) {
+                final order = missions[index];
+                bool isSelected = _selectedMissions.contains(order.id);
+                return _buildMissionCard(order, isSelected);
+              },
+            ))
+          : Expanded(
+              child: missions.isEmpty
+                  ? _buildEmptyState()
+                  : ListView.builder(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      itemCount: missions.length,
+                      itemBuilder: (context, index) {
+                        final order = missions[index];
+                        bool isSelected = _selectedMissions.contains(order.id);
+                        return _buildMissionCard(order, isSelected);
+                      },
+                    ),
+            ),
       ],
     );
   }
@@ -138,13 +154,10 @@ class _LogisticsHubScreenState extends State<LogisticsHubScreen> {
     return Container(
       color: Colors.white,
       padding: EdgeInsets.all(isMobile ? 16 : 32),
-      child: isMobile 
-        ? SingleChildScrollView(
-            child: Column(children: _buildManifestContent(agents, provider)))
-        : Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: _buildManifestContent(agents, provider),
-          ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: _buildManifestContent(agents, provider),
+      ),
     );
   }
   
@@ -252,6 +265,7 @@ class _LogisticsHubScreenState extends State<LogisticsHubScreen> {
   void _createManifest(NexusProvider provider) async {
     setState(() => isManifesting = true);
     
+    final auth = Provider.of<AuthProvider>(context, listen: false);
     final success = await provider.assignLogistics(
       _selectedMissions, 
       {
@@ -261,10 +275,12 @@ class _LogisticsHubScreenState extends State<LogisticsHubScreen> {
         'manifestId': 'MAN-${DateFormat('yyMMdd').format(DateTime.now())}-${_selectedMissions.length}',
         'ewayBill': _ewayBillController.text,
         'sealNo': _sealController.text,
-      }
+      },
+      token: auth.token,
     );
 
-    if (success && mounted) {
+    if (!mounted) return;                          // ← guard for both branches
+    if (success) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Fleet Manifest generated and agents notified!'), backgroundColor: Color(0xFF10B981)));
       setState(() {
         _selectedMissions.clear();

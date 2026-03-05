@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/nexus_provider.dart';
+import '../providers/auth_provider.dart';
 import '../utils/theme.dart';
 import '../models/models.dart';
 import '../widgets/nexus_components.dart';
@@ -83,7 +84,8 @@ class _OrderCard extends StatelessWidget {
                   selected: false,
                   onSelected: (selected) async {
                     if (selected) {
-                      final success = await provider.updateOrderStatus(order.id, 'Warehouse Assigned');
+                      final auth = Provider.of<AuthProvider>(context, listen: false);
+                      final success = await provider.updateOrderStatus(order.id, 'Warehouse Assigned', token: auth.token);
                       if (success && context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Order ${order.id} assigned to $wh'), backgroundColor: NexusTheme.emerald600));
                       }

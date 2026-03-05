@@ -55,6 +55,9 @@ class Customer {
   final String? panCard;
   final String? postalCode;
   final String? customerEmail;
+  final String? gstPhotoUrl;
+  final String? panPhotoUrl;
+  final String? chequePhotoUrl;
 
   Customer({
     required this.id,
@@ -83,6 +86,9 @@ class Customer {
     this.panCard,
     this.postalCode,
     this.customerEmail,
+    this.gstPhotoUrl,
+    this.panPhotoUrl,
+    this.chequePhotoUrl,
   });
 
   factory Customer.fromJson(Map<String, dynamic> json) {
@@ -115,6 +121,9 @@ class Customer {
       panCard: json['panCard'] ?? json['pan'],
       postalCode: json['postalCode'] ?? json['postal'] ?? json['zipCode'],
       customerEmail: json['customerEmail'] ?? json['customerEmailId'] ?? json['email'],
+      gstPhotoUrl: json['gstPhotoUrl'],
+      panPhotoUrl: json['panPhotoUrl'],
+      chequePhotoUrl: json['chequePhotoUrl'],
     );
   }
 
@@ -146,6 +155,9 @@ class Customer {
       if (panCard != null) 'panCard': panCard,
       if (postalCode != null) 'postalCode': postalCode,
       if (customerEmail != null) 'customerEmail': customerEmail,
+      if (gstPhotoUrl != null) 'gstPhotoUrl': gstPhotoUrl,
+      if (panPhotoUrl != null) 'panPhotoUrl': panPhotoUrl,
+      if (chequePhotoUrl != null) 'chequePhotoUrl': chequePhotoUrl,
     };
   }
 }
@@ -164,7 +176,7 @@ class User {
   final List<String> permissions;
   final Map<String, String> stepAccess; // 3-level: 'full', 'view', 'no'
   final String? managerId; // RSM/ASM hierarchy: ID of the manager this user reports to
-  final String? orgPosition; // Org map slot e.g. 'rsm_north_retail', 'asm_south_horeca'
+  final List<String> orgPositions; // Org map slot keys e.g. ['rsm_north_retail', 'asm_south_horeca']
 
   User({
     required this.id,
@@ -180,7 +192,7 @@ class User {
     this.permissions = const [],
     this.stepAccess = const {},
     this.managerId,
-    this.orgPosition,
+    this.orgPositions = const [],
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -202,7 +214,9 @@ class User {
           ? (json['stepAccess'] as Map).map((k, v) => MapEntry(k.toString(), v.toString()))
           : {},
       managerId: json['managerId'],
-      orgPosition: json['orgPosition'],
+      orgPositions: json['orgPositions'] is List 
+          ? (json['orgPositions'] as List).map((e) => e.toString()).toList() 
+          : (json['orgPosition'] != null ? [json['orgPosition'].toString()] : []),
     );
   }
 
@@ -221,7 +235,7 @@ class User {
       'stepAccess': stepAccess,
       if (password != null) 'password': password,
       if (managerId != null) 'managerId': managerId,
-      if (orgPosition != null) 'orgPosition': orgPosition,
+      'orgPositions': orgPositions,
     };
   }
 }

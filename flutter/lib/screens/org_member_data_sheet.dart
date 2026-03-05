@@ -264,6 +264,31 @@ class _OrgMemberDataSheetState extends State<OrgMemberDataSheet>
           ]),
         ),
 
+        // Remove from Position Button
+        Padding(
+          padding: const EdgeInsets.only(top: 14, right: 16),
+          child: Align(
+            alignment: Alignment.centerRight,
+            child: TextButton.icon(
+              onPressed: () => Navigator.pop(context, true), // Signal removal
+              icon: const Icon(Icons.person_remove_rounded, size: 14, color: Colors.redAccent),
+              label: const Text('REMOVE FROM THIS POSITION', 
+                style: TextStyle(
+                  fontFamily: 'Montserrat', 
+                  fontSize: 9, 
+                  fontWeight: FontWeight.w800, 
+                  color: Colors.redAccent
+                )
+              ),
+              style: TextButton.styleFrom(
+                backgroundColor: Colors.redAccent.withValues(alpha: 0.1),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+            ),
+          ),
+        ),
+
         const SizedBox(height: 14),
 
         // Stats row

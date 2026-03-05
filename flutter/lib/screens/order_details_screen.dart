@@ -250,7 +250,8 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
           ),
           const SizedBox(height: 16),
           _buildActionButton(Icons.check_circle_outline, 'APPROVE ORDER', const Color(0xFF059669), () {
-             Provider.of<NexusProvider>(context, listen: false).updateOrderStatus(order.id, 'Credit Approved');
+             final auth = Provider.of<AuthProvider>(context, listen: false);
+             Provider.of<NexusProvider>(context, listen: false).updateOrderStatus(order.id, 'Credit Approved', token: auth.token);
              Navigator.pop(context);
           }),
         ],

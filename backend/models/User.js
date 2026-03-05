@@ -76,7 +76,7 @@ const userSchema = new mongoose.Schema({
     monthlyQtyTarget: { type: Number, default: 0 },
     lastLogin: { type: Date },
     managerId: { type: String, default: null },  // RSM/ASM hierarchy: ID of the reporting manager
-    orgPosition: { type: String, default: null }  // Org map slot key e.g. 'rsm_north_retail', 'asm_south_horeca'
+    orgPositions: { type: [String], default: [] }  // Org map slot keys e.g. ['rsm_north_retail', 'asm_south_horeca']
 }, { timestamps: true });
 
 // Pre-save hook: Hash password before saving
@@ -111,6 +111,6 @@ userSchema.methods.getJWTPayload = function () {
 };
 
 // Index for faster queries
-userSchema.index({ id: 1, email: 1, role: 1, orgPosition: 1 });
+userSchema.index({ id: 1, email: 1, role: 1, orgPositions: 1 });
 
 module.exports = mongoose.model('User', userSchema);

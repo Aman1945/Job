@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../providers/nexus_provider.dart';
+import '../providers/auth_provider.dart';
 import '../models/models.dart';
 import '../utils/theme.dart';
 
@@ -15,31 +16,40 @@ class OrderArchiveScreen extends StatefulWidget {
 class _OrderArchiveScreenState extends State<OrderArchiveScreen> {
   List<Map<String, dynamic>> _logs = [];
   bool _loading = true;
+
+  // Dropdown filter values
   String _filterAction = 'ALL';
-  
-  // New Filters
-  DateTimeRange? _dateRange;
   String _selectedRole = 'ALL';
   String? _selectedUserId;
   String? _selectedUserName;
+  DateTimeRange? _dateRange;
+
+  static const List<String> _actionOptions = [
+    'ALL', 'CREATE', 'UPDATE', 'STATUS_CHANGE', 'DELETE'
+  ];
+  static const List<String> _roleOptions = [
+    'ALL', 'Admin', 'NSM', 'RSM', 'ASM', 'Sales'
+  ];
 
   @override
   void initState() {
     super.initState();
-    _loadLogs();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadLogs());
   }
 
   Future<void> _loadLogs() async {
     final nexus = Provider.of<NexusProvider>(context, listen: false);
+    final auth = Provider.of<AuthProvider>(context, listen: false);
     setState(() => _loading = true);
-    
+
     final logs = await nexus.fetchAuditLogs(
-      entityType: 'ORDER', 
+      entityType: 'ORDER',
       limit: 200,
       role: _selectedRole == 'ALL' ? null : _selectedRole,
       userId: _selectedUserId,
       fromDate: _dateRange?.start,
       toDate: _dateRange?.end,
+      token: auth.token,
     );
 
     if (mounted) {
@@ -52,120 +62,20 @@ class _OrderArchiveScreenState extends State<OrderArchiveScreen> {
 
   List<Map<String, dynamic>> get _filteredLogs {
     if (_filterAction == 'ALL') return _logs;
-    return _logs.where((l) => (l['action'] ?? '').toString().toUpperCase() == _filterAction).toList();
+    return _logs
+        .where((l) => (l['action'] ?? '').toString().toUpperCase() == _filterAction)
+        .toList();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: NexusTheme.slate50,
-      appBar: AppBar(
-        title: const Text('ORDER MASTER ARCHIVE', 
-            style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 0.5)),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.calendar_month_rounded, color: NexusTheme.emerald600),
-            tooltip: 'Filter by Date',
-            onPressed: _pickDateRange,
-          ),
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded),
-            onPressed: _loadLogs,
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          _buildActiveFilters(),
-          _buildFilterBar(),
-          Expanded(
-            child: _loading 
-              ? const Center(child: CircularProgressIndicator(strokeWidth: 2))
-              : _filteredLogs.isEmpty 
-                ? _buildEmptyState()
-                : _buildLogsList(),
-          ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _showHierarchyFilter,
-        backgroundColor: NexusTheme.slate900,
-        child: const Icon(Icons.filter_list_rounded, color: Colors.white),
-      ),
-    );
-  }
-
-  Widget _buildActiveFilters() {
-    if (_dateRange == null && _selectedRole == 'ALL' && _selectedUserId == null) {
-      return const SizedBox.shrink();
-    }
-    
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      color: Colors.white,
-      child: Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        children: [
-          if (_dateRange != null)
-            _FilterChip(
-              label: '${DateFormat('dd MMM').format(_dateRange!.start)} - ${DateFormat('dd MMM').format(_dateRange!.end)}',
-              onDelete: () => setState(() { _dateRange = null; _loadLogs(); }),
-            ),
-          if (_selectedRole != 'ALL')
-            _FilterChip(
-              label: 'Role: $_selectedRole',
-              onDelete: () => setState(() { _selectedRole = 'ALL'; _loadLogs(); }),
-            ),
-          if (_selectedUserId != null)
-            _FilterChip(
-              label: 'User: ${_selectedUserName ?? _selectedUserId}',
-              onDelete: () => setState(() { _selectedUserId = null; _selectedUserName = null; _loadLogs(); }),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFilterBar() {
-    final actions = ['ALL', 'CREATE', 'UPDATE', 'STATUS_CHANGE', 'DELETE'];
-    return Container(
-      height: 60,
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(bottom: BorderSide(color: NexusTheme.slate100)),
-      ),
-      child: ListView.separated(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        scrollDirection: Axis.horizontal,
-        itemCount: actions.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
-        itemBuilder: (context, i) {
-          final a = actions[i];
-          final isSel = _filterAction == a;
-          return GestureDetector(
-            onTap: () => setState(() => _filterAction = a),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: isSel ? NexusTheme.emerald600 : NexusTheme.slate50,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: isSel ? NexusTheme.emerald600 : NexusTheme.slate200),
-              ),
-              child: Text(a.replaceFirst('_', ' '), 
-                style: TextStyle(
-                  fontSize: 10, 
-                  fontWeight: FontWeight.w800, 
-                  color: isSel ? Colors.white : NexusTheme.slate600
-                )),
-            ),
-          );
-        },
-      ),
-    );
+  void _resetAllFilters() {
+    setState(() {
+      _filterAction = 'ALL';
+      _selectedRole = 'ALL';
+      _selectedUserId = null;
+      _selectedUserName = null;
+      _dateRange = null;
+    });
+    _loadLogs();
   }
 
   Future<void> _pickDateRange() async {
@@ -174,17 +84,15 @@ class _OrderArchiveScreenState extends State<OrderArchiveScreen> {
       firstDate: DateTime(2023),
       lastDate: DateTime.now(),
       initialDateRange: _dateRange,
-      builder: (context, child) {
-        return Theme(
-          data: NexusTheme.lightTheme.copyWith(
-            colorScheme: ColorScheme.fromSeed(
-              seedColor: NexusTheme.emerald600,
-              primary: NexusTheme.emerald600,
-            ),
+      builder: (context, child) => Theme(
+        data: NexusTheme.lightTheme.copyWith(
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: NexusTheme.emerald600,
+            primary: NexusTheme.emerald600,
           ),
-          child: child!,
-        );
-      },
+        ),
+        child: child!,
+      ),
     );
     if (picked != null) {
       setState(() => _dateRange = picked);
@@ -192,53 +100,363 @@ class _OrderArchiveScreenState extends State<OrderArchiveScreen> {
     }
   }
 
-  void _showHierarchyFilter() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => _HierarchyFilterSheet(
-        currentRole: _selectedRole,
-        currentUserId: _selectedUserId,
-        onApply: (role, userId, userName) {
-          setState(() {
-            _selectedRole = role;
-            _selectedUserId = userId;
-            _selectedUserName = userName;
-          });
-          _loadLogs();
-        },
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: NexusTheme.slate50,
+      appBar: AppBar(
+        title: const Text(
+          'ORDER MASTER ARCHIVE',
+          style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 0.5),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh_rounded),
+            tooltip: 'Refresh',
+            onPressed: _loadLogs,
+          ),
+        ],
       ),
-    );
-  }
-
-  Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
+      body: Column(
         children: [
-          Icon(Icons.history_toggle_off_rounded, size: 64, color: NexusTheme.slate200),
-          const SizedBox(height: 16),
-          Text('No log entries match your filters', 
-            style: TextStyle(color: NexusTheme.slate400, fontWeight: FontWeight.w600)),
-          TextButton(
-            onPressed: () {
-              setState(() {
-                _dateRange = null;
-                _selectedRole = 'ALL';
-                _selectedUserId = null;
-                _filterAction = 'ALL';
-              });
-              _loadLogs();
-            },
-            child: const Text('Reset All Filters'),
+          _buildFilterPanel(),
+          _buildActiveFilterChips(),
+          Expanded(
+            child: _loading
+                ? const Center(child: CircularProgressIndicator(strokeWidth: 2))
+                : _filteredLogs.isEmpty
+                    ? _buildEmptyState()
+                    : _buildLogsList(),
           ),
         ],
       ),
     );
   }
 
+  // ─── FILTER PANEL ─────────────────────────────────────────────────────────
+  Widget _buildFilterPanel() {
+    final nexus = Provider.of<NexusProvider>(context);
+    final filteredUsers = nexus.users.where((u) {
+      if (_selectedRole == 'ALL') return true;
+      return u.role.label == _selectedRole;
+    }).toList();
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(bottom: BorderSide(color: NexusTheme.slate100)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              // Action Dropdown
+              Expanded(
+                child: _buildDropdown<String>(
+                  icon: Icons.filter_alt_rounded,
+                  label: 'Action',
+                  value: _filterAction,
+                  items: _actionOptions,
+                  itemLabel: (a) => a.replaceAll('_', ' '),
+                  onChanged: (v) => setState(() => _filterAction = v ?? 'ALL'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              // Date Range Button
+              GestureDetector(
+                onTap: _pickDateRange,
+                child: Container(
+                  height: 44,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: _dateRange != null ? NexusTheme.emerald50 : NexusTheme.slate50,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: _dateRange != null ? NexusTheme.emerald300 : NexusTheme.slate200,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.calendar_month_rounded,
+                        size: 16,
+                        color: _dateRange != null ? NexusTheme.emerald600 : NexusTheme.slate500,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        _dateRange != null
+                            ? '${DateFormat('dd MMM').format(_dateRange!.start)} – ${DateFormat('dd MMM').format(_dateRange!.end)}'
+                            : 'Date',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: _dateRange != null ? NexusTheme.emerald700 : NexusTheme.slate500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              // Role Dropdown
+              Expanded(
+                child: _buildDropdown<String>(
+                  icon: Icons.badge_rounded,
+                  label: 'Role',
+                  value: _selectedRole,
+                  items: _roleOptions,
+                  itemLabel: (r) => r,
+                  onChanged: (v) {
+                    setState(() {
+                      _selectedRole = v ?? 'ALL';
+                      _selectedUserId = null;
+                      _selectedUserName = null;
+                    });
+                    _loadLogs();
+                  },
+                ),
+              ),
+              const SizedBox(width: 8),
+              // User Dropdown
+              Expanded(
+                child: _buildDropdown<String>(
+                  icon: Icons.person_rounded,
+                  label: 'User',
+                  value: _selectedUserId,
+                  items: filteredUsers.map((u) => u.id).toList(),
+                  itemLabel: (id) {
+                    final u = filteredUsers.firstWhere((u) => u.id == id, orElse: () => filteredUsers.first);
+                    return '${u.name} (${u.role.label})';
+                  },
+                  nullLabel: 'All Users',
+                  onChanged: (v) {
+                    final u = filteredUsers.where((u) => u.id == v).firstOrNull;
+                    setState(() {
+                      _selectedUserId = v;
+                      _selectedUserName = u?.name;
+                    });
+                    _loadLogs();
+                  },
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDropdown<T>({
+    required IconData icon,
+    required String label,
+    required T? value,
+    required List<T> items,
+    required String Function(T) itemLabel,
+    String? nullLabel,
+    required void Function(T?) onChanged,
+  }) {
+    final bool isActive = value != null && value.toString() != 'ALL';
+
+    return Container(
+      height: 44,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      decoration: BoxDecoration(
+        color: isActive ? NexusTheme.emerald50 : NexusTheme.slate50,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: isActive ? NexusTheme.emerald300 : NexusTheme.slate200),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<T>(
+          value: value,
+          isExpanded: true,
+          icon: Icon(Icons.keyboard_arrow_down_rounded, size: 18,
+              color: isActive ? NexusTheme.emerald600 : NexusTheme.slate400),
+          style: const TextStyle(fontFamily: 'default'),
+          hint: Row(
+            children: [
+              Icon(icon, size: 14, color: NexusTheme.slate400),
+              const SizedBox(width: 6),
+              Text(nullLabel ?? label,
+                  style: const TextStyle(
+                      fontSize: 11, fontWeight: FontWeight.w700, color: NexusTheme.slate500)),
+            ],
+          ),
+          selectedItemBuilder: (context) {
+            final allItems = <T?>[];
+            if (nullLabel != null) allItems.add(null);
+            allItems.addAll(items);
+
+            return allItems.map((item) {
+              final displayText = item == null
+                  ? (nullLabel ?? label)
+                  : (item.toString() == 'ALL' ? label : itemLabel(item));
+              return Row(
+                children: [
+                  Icon(icon, size: 14,
+                      color: isActive ? NexusTheme.emerald600 : NexusTheme.slate400),
+                  const SizedBox(width: 6),
+                  Flexible(
+                    child: Text(
+                      displayText,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: isActive ? NexusTheme.emerald700 : NexusTheme.slate600,
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            }).toList();
+          },
+          items: [
+            if (nullLabel != null)
+              DropdownMenuItem<T>(
+                value: null,
+                child: Text(nullLabel,
+                    style: const TextStyle(
+                        fontSize: 12, fontWeight: FontWeight.w700, color: NexusTheme.slate500)),
+              ),
+            ...items.map((item) => DropdownMenuItem<T>(
+                  value: item,
+                  child: Text(itemLabel(item),
+                      style: const TextStyle(
+                          fontSize: 12, fontWeight: FontWeight.w600, color: NexusTheme.slate700),
+                      overflow: TextOverflow.ellipsis),
+                )),
+          ],
+          onChanged: onChanged,
+        ),
+      ),
+    );
+  }
+
+  // ─── ACTIVE FILTER CHIPS ──────────────────────────────────────────────────
+  Widget _buildActiveFilterChips() {
+    final hasFilters = _dateRange != null ||
+        _selectedRole != 'ALL' ||
+        _selectedUserId != null ||
+        _filterAction != 'ALL';
+
+    if (!hasFilters) return const SizedBox.shrink();
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      color: NexusTheme.emerald50,
+      child: Row(
+        children: [
+          Expanded(
+            child: Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                if (_filterAction != 'ALL')
+                  _Chip(
+                    label: _filterAction.replaceAll('_', ' '),
+                    color: NexusTheme.blue600,
+                    onDelete: () => setState(() => _filterAction = 'ALL'),
+                  ),
+                if (_selectedRole != 'ALL')
+                  _Chip(
+                    label: 'Role: $_selectedRole',
+                    color: NexusTheme.amber600,
+                    onDelete: () {
+                      setState(() {
+                        _selectedRole = 'ALL';
+                        _selectedUserId = null;
+                        _selectedUserName = null;
+                      });
+                      _loadLogs();
+                    },
+                  ),
+                if (_selectedUserId != null)
+                  _Chip(
+                    label: _selectedUserName ?? _selectedUserId!,
+                    color: NexusTheme.emerald600,
+                    onDelete: () {
+                      setState(() {
+                        _selectedUserId = null;
+                        _selectedUserName = null;
+                      });
+                      _loadLogs();
+                    },
+                  ),
+                if (_dateRange != null)
+                  _Chip(
+                    label:
+                        '${DateFormat('dd MMM').format(_dateRange!.start)} – ${DateFormat('dd MMM').format(_dateRange!.end)}',
+                    color: NexusTheme.slate600,
+                    onDelete: () {
+                      setState(() => _dateRange = null);
+                      _loadLogs();
+                    },
+                  ),
+              ],
+            ),
+          ),
+          TextButton(
+            onPressed: _resetAllFilters,
+            style: TextButton.styleFrom(
+              foregroundColor: NexusTheme.emerald700,
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            child: const Text('Reset',
+                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─── EMPTY STATE ─────────────────────────────────────────────────────────
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.history_toggle_off_rounded, size: 64, color: NexusTheme.slate200),
+          const SizedBox(height: 16),
+          const Text('No log entries match your filters',
+              style: TextStyle(
+                  color: NexusTheme.slate400, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 4),
+          const Text('Try adjusting filters or refreshing',
+              style: TextStyle(
+                  color: NexusTheme.slate300, fontSize: 12, fontWeight: FontWeight.w500)),
+          const SizedBox(height: 24),
+          TextButton.icon(
+            onPressed: _resetAllFilters,
+            icon: const Icon(Icons.refresh_rounded),
+            label: const Text('Reset All Filters',
+                style: TextStyle(fontWeight: FontWeight.w900)),
+            style: TextButton.styleFrom(
+              foregroundColor: NexusTheme.emerald600,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─── LOGS LIST ────────────────────────────────────────────────────────────
   Widget _buildLogsList() {
+    final provider = Provider.of<NexusProvider>(context, listen: false);
+    final userRole = provider.currentUser?.role;
+    final canSeePhotos = userRole == UserRole.admin ||
+        userRole == UserRole.rsm ||
+        userRole == UserRole.asm;
+
     return ListView.separated(
       padding: const EdgeInsets.all(16),
       itemCount: _filteredLogs.length,
@@ -248,22 +466,39 @@ class _OrderArchiveScreenState extends State<OrderArchiveScreen> {
         final action = log['action'] ?? 'UNKNOWN';
         final user = log['userName'] ?? 'System';
         final tsStr = log['timestamp'] ?? '';
-        final ts = DateTime.tryParse(tsStr) ?? DateTime.now();
+        final ts = DateTime.tryParse(tsStr)?.toLocal() ?? DateTime.now();
         final entityId = log['entityId'] ?? 'N/A';
-        
+        final data = log['newData'] ?? log['oldData'];
+        final customerName = data?['customerName'] ?? data?['name'] ?? '';
+        final rawPhotos = data?['salesPhotos'];
+        final List<String> salesPhotos = rawPhotos is List
+            ? rawPhotos.whereType<String>().where((s) => s.startsWith('http')).toList()
+            : [];
+        final hasPhotos = canSeePhotos && salesPhotos.isNotEmpty;
+
         Color color = NexusTheme.slate600;
         IconData icon = Icons.info_outline_rounded;
-        
-        if (action.contains('CREATE')) { color = NexusTheme.emerald600; icon = Icons.add_box_rounded; }
-        else if (action.contains('UPDATE')) { color = NexusTheme.blue600; icon = Icons.edit_square; }
-        else if (action.contains('STATUS')) { color = NexusTheme.amber600; icon = Icons.published_with_changes_rounded; }
-        else if (action.contains('DELETE')) { color = NexusTheme.rose600; icon = Icons.delete_forever_rounded; }
+
+        if (action.contains('CREATE')) {
+          color = NexusTheme.emerald600;
+          icon = Icons.add_box_rounded;
+        } else if (action.contains('UPDATE')) {
+          color = NexusTheme.blue600;
+          icon = Icons.edit_square;
+        } else if (action.contains('STATUS')) {
+          color = NexusTheme.amber600;
+          icon = Icons.published_with_changes_rounded;
+        } else if (action.contains('DELETE')) {
+          color = NexusTheme.rose600;
+          icon = Icons.delete_forever_rounded;
+        }
 
         return Container(
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: NexusTheme.slate100),
+            border: Border.all(
+                color: hasPhotos ? NexusTheme.emerald200 : NexusTheme.slate100),
           ),
           child: IntrinsicHeight(
             child: Row(
@@ -272,7 +507,9 @@ class _OrderArchiveScreenState extends State<OrderArchiveScreen> {
                   width: 5,
                   decoration: BoxDecoration(
                     color: color,
-                    borderRadius: const BorderRadius.only(topLeft: Radius.circular(16), bottomLeft: Radius.circular(16)),
+                    borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(16),
+                        bottomLeft: Radius.circular(16)),
                   ),
                 ),
                 Expanded(
@@ -281,30 +518,109 @@ class _OrderArchiveScreenState extends State<OrderArchiveScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        // Header row
                         Row(
                           children: [
                             Icon(icon, size: 16, color: color),
                             const SizedBox(width: 8),
-                            Text(action.toString().replaceAll('_', ' '), 
-                              style: TextStyle(fontWeight: FontWeight.w900, fontSize: 12, color: color)),
+                            Text(
+                              action.toString().replaceAll('_', ' '),
+                              style: TextStyle(
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 12,
+                                  color: color),
+                            ),
                             const Spacer(),
-                            Text(DateFormat('dd MMM, hh:mm a').format(ts), 
-                              style: const TextStyle(fontSize: 10, color: NexusTheme.slate400, fontWeight: FontWeight.w600)),
+                            if (hasPhotos)
+                              Container(
+                                margin: const EdgeInsets.only(right: 8),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: NexusTheme.emerald50,
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(color: NexusTheme.emerald200),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(Icons.photo_camera_rounded,
+                                        size: 10, color: NexusTheme.emerald600),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      '${salesPhotos.length} PHOTO${salesPhotos.length > 1 ? 'S' : ''}',
+                                      style: const TextStyle(
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.w900,
+                                          color: NexusTheme.emerald600),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            Text(
+                              DateFormat('dd MMM, hh:mm a').format(ts),
+                              style: const TextStyle(
+                                  fontSize: 10,
+                                  color: NexusTheme.slate400,
+                                  fontWeight: FontWeight.w600),
+                            ),
                           ],
                         ),
                         const SizedBox(height: 8),
-                        Text('Order: $entityId', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: NexusTheme.slate900)),
-                        const SizedBox(height: 4),
+                        // Customer name
+                        if (customerName.isNotEmpty)
+                          Text(customerName,
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 14,
+                                  color: NexusTheme.slate900)),
+                        const SizedBox(height: 2),
+                        Text('Order ID: $entityId',
+                            style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 11,
+                                color: NexusTheme.slate400)),
+                        const SizedBox(height: 6),
                         Row(
                           children: [
-                            const Icon(Icons.person_pin_rounded, size: 14, color: NexusTheme.slate400),
+                            const Icon(Icons.person_pin_rounded,
+                                size: 13, color: NexusTheme.slate400),
                             const SizedBox(width: 4),
-                            Text('Modified by: $user', style: const TextStyle(fontSize: 11, color: NexusTheme.slate500, fontWeight: FontWeight.w500)),
+                            Expanded(
+                              child: Text(
+                                '${action.contains('CREATE') ? 'Placed by' : 'Modified by'}: $user',
+                                style: const TextStyle(
+                                    fontSize: 11,
+                                    color: NexusTheme.slate500,
+                                    fontWeight: FontWeight.w600),
+                              ),
+                            ),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Text(DateFormat('dd MMM yyyy').format(ts),
+                                    style: const TextStyle(
+                                        fontSize: 10,
+                                        color: NexusTheme.slate600,
+                                        fontWeight: FontWeight.w700)),
+                                Text(DateFormat('hh:mm:ss a').format(ts),
+                                    style: const TextStyle(
+                                        fontSize: 9,
+                                        color: NexusTheme.slate400,
+                                        fontWeight: FontWeight.w600)),
+                              ],
+                            ),
                           ],
                         ),
-                        if (log['newData'] != null && log['newData']['status'] != null) ...[
+                        if (log['newData'] != null &&
+                            log['newData']['status'] != null) ...[
                           const SizedBox(height: 8),
-                          _buildStatusUpdate(log['oldData']?['status'], log['newData']['status']),
+                          _buildStatusUpdate(
+                              log['oldData']?['status'], log['newData']['status']),
+                        ],
+                        if (hasPhotos) ...[
+                          const SizedBox(height: 12),
+                          _buildSalesPhotosRow(salesPhotos),
                         ],
                       ],
                     ),
@@ -318,191 +634,157 @@ class _OrderArchiveScreenState extends State<OrderArchiveScreen> {
     );
   }
 
+  // ─── SALES PHOTOS ─────────────────────────────────────────────────────────
+  Widget _buildSalesPhotosRow(List<String> photos) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('SALES PHOTOS',
+            style: TextStyle(
+                fontSize: 9,
+                fontWeight: FontWeight.w900,
+                color: NexusTheme.slate400,
+                letterSpacing: 0.5)),
+        const SizedBox(height: 6),
+        SizedBox(
+          height: 80,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: photos.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 8),
+            itemBuilder: (context, i) => GestureDetector(
+              onTap: () => _showFullPhoto(context, photos, i),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Image.network(
+                  photos[i],
+                  width: 80,
+                  height: 80,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Container(
+                    width: 80,
+                    height: 80,
+                    decoration: BoxDecoration(
+                        color: NexusTheme.slate100,
+                        borderRadius: BorderRadius.circular(10)),
+                    child: const Icon(Icons.broken_image_rounded,
+                        color: NexusTheme.slate400),
+                  ),
+                  loadingBuilder: (_, child, progress) => progress == null
+                      ? child
+                      : Container(
+                          width: 80,
+                          height: 80,
+                          decoration: BoxDecoration(
+                              color: NexusTheme.slate50,
+                              borderRadius: BorderRadius.circular(10)),
+                          child: const Center(
+                              child: CircularProgressIndicator(strokeWidth: 2)),
+                        ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _showFullPhoto(BuildContext context, List<String> photos, int initial) {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black87,
+      builder: (_) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.all(12),
+        child: Stack(
+          children: [
+            PageView.builder(
+              controller: PageController(initialPage: initial),
+              itemCount: photos.length,
+              itemBuilder: (_, i) => ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: Image.network(photos[i], fit: BoxFit.contain),
+              ),
+            ),
+            Positioned(
+              top: 8,
+              right: 8,
+              child: GestureDetector(
+                onTap: () => Navigator.pop(context),
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration:
+                      const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
+                  child: const Icon(Icons.close_rounded, color: Colors.white, size: 20),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildStatusUpdate(String? oldStatus, String newStatus) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: NexusTheme.slate50,
-        borderRadius: BorderRadius.circular(8),
-      ),
+          color: NexusTheme.slate50, borderRadius: BorderRadius.circular(8)),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (oldStatus != null) ...[
-            Text(oldStatus, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: NexusTheme.slate400)),
+            Text(oldStatus,
+                style: const TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w600,
+                    color: NexusTheme.slate400)),
             const SizedBox(width: 6),
-            const Icon(Icons.arrow_forward_rounded, size: 10, color: NexusTheme.slate400),
+            const Icon(Icons.arrow_forward_rounded,
+                size: 10, color: NexusTheme.slate400),
             const SizedBox(width: 6),
           ],
-          Text(newStatus, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: NexusTheme.emerald600)),
+          Text(newStatus,
+              style: const TextStyle(
+                  fontSize: 9,
+                  fontWeight: FontWeight.w800,
+                  color: NexusTheme.emerald600)),
         ],
       ),
     );
   }
 }
 
-class _FilterChip extends StatelessWidget {
+// ─── CHIP WIDGET ──────────────────────────────────────────────────────────────
+class _Chip extends StatelessWidget {
   final String label;
+  final Color color;
   final VoidCallback onDelete;
 
-  const _FilterChip({required this.label, required this.onDelete});
+  const _Chip(
+      {required this.label, required this.color, required this.onDelete});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.only(left: 10, right: 4, top: 4, bottom: 4),
       decoration: BoxDecoration(
-        color: NexusTheme.slate100,
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(label, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: NexusTheme.slate700)),
+          Text(label,
+              style: TextStyle(
+                  fontSize: 10, fontWeight: FontWeight.w800, color: color)),
           const SizedBox(width: 4),
           GestureDetector(
             onTap: onDelete,
-            child: const Icon(Icons.cancel_rounded, size: 16, color: NexusTheme.slate400),
+            child: Icon(Icons.cancel_rounded, size: 16, color: color.withValues(alpha: 0.7)),
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _HierarchyFilterSheet extends StatefulWidget {
-  final String currentRole;
-  final String? currentUserId;
-  final Function(String role, String? userId, String? userName) onApply;
-
-  const _HierarchyFilterSheet({
-    required this.currentRole,
-    this.currentUserId,
-    required this.onApply,
-  });
-
-  @override
-  State<_HierarchyFilterSheet> createState() => _HierarchyFilterSheetState();
-}
-
-class _HierarchyFilterSheetState extends State<_HierarchyFilterSheet> {
-  late String _role;
-  String? _userId;
-  String? _userName;
-
-  @override
-  void initState() {
-    super.initState();
-    _role = widget.currentRole;
-    _userId = widget.currentUserId;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final nexus = Provider.of<NexusProvider>(context);
-    final roles = ['ALL', 'Admin', 'NSM', 'RSM', 'ASM', 'Sales'];
-    
-    final filteredUsers = nexus.users.where((u) {
-      if (_role == 'ALL') return true;
-      return u.role.label == _role;
-    }).toList();
-
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Text('HIERARCHY FILTERS', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
-              const Spacer(),
-              IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close_rounded)),
-            ],
-          ),
-          const SizedBox(height: 20),
-          const Text('SELECT ROLE', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: NexusTheme.slate400)),
-          const SizedBox(height: 12),
-          SizedBox(
-            height: 40,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: roles.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 8),
-              itemBuilder: (context, i) {
-                final r = roles[i];
-                final isSel = _role == r;
-                return GestureDetector(
-                  onTap: () => setState(() { _role = r; _userId = null; _userName = null; }),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: isSel ? NexusTheme.emerald600 : NexusTheme.slate50,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: isSel ? NexusTheme.emerald600 : NexusTheme.slate200),
-                    ),
-                    child: Text(r, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: isSel ? Colors.white : NexusTheme.slate600)),
-                  ),
-                );
-              },
-            ),
-          ),
-          const SizedBox(height: 24),
-          const Text('SELECT SPECIFIC USER', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: NexusTheme.slate400)),
-          const SizedBox(height: 12),
-          Container(
-            height: 200,
-            decoration: BoxDecoration(
-              color: NexusTheme.slate50,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: NexusTheme.slate100),
-            ),
-            child: filteredUsers.isEmpty
-                ? const Center(child: Text('No users found for this role'))
-                : ListView.builder(
-                    padding: const EdgeInsets.all(8),
-                    itemCount: filteredUsers.length,
-                    itemBuilder: (context, i) {
-                      final u = filteredUsers[i];
-                      final isSel = _userId == u.id;
-                      return ListTile(
-                        onTap: () => setState(() { _userId = u.id; _userName = u.name; }),
-                        leading: CircleAvatar(
-                          backgroundColor: isSel ? NexusTheme.emerald600 : NexusTheme.slate200,
-                          child: Text(u.name.substring(0, 1).toUpperCase(), 
-                            style: TextStyle(color: isSel ? Colors.white : NexusTheme.slate600, fontWeight: FontWeight.bold, fontSize: 12)),
-                        ),
-                        title: Text(u.name, style: TextStyle(fontSize: 13, fontWeight: isSel ? FontWeight.w800 : FontWeight.w600)),
-                        subtitle: Text(u.role.label, style: const TextStyle(fontSize: 11)),
-                        trailing: isSel ? const Icon(Icons.check_circle_rounded, color: NexusTheme.emerald600) : null,
-                      );
-                    },
-                  ),
-          ),
-          const SizedBox(height: 24),
-          SizedBox(
-            width: double.infinity,
-            height: 50,
-            child: ElevatedButton(
-              onPressed: () {
-                widget.onApply(_role, _userId, _userName);
-                Navigator.pop(context);
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: NexusTheme.emerald600,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                elevation: 0,
-              ),
-              child: const Text('APPLY FILTERS', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1)),
-            ),
-          ),
-          const SizedBox(height: 12),
         ],
       ),
     );

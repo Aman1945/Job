@@ -7,6 +7,8 @@ import '../models/models.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:intl/intl.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 
 class BookOrderScreen extends StatefulWidget {
   const BookOrderScreen({super.key});
@@ -19,6 +21,8 @@ class _BookOrderScreenState extends State<BookOrderScreen> {
   Customer? selectedCustomer;
   List<Map<String, dynamic>> cartItems = [];
   final _remarksController = TextEditingController();
+  final List<File?> _salesPhotos = [null, null, null]; // 3 sales photo slots
+  bool _isSubmitting = false;
 
   // Zone & Hierarchy state
   String _selectedZone = 'PAN INDIA';
@@ -86,18 +90,22 @@ class _BookOrderScreenState extends State<BookOrderScreen> {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select customer and items')));
       return;
     }
-    
+    setState(() => _isSubmitting = true);
     final provider = Provider.of<NexusProvider>(context, listen: false);
+    final photos = _salesPhotos.whereType<File>().toList();
     final success = await provider.createOrder(
       selectedCustomer!.id,
       selectedCustomer!.name,
       cartItems,
+      photos: photos,
+      remarks: _remarksController.text,
     );
 
+    if (mounted) setState(() => _isSubmitting = false);
     if (success && mounted) {
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Supply Request Committed Successfully!')),
+        const SnackBar(content: Text('Supply Request Committed Successfully! 🚀')),
       );
     }
   }
@@ -158,13 +166,6 @@ class _BookOrderScreenState extends State<BookOrderScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── SALES HIERARCHY (Admin only) ─────────────────────────────
-            if (isAdmin) ...[
-              _buildSectionHeader('ASSIGN SALES TEAM'),
-              const SizedBox(height: 12),
-              _buildHierarchyPanel(provider.users, isMobile),
-              const SizedBox(height: 20),
-            ],
 
             // ── CUSTOMER SELECTION ───────────────────────────────────────
             _buildSectionHeader('CUSTOMER SELECTION'),
@@ -951,33 +952,193 @@ class _BookOrderScreenState extends State<BookOrderScreen> {
   }
 
   Widget _buildDocumentationUpload() {
+    final labels = ['PO COPY', 'PHOTO 2', 'PHOTO 3'];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildMiniSectionHeader('DOCUMENTATION (PO / PDC COPY)', color: NexusTheme.emerald500),
+        _buildMiniSectionHeader('SALES PHOTOS (Max 3)', color: NexusTheme.emerald500),
         const SizedBox(height: 16),
-        const Text('UPLOAD SCANNED DOCUMENT', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 9, color: NexusTheme.slate400)),
+        const Text('TAP SLOT TO UPLOAD — CAMERA OR GALLERY', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 9, color: NexusTheme.slate400)),
         const SizedBox(height: 12),
-        Container(
-          height: 180,
-          width: double.infinity,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: NexusTheme.slate200, style: BorderStyle.solid),
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: NexusTheme.slate50, shape: BoxShape.circle), child: const Icon(Icons.file_upload_outlined, color: NexusTheme.slate400)),
-              const SizedBox(height: 16),
-              const Text('ATTACH PO OR PDC SNAPSHOT', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 11, color: NexusTheme.slate800)),
-              const Text('Supports JPG, PNG, PDF', style: TextStyle(fontSize: 9, color: NexusTheme.slate400, fontStyle: FontStyle.italic)),
-            ],
-          ),
+        Row(
+          children: List.generate(3, (i) => Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(right: i < 2 ? 10 : 0),
+              child: _buildPhotoSlot(i, labels[i]),
+            ),
+          )),
         ),
       ],
     );
+  }
+
+  Widget _buildPhotoSlot(int index, String label) {
+    final file = _salesPhotos[index];
+    final icons = [LucideIcons.fileText, LucideIcons.camera, LucideIcons.camera];
+    return GestureDetector(
+      onTap: () => _showPhotoPickerSheet(index),
+      child: Container(
+        height: 120,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: file != null ? NexusTheme.emerald500 : NexusTheme.slate200,
+            width: file != null ? 2 : 1,
+          ),
+          boxShadow: [
+            BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 8, offset: const Offset(0, 2)),
+          ],
+        ),
+        child: file != null
+            ? Stack(
+                fit: StackFit.expand,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(15),
+                    child: Image.file(file, fit: BoxFit.cover),
+                  ),
+                  // Label badge
+                  Positioned(
+                    bottom: 0, left: 0, right: 0,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.55),
+                        borderRadius: const BorderRadius.only(
+                          bottomLeft: Radius.circular(14),
+                          bottomRight: Radius.circular(14),
+                        ),
+                      ),
+                      child: Text(label, textAlign: TextAlign.center,
+                          style: const TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: Colors.white)),
+                    ),
+                  ),
+                  // Remove button
+                  Positioned(
+                    top: 4, right: 4,
+                    child: GestureDetector(
+                      onTap: () => setState(() => _salesPhotos[index] = null),
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+                        child: const Icon(Icons.close, color: Colors.white, size: 12),
+                      ),
+                    ),
+                  ),
+                ],
+              )
+            : Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: NexusTheme.emerald500.withOpacity(0.08),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(icons[index], color: NexusTheme.emerald500, size: 22),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    label,
+                    style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: NexusTheme.slate400),
+                  ),
+                  const SizedBox(height: 2),
+                  const Text(
+                    'TAP TO UPLOAD',
+                    style: TextStyle(fontSize: 8, fontWeight: FontWeight.w600, color: NexusTheme.slate200),
+                  ),
+                ],
+              ),
+      ),
+    );
+  }
+
+  // Bottom sheet for choosing Camera or Gallery
+  void _showPhotoPickerSheet(int index) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40, height: 4,
+                margin: const EdgeInsets.only(bottom: 20),
+                decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)),
+              ),
+              Text(
+                'Upload ${["PO Copy", "Photo 2", "Photo 3"][index]}',
+                style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildPickerOption(
+                      icon: Icons.camera_alt_rounded,
+                      label: 'Camera',
+                      color: NexusTheme.indigo600,
+                      onTap: () {
+                        Navigator.pop(context);
+                        _pickSalesPhoto(index, ImageSource.camera);
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: _buildPickerOption(
+                      icon: Icons.photo_library_rounded,
+                      label: 'Gallery',
+                      color: NexusTheme.emerald500,
+                      onTap: () {
+                        Navigator.pop(context);
+                        _pickSalesPhoto(index, ImageSource.gallery);
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPickerOption({required IconData icon, required String label, required Color color, required VoidCallback onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: color.withOpacity(0.2)),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: color, size: 32),
+            const SizedBox(height: 8),
+            Text(label, style: TextStyle(fontWeight: FontWeight.w900, fontSize: 12, color: color)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickSalesPhoto(int index, ImageSource source) async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(source: source, imageQuality: 70);
+    if (picked != null && mounted) {
+      setState(() => _salesPhotos[index] = File(picked.path));
+    }
   }
 
   Widget _buildRemarksField() {
@@ -1066,9 +1227,14 @@ class _BookOrderScreenState extends State<BookOrderScreen> {
               SizedBox(
                 height: 64,
                 child: ElevatedButton.icon(
-                  onPressed: _submitOrder,
-                  icon: const Icon(LucideIcons.fileText, size: 20),
-                  label: const Text('COMMIT SUPPLY REQUEST', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1, fontSize: 13)),
+                  onPressed: _isSubmitting ? null : _submitOrder,
+                  icon: _isSubmitting
+                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      : const Icon(LucideIcons.fileText, size: 20),
+                  label: Text(
+                    _isSubmitting ? 'UPLOADING...' : 'COMMIT SUPPLY REQUEST',
+                    style: const TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1, fontSize: 13),
+                  ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF10B981),
                     foregroundColor: Colors.white,

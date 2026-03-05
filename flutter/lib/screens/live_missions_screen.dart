@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/nexus_provider.dart';
+import '../providers/auth_provider.dart';
 import '../utils/theme.dart';
 import '../models/models.dart';
 
@@ -733,17 +734,20 @@ class _LiveMissionsScreenState extends State<LiveMissionsScreen> {
           ),
           const SizedBox(height: 32),
           _buildDetailedButton('APPROVE ORDER', const Color(0xFF10B981), Icons.check_circle_outline, () async {
-            final success = await provider.updateOrderStatus(order.id, 'Credit Approved');
+            final auth = Provider.of<AuthProvider>(context, listen: false);
+            final success = await provider.updateOrderStatus(order.id, 'Credit Approved', token: auth.token);
             if (success) setState(() => _selectedOrder = null);
           }),
           const SizedBox(height: 12),
           _buildDetailedButton('PLACE ON HOLD', const Color(0xFFF59E0B), Icons.pause_circle_outline, () async {
-            final success = await provider.updateOrderStatus(order.id, 'On Hold');
+            final auth = Provider.of<AuthProvider>(context, listen: false);
+            final success = await provider.updateOrderStatus(order.id, 'On Hold', token: auth.token);
             if (success) setState(() => _selectedOrder = null);
           }),
           const SizedBox(height: 12),
           _buildDetailedButton('REJECT ORDER', Colors.white, Icons.cancel_outlined, () async {
-            final success = await provider.updateOrderStatus(order.id, 'Rejected');
+            final auth = Provider.of<AuthProvider>(context, listen: false);
+            final success = await provider.updateOrderStatus(order.id, 'Rejected', token: auth.token);
             if (success) setState(() => _selectedOrder = null);
           }, isOutlined: true),
         ],

@@ -6,6 +6,8 @@ import '../models/models.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:dropdown_button2/dropdown_button2.dart';
 import '../widgets/address_management_widget.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 
 class NewCustomerScreen extends StatefulWidget {
   const NewCustomerScreen({super.key});
@@ -36,6 +38,14 @@ class _NewCustomerScreenState extends State<NewCustomerScreen> {
   
   // Multi-address support
   List<CustomerAddress> _deliveryAddresses = [];
+
+  // Document photos
+  File? _gstPhoto;
+  File? _panPhoto;
+  File? _chequePhoto;
+  bool _isSubmitting = false;
+
+  final _picker = ImagePicker();
 
   final List<String> _constitutions = ['Proprietorship', 'Partnership', 'Company'];
   final List<String> _states = ['Maharashtra', 'Karnataka', 'Delhi', 'Tamil Nadu', 'Gujarat'];
@@ -290,72 +300,93 @@ class _NewCustomerScreenState extends State<NewCustomerScreen> {
     );
   }
 
-  Widget _buildDocumentRepository(bool isMobile) {
-    const docs = [
-      ('GST CERTIFICATE', Icons.description_outlined),
-      ('PAN CARD COPY', Icons.credit_card_outlined),
-      ('SECURITY CHEQUE', Icons.account_balance_outlined),
-    ];
+  Future<void> _pickDocPhoto(int index) async {
+    final picked = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 75);
+    if (picked == null) return;
+    setState(() {
+      final file = File(picked.path);
+      if (index == 0) _gstPhoto = file;
+      else if (index == 1) _panPhoto = file;
+      else _chequePhoto = file;
+    });
+  }
 
-    Widget docBox(String label, IconData icon) {
-      return Container(
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF8FAFC),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: const Color(0xFFCDD5E0),
-            width: 1.5,
-            // Dart doesn't have dashed border natively, use StrokeCap trick with custom paint
+  Widget _buildDocumentRepository(bool isMobile) {
+    final labels = ['GST CERTIFICATE', 'PAN CARD COPY', 'SECURITY CHEQUE'];
+    final icons = [
+      Icons.description_outlined,
+      Icons.credit_card_outlined,
+      Icons.account_balance_outlined,
+    ];
+    final photos = [_gstPhoto, _panPhoto, _chequePhoto];
+
+    Widget docSlot(int index) {
+      final photo = photos[index];
+      return GestureDetector(
+        onTap: () => _pickDocPhoto(index),
+        child: _DashedBox(
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: photo != null
+                  ? NexusTheme.emerald50
+                  : const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Column(
+              children: [
+                if (photo != null) ...([
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.file(photo, height: 80, width: double.infinity, fit: BoxFit.cover),
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: const [
+                      Icon(Icons.check_circle, color: NexusTheme.emerald500, size: 14),
+                      SizedBox(width: 6),
+                      Text('UPLOADED', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: NexusTheme.emerald600)),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text('Tap to change', style: TextStyle(fontSize: 9, color: NexusTheme.slate400)),
+                ]) else ...[
+                  const SizedBox(height: 8),
+                  Icon(icons[index], size: 36, color: const Color(0xFFCDD5E0)),
+                  const SizedBox(height: 12),
+                  Text(
+                    labels[index],
+                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: Color(0xFF334155), letterSpacing: 0.5),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 4),
+                  const Text('Tap to upload', style: TextStyle(fontSize: 10, fontStyle: FontStyle.italic, color: Color(0xFF94A3B8))),
+                  const SizedBox(height: 8),
+                ],
+              ],
+            ),
           ),
-        ),
-        child: Column(
-          children: [
-            const SizedBox(height: 8),
-            Icon(icon, size: 36, color: const Color(0xFFCDD5E0)),
-            const SizedBox(height: 16),
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w900,
-                color: Color(0xFF334155),
-                letterSpacing: 0.5,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 4),
-            const Text(
-              'Snapshot Required',
-              style: TextStyle(
-                fontSize: 10,
-                fontStyle: FontStyle.italic,
-                color: Color(0xFF94A3B8),
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-          ],
         ),
       );
     }
 
     if (isMobile) {
       return Column(
-        children: docs.map((d) => Padding(
+        children: List.generate(3, (i) => Padding(
           padding: const EdgeInsets.only(bottom: 12),
-          child: _DashedBox(child: docBox(d.$1, d.$2)),
-        )).toList(),
+          child: docSlot(i),
+        )),
       );
     }
 
     return Row(
-      children: docs.asMap().entries.map((e) => Expanded(
+      children: List.generate(3, (i) => Expanded(
         child: Padding(
-          padding: EdgeInsets.only(right: e.key < docs.length - 1 ? 16 : 0),
-          child: _DashedBox(child: docBox(e.value.$1, e.value.$2)),
+          padding: EdgeInsets.only(right: i < 2 ? 16 : 0),
+          child: docSlot(i),
         ),
-      )).toList(),
+      )),
     );
   }
 
@@ -382,9 +413,14 @@ class _NewCustomerScreenState extends State<NewCustomerScreen> {
         height: 54,
         width: isMobile ? double.infinity : null,
         child: ElevatedButton.icon(
-          onPressed: _handleSubmit,
-          icon: const Icon(LucideIcons.database, size: 20),
-          label: const Text('COMMIT MASTER RECORD', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1, fontSize: 12)),
+          onPressed: _isSubmitting ? null : _handleSubmit,
+          icon: _isSubmitting
+              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+              : const Icon(LucideIcons.database, size: 20),
+          label: Text(
+            _isSubmitting ? 'UPLOADING...' : 'COMMIT MASTER RECORD',
+            style: const TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1, fontSize: 12),
+          ),
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFF1E293B),
             foregroundColor: Colors.white,
@@ -415,9 +451,19 @@ class _NewCustomerScreenState extends State<NewCustomerScreen> {
 
   void _handleSubmit() async {
     if (!_formKey.currentState!.validate()) return;
+    setState(() => _isSubmitting = true);
 
     final provider = Provider.of<NexusProvider>(context, listen: false);
-    
+
+    // Upload documents to DO Spaces with organized folder structure
+    String? gstUrl, panUrl, chequeUrl;
+    final dateStr = DateTime.now().toIso8601String().substring(0, 10); // YYYY-MM-DD
+    final safeCustomer = _nameController.text.trim().replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_');
+    final docsFolder = 'Customers/$safeCustomer/Docs_$dateStr';
+    if (_gstPhoto != null) gstUrl = await provider.uploadPhoto(_gstPhoto!, folder: docsFolder);
+    if (_panPhoto != null) panUrl = await provider.uploadPhoto(_panPhoto!, folder: docsFolder);
+    if (_chequePhoto != null) chequeUrl = await provider.uploadPhoto(_chequePhoto!, folder: docsFolder);
+
     final customerData = {
       'name': _nameController.text,
       'address': _addressController.text,
@@ -435,9 +481,14 @@ class _NewCustomerScreenState extends State<NewCustomerScreen> {
       'creditDays': _creditDaysController.text,
       'type': 'Distributor',
       'addresses': _deliveryAddresses.map((a) => a.toJson()).toList(),
+      if (gstUrl != null) 'gstPhotoUrl': gstUrl,
+      if (panUrl != null) 'panPhotoUrl': panUrl,
+      if (chequeUrl != null) 'chequePhotoUrl': chequeUrl,
     };
 
     final success = await provider.createCustomer(customerData);
+    if (mounted) setState(() => _isSubmitting = false);
+
     if (success && mounted) {
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
@@ -452,7 +503,7 @@ class _NewCustomerScreenState extends State<NewCustomerScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     const Text('Customer Onboarded Successfully!', style: TextStyle(fontWeight: FontWeight.bold)),
-                    Text('${_deliveryAddresses.length} delivery addresses added', style: const TextStyle(fontSize: 12)),
+                    Text('${_deliveryAddresses.length} delivery address(es) added', style: const TextStyle(fontSize: 12)),
                   ],
                 ),
               ),

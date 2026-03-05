@@ -10,6 +10,8 @@ class RowDetailPanel extends StatelessWidget {
   final VoidCallback onClose;
   /// Optional accent color for the header icon & card borders. Default: indigo.
   final Color? accentColor;
+  /// Optional document photos: list of (label, url) pairs shown below the fields.
+  final List<(String, String)>? photos;
 
   const RowDetailPanel({
     super.key,
@@ -18,6 +20,7 @@ class RowDetailPanel extends StatelessWidget {
     required this.fields,
     required this.onClose,
     this.accentColor,
+    this.photos,
   });
 
   @override
@@ -75,7 +78,7 @@ class RowDetailPanel extends StatelessWidget {
             ),
             const SizedBox(height: 10),
 
-            // ── Card grid — scrollable so it never overflows ──
+                      // ── Card grid — scrollable so it never overflows ──
             Flexible(
               child: LayoutBuilder(
                 builder: (context, constraints) {
@@ -86,15 +89,89 @@ class RowDetailPanel extends StatelessWidget {
 
                   return SingleChildScrollView(
                     physics: const BouncingScrollPhysics(),
-                    child: Wrap(
-                      spacing: spacing,
-                      runSpacing: spacing,
-                      children: fields.map((f) => _InfoCard(
-                        label: f.$1,
-                        value: f.$2,
-                        width: cardWidth,
-                        accentColor: accent,
-                      )).toList(),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Wrap(
+                          spacing: spacing,
+                          runSpacing: spacing,
+                          children: fields.map((f) => _InfoCard(
+                            label: f.$1,
+                            value: f.$2,
+                            width: cardWidth,
+                            accentColor: accent,
+                          )).toList(),
+                        ),
+                        // ── Document Photos ──
+                        if (photos != null && photos!.isNotEmpty) ...[
+                          const SizedBox(height: 12),
+                          const Text('DOCUMENTS',
+                            style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: Color(0xFF94A3B8), letterSpacing: 0.8)),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: photos!.map((p) => Padding(
+                              padding: const EdgeInsets.only(right: 12),
+                              child: GestureDetector(
+                                onTap: () => showDialog(
+                                  context: context,
+                                  barrierColor: Colors.black87,
+                                  builder: (_) => Dialog(
+                                    backgroundColor: Colors.transparent,
+                                    child: Stack(
+                                      children: [
+                                        ClipRRect(
+                                          borderRadius: BorderRadius.circular(16),
+                                          child: Image.network(p.$2, fit: BoxFit.contain),
+                                        ),
+                                        Positioned(
+                                          top: 8, right: 8,
+                                          child: GestureDetector(
+                                            onTap: () => Navigator.pop(context),
+                                            child: Container(
+                                              padding: const EdgeInsets.all(8),
+                                              decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
+                                              child: const Icon(Icons.close_rounded, color: Colors.white, size: 18),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                child: Column(
+                                  children: [
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(10),
+                                      child: Image.network(
+                                        p.$2,
+                                        width: 72,
+                                        height: 72,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (_, __, ___) => Container(
+                                          width: 72, height: 72,
+                                          decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(10)),
+                                          child: const Icon(Icons.broken_image_rounded, color: Color(0xFF94A3B8)),
+                                        ),
+                                        loadingBuilder: (_, child, prog) => prog == null ? child : Container(
+                                          width: 72, height: 72,
+                                          decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(10)),
+                                          child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(p.$1,
+                                      style: TextStyle(fontSize: 8, fontWeight: FontWeight.w800, color: accent),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            )).toList(),
+                          ),
+                        ],
+                      ],
                     ),
                   );
                 },

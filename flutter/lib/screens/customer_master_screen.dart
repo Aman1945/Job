@@ -9,7 +9,6 @@ import '../providers/nexus_provider.dart';
 import '../utils/theme.dart';
 import '../utils/master_actions.dart';
 import '../models/models.dart';
-import '../config/api_config.dart';
 import '../widgets/row_detail_panel.dart';
 
 class CustomerMasterScreen extends StatefulWidget {
@@ -241,6 +240,11 @@ class _CustomerMasterScreenState extends State<CustomerMasterScreen> {
                                 ('Postal Code', c.postalCode ?? '-'),
                                 ('Email', c.customerEmail ?? '-'),
                                 ('Address', c.address),
+                              ],
+                              photos: [
+                                if (c.gstPhotoUrl != null) ('GST CERT', c.gstPhotoUrl!),
+                                if (c.panPhotoUrl != null) ('PAN CARD', c.panPhotoUrl!),
+                                if (c.chequePhotoUrl != null) ('SEC CHEQUE', c.chequePhotoUrl!),
                               ],
                             );
                           }(),

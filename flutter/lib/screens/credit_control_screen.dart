@@ -417,7 +417,8 @@ class _CreditControlScreenState extends State<CreditControlScreen> {
     if (selectedOrder == null) return;
     setState(() => isSubmitting = true);
     final provider = Provider.of<NexusProvider>(context, listen: false);
-    final success = await provider.updateOrderStatus(selectedOrder!.id, newStatus);
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final success = await provider.updateOrderStatus(selectedOrder!.id, newStatus, token: auth.token);
     if (success && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Mission ${selectedOrder!.id} status updated to $newStatus')));
       setState(() {

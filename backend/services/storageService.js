@@ -33,10 +33,9 @@ if (process.env.DO_SPACES_KEY && process.env.DO_SPACES_SECRET && process.env.DO_
  * @returns {Promise<string>} Public URL of uploaded file
  */
 async function uploadFile(base64Data, fileName, folder = 'uploads') {
-    // If Spaces not configured, return base64 (fallback)
+    // If Spaces not configured, fail immediately — no base64 fallback
     if (!isConfigured) {
-        console.warn('⚠️  DO Spaces not configured, storing as base64');
-        return base64Data;
+        throw new Error('DO Spaces is not configured. Cannot upload file.');
     }
 
     try {
@@ -79,9 +78,7 @@ async function uploadFile(base64Data, fileName, folder = 'uploads') {
 
     } catch (error) {
         console.error('DO Spaces upload error:', error.message);
-        // Fallback to base64 if upload fails
-        console.warn('⚠️  Spaces upload failed, falling back to base64 storage');
-        return base64Data;
+        throw error; // Re-throw — caller will return 500 to Flutter
     }
 }
 

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -246,8 +247,8 @@ class NexusProvider with ChangeNotifier {
     }
   }
 
-  Future<List<Map<String, dynamic>>> fetchUserAuditLogs(String userId) async {
-    return fetchAuditLogs(userId: userId);
+  Future<List<Map<String, dynamic>>> fetchUserAuditLogs(String userId, {String? token}) async {
+    return fetchAuditLogs(userId: userId, token: token);
   }
 
   Future<List<Map<String, dynamic>>> fetchAuditLogs({
@@ -256,7 +257,8 @@ class NexusProvider with ChangeNotifier {
     String? role,
     DateTime? fromDate,
     DateTime? toDate,
-    int limit = 100
+    int limit = 100,
+    String? token,         // JWT token from AuthProvider
   }) async {
     try {
       String url = '$_baseUrl/audit/logs?limit=$limit';
@@ -267,12 +269,18 @@ class NexusProvider with ChangeNotifier {
       if (toDate != null) url += '&toDate=${toDate.toIso8601String()}';
       
       debugPrint('🛰️ Fetching audit logs: $url');
-      final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 15));
+      final headers = <String, String>{
+        'Content-Type': 'application/json',
+        if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
+      };
+      final response = await http.get(Uri.parse(url), headers: headers).timeout(const Duration(seconds: 15));
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['success'] == true && data['data'] != null && data['data']['logs'] is List) {
           return List<Map<String, dynamic>>.from(data['data']['logs']);
         }
+      } else {
+        debugPrint('❌ Audit logs API error: ${response.statusCode} - ${response.body}');
       }
     } catch (e) {
       debugPrint('Error fetching audit logs: $e');
@@ -282,7 +290,7 @@ class NexusProvider with ChangeNotifier {
 
   // --- Operations & Workflow ---
 
-  Future<bool> updateOrderStatus(String orderId, String newStatus) async {
+  Future<bool> updateOrderStatus(String orderId, String newStatus, {String? token}) async {
     // Decision Engine Logic
     String effectiveStatus = newStatus;
     if (newStatus == 'Credit Approved') {
@@ -302,7 +310,10 @@ class NexusProvider with ChangeNotifier {
     try {
       final response = await http.patch(
         Uri.parse('$_baseUrl/orders/$orderId'),
-        headers: {'Content-Type': 'application/json'},
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
+        },
         body: jsonEncode({'status': effectiveStatus}),
       );
 
@@ -327,12 +338,50 @@ class NexusProvider with ChangeNotifier {
     return false;
   }
 
-  Future<bool> createOrder(String customerId, String customerName, List<Map<String, dynamic>> items) async {
+  /// Patches specific fields on an order (e.g., qcPhoto, salesPhotos URLs).
+  Future<bool> patchOrderField(String orderId, Map<String, dynamic> fields) async {
+    try {
+      final response = await http.patch(
+        Uri.parse('$_baseUrl/orders/$orderId'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(fields),
+      );
+      if (response.statusCode == 200) {
+        await fetchOrders();
+        return true;
+      }
+    } catch (e) {
+      debugPrint('patchOrderField error: $e');
+    }
+    return false;
+  }
+
+  Future<bool> createOrder(
+    String customerId,
+    String customerName,
+    List<Map<String, dynamic>> items, {
+    List<File> photos = const [],
+    String? remarks,
+  }) async {
     double subTotal = 0;
     for (var item in items) {
       subTotal += (item['price'] as num) * (item['quantity'] as num);
     }
     double total = subTotal * 1.18; // Added 18% GST
+
+    // Upload sales photos to DO Spaces first
+  final List<String> photoUrls = [];
+  if (photos.isNotEmpty) {
+    // Build organized folder: Orders/CustomerName/SalespersonName_Date
+    final dateStr = DateTime.now().toIso8601String().substring(0, 10); // YYYY-MM-DD
+    final safeCustomer = customerName.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_');
+    final safeSales = (_currentUser?.name ?? 'Unknown').replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_');
+    final folder = 'Orders/$safeCustomer/${safeSales}_$dateStr';
+    for (final photo in photos) {
+      final url = await uploadPhoto(photo, folder: folder);
+      if (url != null) photoUrls.add(url);
+    }
+  }
 
     final orderData = {
       'customerId': customerId,
@@ -344,6 +393,8 @@ class NexusProvider with ChangeNotifier {
       'items': items,
       'salespersonId': _currentUser?.id,
       'createdAt': DateTime.now().toIso8601String(),
+      if (photoUrls.isNotEmpty) 'salesPhotos': photoUrls,
+      if (remarks != null && remarks.isNotEmpty) 'remarks': remarks,
     };
 
     try {
@@ -380,6 +431,44 @@ class NexusProvider with ChangeNotifier {
     }
     return false;
   }
+
+  /// Uploads a single image [File] to DigitalOcean Spaces via backend.
+  /// Returns the public CDN URL or null on failure.
+  Future<String?> uploadPhoto(File file, {String folder = 'uploads'}) async {
+    try {
+      debugPrint('📸 [uploadPhoto] START — file: ${file.path}');
+      final bytes = await file.readAsBytes();
+      debugPrint('📸 [uploadPhoto] File size: ${bytes.length} bytes');
+      final base64Image = base64Encode(bytes);
+      final fileName = file.path.split(Platform.pathSeparator).last;
+      debugPrint('📸 [uploadPhoto] Sending to: $_baseUrl/upload-photo — fileName: $fileName, folder: $folder');
+
+      final response = await http.post(
+        Uri.parse('$_baseUrl/upload-photo'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'base64Image': base64Image,
+          'fileName': fileName,
+          'folder': folder,
+        }),
+      );
+
+      debugPrint('📸 [uploadPhoto] Response status: ${response.statusCode}');
+      debugPrint('📸 [uploadPhoto] Response body: ${response.body.substring(0, response.body.length.clamp(0, 200))}');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        debugPrint('📸 [uploadPhoto] SUCCESS — URL: ${data['url']}');
+        return data['url'] as String?;
+      } else {
+        debugPrint('📸 [uploadPhoto] FAILED — status ${response.statusCode}');
+      }
+    } catch (e) {
+      debugPrint('📸 [uploadPhoto] EXCEPTION: $e');
+    }
+    return null;
+  }
+
 
   Future<bool> createSTN(Map<String, dynamic> stnData) async {
     final payload = {
@@ -662,11 +751,14 @@ class NexusProvider with ChangeNotifier {
     return {};
   }
 
-  Future<bool> assignLogistics(List<String> orderIds, Map<String, dynamic> logisticsData) async {
+  Future<bool> assignLogistics(List<String> orderIds, Map<String, dynamic> logisticsData, {String? token}) async {
     try {
       final response = await http.post(
         Uri.parse('$_baseUrl/logistics/bulk-assign'),
-        headers: {'Content-Type': 'application/json'},
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
+        },
         body: jsonEncode({
           'orderIds': orderIds,
           'logisticsData': logisticsData,

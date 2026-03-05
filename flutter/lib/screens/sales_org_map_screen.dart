@@ -59,11 +59,10 @@ class _SalesOrgMapScreenState extends State<SalesOrgMapScreen> {
   }
 
   List<User> _inSlot(List<User> all, String slotKey) =>
-      all.where((u) => u.orgPosition == slotKey).toList();
+      all.where((u) => u.orgPositions.contains(slotKey)).toList();
 
   List<User> _available(List<User> all) =>
-      all.where((u) => u.orgPosition == null || u.orgPosition!.isEmpty).toList()
-        ..sort((a, b) => a.name.compareTo(b.name));
+      all.toList()..sort((a, b) => a.name.compareTo(b.name)); // All users are available for multi-zone
 
   // ── PATCH helper ─────────────────────────────────────────────────────────
   Future<bool> _patchUser(String userId, Map<String, dynamic> payload) async {
@@ -84,7 +83,13 @@ class _SalesOrgMapScreenState extends State<SalesOrgMapScreen> {
     setState(() => _saving = true);
     // Patch all users in parallel
     final results = await Future.wait(
-      users.map((u) => _patchUser(u.id, {'orgPosition': slotKey})),
+      users.map((u) {
+        final newPositions = List<String>.from(u.orgPositions);
+        if (!newPositions.contains(slotKey)) {
+          newPositions.add(slotKey);
+        }
+        return _patchUser(u.id, {'orgPositions': newPositions});
+      }),
     );
     if (mounted) {
       // Single refresh after all patches
@@ -99,9 +104,10 @@ class _SalesOrgMapScreenState extends State<SalesOrgMapScreen> {
     }
   }
 
-  Future<void> _remove(User user) async {
+  Future<void> _remove(User user, String slotKey) async {
     setState(() => _saving = true);
-    final ok = await _patchUser(user.id, {'orgPosition': null});
+    final newPositions = List<String>.from(user.orgPositions)..remove(slotKey);
+    final ok = await _patchUser(user.id, {'orgPositions': newPositions});
     if (mounted) {
       await Provider.of<NexusProvider>(context, listen: false).fetchUsers();
       setState(() => _saving = false);
@@ -785,16 +791,21 @@ class _SalesOrgMapScreenState extends State<SalesOrgMapScreen> {
         // Tap to view details - Expanded to take available space
         Expanded(
           child: GestureDetector(
-            onTap: () => showModalBottomSheet(
-              context: context,
-              isScrollControlled: true,
-              backgroundColor: Colors.transparent,
-              builder: (_) => OrgMemberDataSheet(
-                member: user,
-                slotKey: slotKey,
-                accentColor: color,
-              ),
-            ),
+            onTap: () async {
+              final shouldRemove = await showModalBottomSheet<bool>(
+                context: context,
+                isScrollControlled: true,
+                backgroundColor: Colors.transparent,
+                builder: (_) => OrgMemberDataSheet(
+                  member: user,
+                  slotKey: slotKey,
+                  accentColor: color,
+                ),
+              );
+              if (shouldRemove == true) {
+                _remove(user, slotKey);
+              }
+            },
             child: Padding(
               padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
               child: Row(children: [

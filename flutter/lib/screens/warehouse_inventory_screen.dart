@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/nexus_provider.dart';
+import '../providers/auth_provider.dart';
 import '../utils/theme.dart';
 import '../models/models.dart';
 import 'package:lucide_icons/lucide_icons.dart';
@@ -347,7 +348,8 @@ class _WarehouseInventoryScreenState extends State<WarehouseInventoryScreen> {
 
   void _finalizePacking(Order order) async {
     final provider = Provider.of<NexusProvider>(context, listen: false);
-    final success = await provider.updateOrderStatus(order.id, 'Packed');
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final success = await provider.updateOrderStatus(order.id, 'Packed', token: auth.token);
     if (success && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Mission packed and batches committed to inventory!'), backgroundColor: Color(0xFF10B981)));
       setState(() => selectedOrder = null);

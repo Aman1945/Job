@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/nexus_provider.dart';
+import '../providers/auth_provider.dart';
 import '../models/models.dart';
 import '../widgets/nexus_components.dart';
 import 'package:lucide_icons/lucide_icons.dart';
@@ -360,7 +361,8 @@ class _LogisticsOpsScreenState extends State<LogisticsOpsScreen> {
 
   void _pushToInvoicing(Order order) async {
     final provider = Provider.of<NexusProvider>(context, listen: false);
-    await provider.updateOrderStatus(order.id, 'Ready for Billing');
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    await provider.updateOrderStatus(order.id, 'Ready for Billing', token: auth.token);
     if(mounted) {
        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
          content: const Text('Costs Defined. Pushed to Invoicing (Stage 5).'),
