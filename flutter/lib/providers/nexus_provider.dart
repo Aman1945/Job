@@ -186,10 +186,15 @@ class NexusProvider with ChangeNotifier {
     }
   }
 
-  Future<void> fetchProducts() async {
+  Future<void> fetchProducts({String? token}) async {
     try {
       debugPrint('🛰️ Fetching products...');
-      final response = await http.get(Uri.parse('$_baseUrl/products')).timeout(const Duration(seconds: 30));
+      final response = await http.get(
+        Uri.parse('$_baseUrl/products'),
+        headers: {
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+      ).timeout(const Duration(seconds: 30));
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
         _products = data.map((json) => Product.fromJson(json)).toList();
@@ -201,10 +206,15 @@ class NexusProvider with ChangeNotifier {
     }
   }
 
-  Future<void> fetchCustomers() async {
+  Future<void> fetchCustomers({String? token}) async {
     try {
       debugPrint('🛰️ Fetching customers...');
-      final response = await http.get(Uri.parse('$_baseUrl/customers')).timeout(const Duration(seconds: 30));
+      final response = await http.get(
+        Uri.parse('$_baseUrl/customers'),
+        headers: {
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+      ).timeout(const Duration(seconds: 30));
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
         _customers = data.map((json) => Customer.fromJson(json)).toList();
@@ -320,22 +330,14 @@ class NexusProvider with ChangeNotifier {
       if (response.statusCode == 200) {
         await fetchOrders(); // Refresh local list
         return true;
+      } else {
+        debugPrint('Failed to update status: ${response.statusCode} - ${response.body}');
+        throw Exception('Server rejected status update: ${response.statusCode}');
       }
     } catch (e) {
-      // Local fallback for demo
-      final index = _orders.indexWhere((o) => o.id == orderId);
-      if (index != -1) {
-        final old = _orders[index];
-        _orders[index] = Order(
-          id: old.id, customerId: old.customerId, customerName: old.customerName,
-          status: effectiveStatus, total: old.total, createdAt: old.createdAt,
-          items: old.items, salespersonId: old.salespersonId,
-        );
-        notifyListeners();
-        return true;
-      }
+      debugPrint('Error updating order status: $e');
+      rethrow; // Do not use local fallback anymore
     }
-    return false;
   }
 
   /// Patches specific fields on an order (e.g., qcPhoto, salesPhotos URLs).
@@ -379,7 +381,7 @@ class NexusProvider with ChangeNotifier {
     final safeSales = (_currentUser?.name ?? 'Unknown').replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_');
     final folder = 'Orders/$safeCustomer/${safeSales}_$dateStr';
     for (final photo in photos) {
-      final url = await uploadPhoto(photo, folder: folder);
+      final url = await uploadPhoto(photo, folder: folder, token: token); // Passed token here
       if (url != null) photoUrls.add(url);
     }
   }
@@ -568,9 +570,14 @@ class NexusProvider with ChangeNotifier {
 
   // --- Analytics ---
 
-  Future<Map<String, dynamic>?> fetchSalesHubData({String period = 'month'}) async {
+  Future<Map<String, dynamic>?> fetchSalesHubData({String period = 'month', String? token}) async {
     try {
-      final response = await http.get(Uri.parse('$_baseUrl/analytics/sales-hub?period=$period'));
+      final response = await http.get(
+        Uri.parse('$_baseUrl/analytics/sales-hub?period=$period'),
+        headers: {
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+      );
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
       }
@@ -580,10 +587,15 @@ class NexusProvider with ChangeNotifier {
     return null;
   }
 
-  Future<bool> fetchReportData({required String type, String? startDate, String? endDate}) async {
+  Future<Map<String, dynamic>?> fetchReportData({required String type, String? startDate, String? endDate, String? token}) async {
     try {
       final queryParams = 'type=$type${startDate != null ? "&startDate=$startDate" : ""}${endDate != null ? "&endDate=$endDate" : ""}';
-      final response = await http.get(Uri.parse('$_baseUrl/analytics/reports?$queryParams'));
+      final response = await http.get(
+        Uri.parse('$_baseUrl/analytics/reports?$queryParams'),
+        headers: {
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+      );
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
       }
@@ -593,10 +605,15 @@ class NexusProvider with ChangeNotifier {
     return null;
   }
 
-  Future<Map<String, dynamic>> fetchPMSData({String? userId, String period = 'month'}) async {
+  Future<Map<String, dynamic>> fetchPMSData({String? userId, String period = 'month', String? token}) async {
     try {
       final queryParams = 'period=$period' + (userId != null && userId.isNotEmpty ? '&userId=$userId' : '');
-      final response = await http.get(Uri.parse('$_baseUrl/analytics/pms?$queryParams'));
+      final response = await http.get(
+        Uri.parse('$_baseUrl/analytics/pms?$queryParams'),
+        headers: {
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+      );
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
       }
@@ -606,20 +623,26 @@ class NexusProvider with ChangeNotifier {
     return {};
   }
 
-  Future<void> downloadReport({required String type, required String format}) async {
+  Future<void> downloadReport({required String type, required String format, String? token}) async {
     final queryParams = 'type=${type.toLowerCase().replaceAll(' ', '_')}&format=${format.toLowerCase()}';
     final url = '$_baseUrl/analytics/export?$queryParams';
     
     await DownloaderService().downloadFile(
       url: url,
       fileName: "${type.replaceAll(' ', '_')}_Report.${format.toLowerCase()}",
+      token: token,
     );
   }
 
 
-  Future<void> fetchProcurementItems() async {
+  Future<void> fetchProcurementItems({String? token}) async {
     try {
-      final response = await http.get(Uri.parse('$_baseUrl/procurement'));
+      final response = await http.get(
+        Uri.parse('$_baseUrl/procurement'),
+        headers: {
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+      );
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
         _procurementItems = data.map((json) => ProcurementItem.fromJson(json)).toList();
@@ -630,55 +653,47 @@ class NexusProvider with ChangeNotifier {
     }
   }
 
-  Future<bool> createProcurementEntry(Map<String, dynamic> data) async {
+  Future<bool> createProcurementEntry(Map<String, dynamic> data, {String? token}) async {
     try {
       final response = await http.post(
         Uri.parse('$_baseUrl/procurement'),
-        headers: {'Content-Type': 'application/json'},
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
         body: jsonEncode(data),
       );
       if (response.statusCode == 201) {
-        await fetchProcurementItems();
+        await fetchProcurementItems(token: token);
         return true;
+      } else {
+        debugPrint('Failed to create procurement: ${response.statusCode}');
+        throw Exception('Server error: ${response.statusCode}');
       }
-      return false;
     } catch (e) {
-      // Local fallback
-      final newItem = ProcurementItem(
-        id: 'PRC-${DateTime.now().millisecondsSinceEpoch.toString().substring(9)}',
-        supplierName: data['supplierName'] ?? data['vendor'] ?? '',
-        skuCode: data['skuCode'] ?? data['code'] ?? '',
-        skuName: data['skuName'] ?? data['sku'] ?? 'Unknown SKU',
-        createdAt: DateTime.now(),
-      );
-      _procurementItems.insert(0, newItem);
-      notifyListeners();
-      return true;
+      debugPrint('Error creating procurement: $e');
+      throw Exception('Procurement creation failed - Connectivity issue.');
     }
   }
 
-  Future<bool> updateProcurementItem(String id, Map<String, dynamic> updates) async {
+  Future<bool> updateProcurementItem(String id, Map<String, dynamic> updates, {String? token}) async {
     try {
       final response = await http.put(
         Uri.parse('$_baseUrl/procurement/$id'),
-        headers: {'Content-Type': 'application/json'},
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
         body: jsonEncode(updates),
       );
       if (response.statusCode == 200) {
-        await fetchProcurementItems();
+        await fetchProcurementItems(token: token);
         return true;
       }
       return false;
     } catch (e) {
-      final index = _procurementItems.indexWhere((i) => i.id == id);
-      if (index != -1) {
-        final current = _procurementItems[index];
-        final json = current.toJson();
-        updates.forEach((key, value) => json[key] = value);
-        _procurementItems[index] = ProcurementItem.fromJson(json);
-        notifyListeners();
-      }
-      return true;
+      debugPrint('Error updating procurement: $e');
+      throw Exception('Failed to update procurement item.');
     }
   }
 
@@ -697,9 +712,14 @@ class NexusProvider with ChangeNotifier {
     }
   }
 
-  Future<Map<String, dynamic>> fetchCategorySplitData() async {
+  Future<Map<String, dynamic>> fetchCategorySplitData({String? token}) async {
     try {
-      final response = await http.get(Uri.parse('$_baseUrl/analytics/category-split'));
+      final response = await http.get(
+        Uri.parse('$_baseUrl/analytics/category-split'),
+        headers: {
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+      );
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
       }
@@ -709,9 +729,14 @@ class NexusProvider with ChangeNotifier {
     return {};
   }
 
-  Future<Map<String, dynamic>> fetchFleetIntelligenceData() async {
+  Future<Map<String, dynamic>> fetchFleetIntelligenceData({String? token}) async {
     try {
-      final response = await http.get(Uri.parse('$_baseUrl/analytics/fleet'));
+      final response = await http.get(
+        Uri.parse('$_baseUrl/analytics/fleet'),
+        headers: {
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+      );
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
       }
@@ -738,25 +763,14 @@ class NexusProvider with ChangeNotifier {
       if (response.statusCode == 200) {
         await fetchOrders();
         return true;
+      } else {
+        debugPrint('Failed to assign logistics: ${response.statusCode}');
+        throw Exception('Logistics assignment failed: ${response.statusCode}');
       }
     } catch (e) {
-      // Local fallback
-      for (var id in orderIds) {
-        final index = _orders.indexWhere((o) => o.id == id);
-        if (index != -1) {
-          final old = _orders[index];
-          _orders[index] = Order(
-            id: old.id, customerId: old.customerId, customerName: old.customerName,
-            status: 'In Transit', total: old.total, createdAt: old.createdAt,
-            items: old.items, salespersonId: old.salespersonId,
-            logistics: LogisticsData.fromJson(logisticsData),
-          );
-        }
-      }
-      notifyListeners();
-      return true;
+      debugPrint('Error assigning logistics: $e');
+      throw Exception('Network or server error during logistics assignment.');
     }
-    return false;
   }
 
   // Calculate logistics cost
@@ -765,11 +779,15 @@ class NexusProvider with ChangeNotifier {
     required String destination,
     required String vehicleType,
     double? distance,
+    String? token,
   }) async {
     try {
       final response = await http.post(
         Uri.parse('$_baseUrl/logistics/calculate-cost'),
-        headers: {'Content-Type': 'application/json'},
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
         body: jsonEncode({
           'origin': origin,
           'destination': destination,
@@ -783,12 +801,12 @@ class NexusProvider with ChangeNotifier {
         return data['data'];
       }
     } catch (e) {
-      print('Cost calculation error: $e');
+      debugPrint('Cost calculation error: $e');
     }
     return null;
   }
 
-  Future<bool> importCustomers(String filePath) async {
+  Future<bool> importCustomers(String filePath, {String? token}) async {
     _isLoading = true;
     notifyListeners();
     try {
@@ -796,6 +814,9 @@ class NexusProvider with ChangeNotifier {
         'POST',
         Uri.parse('$_baseUrl/customers/bulk-import'),
       );
+      if (token != null) {
+        request.headers['Authorization'] = 'Bearer $token';
+      }
       
       request.files.add(await http.MultipartFile.fromPath('file', filePath));
       
@@ -803,7 +824,7 @@ class NexusProvider with ChangeNotifier {
       final response = await http.Response.fromStream(streamedResponse);
 
       if (response.statusCode == 200) {
-        await fetchCustomers();
+        await fetchCustomers(token: token);
         return true;
       } else {
         debugPrint('Import error: ${response.statusCode} - ${response.body}');
@@ -826,7 +847,7 @@ class NexusProvider with ChangeNotifier {
     );
   }
 
-  Future<bool> importProducts(String filePath) async {
+  Future<bool> importProducts(String filePath, {String? token}) async {
     _isLoading = true;
     notifyListeners();
     try {
@@ -834,11 +855,14 @@ class NexusProvider with ChangeNotifier {
         'POST',
         Uri.parse('$_baseUrl/products/bulk-import'),
       );
+      if (token != null) {
+        request.headers['Authorization'] = 'Bearer $token';
+      }
       request.files.add(await http.MultipartFile.fromPath('file', filePath));
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
       if (response.statusCode == 200) {
-        await fetchProducts();
+        await fetchProducts(token: token);
         return true;
       } else {
         debugPrint('Product import error: ${response.statusCode} - ${response.body}');

@@ -17,6 +17,33 @@
 - **Audit**: Custom `auditLogger.js` middleware tracking `CREATE`, `UPDATE`, `DELETE` with `oldData` and `newData` snapshots.
 - **Excel**: `exceljs` for bulk importing Materials, Customers, and Price Lists.
 - **Storage**: `multer` with S3 storage service for DigitalOcean.
+- **Infrastructure**: DigitalOcean Droplet, PM2 Cluster, Nginx.
+
+## 🔐 Credentials & Access (High Priority Context)
+
+> [!IMPORTANT]
+> Use these credentials for server access, database queries, and environment configuration throughout the project.
+
+### 🛡️ SSH Access
+- **Host**: `168.144.31.254`
+- **User**: `root`
+- **Password**: `aMan@29101979p`
+- **Port**: `22` (Default)
+- **Repo Directory**: `/root/Job`
+- **Backend Path**: `/root/Job/backend`
+
+### 💾 Database (MongoDB Atlas)
+- **URI**: `mongodb+srv://doadmin:l83c0V6pR7f59S1g@db-mongodb-blr1-41071-873a3483.mongo.ondigitalocean.com/NexusOMS?replicaSet=db-mongodb-blr1-41071&tls=true&authSource=admin`
+- **Main Database Name**: `NexusOMS`
+
+### 🔑 Security & APIs
+- **JWT Secret**: `NexusOMS@2024SecretKey#Production$Secure!`
+- **Gemini API Key**: `AIzSyBSRHNpNsgK_lshamksmQGulHHrN9BJEA`
+- **DO Spaces Key**: `DO006CT2EYGULA4MFFLY`
+- **DO Spaces Secret**: `INzmeZbSNHkTXs29QzBREN1A9PeFOTlXrgfB9I8pxTo`
+- **DO Spaces Region**: `sgp1`
+- **DO Spaces Bucket**: `bigsams-oms-prod`
+- **CDN URL**: `https://bigsams-oms-prod.sgp1.cdn.digitaloceanspaces.com`
 
 ## 📦 Core Features (A-Z)
 
@@ -109,15 +136,38 @@
       ```
     - **Server Info**: DigitalOcean Droplet `ubuntu-s-1vcpu-2gb-70gb-intel-blr1-01`, PM2 processes: `nexus-production` (cluster, ID 0 & 1), `nexus-uat` (fork, ID 2). Backend path: `/root/Job/backend/`.
 
+14. **Order Survival & Architecture Hardening (6 Mar 2026)**:
+    - **Back-to-Back Backend Hardening**: Audited `nexus_provider.dart` and added mandatory JWT token passing to all remaining endpoints (Analytics, Procurement, Logistics, Categories, Fleet Intelligence). 
+    - **Removed Local Fallbacks**: Eliminated the buggy local fallback logic in `updateOrderStatus`, `createProcurementEntry`, and `assignLogistics` that was masking server errors as offline successes.
+    - **Security & User Attribution**: Secured photo uploads and order fetches with `verifyToken` on the backend. Strictly enforced `userId` extraction from JWT for data integrity.
+
+15. **Gemini AI Credit Insights Refinement (6 Mar 2026)**:
+    - **Sophisticated Prompts**: Re-engineered `geminiService.js` to provide high-level risk assessments.
+    - **Deep Data Injection**: The AI now ingests full **aging buckets** (0-30, 31-90, 90+ days), itemized order breakdowns (SKU, Qty, Rate), and complex ratios (Exposure Ratio, Overdue vs. Outstanding %).
+    - **Output Structure**: Enforced a 4-part analytical structure: RISK SCORE, CORE ANALYSIS, DECISION, and JUSTIFICATION.
+
+16. **Order Archive Mission Timeline (6 Mar 2026)**:
+    - **Sequential Process Flow**: Integrated a "Mission Timeline" in `OrderArchiveScreen.dart`.
+    - **Detail Dialog**: Clicking an order log now opens a dialog showing the sequential history of all actions performed on that order by different users with precise timestamps.
+
+17. **Photo Integration & UI/UX (6 Mar 2026)**:
+    - **Visual Evidence**: Integrated `salesPhotos` and `qcPhoto` display into both `OrderDetailsScreen` and `OrderArchiveScreen` for cross-role transparency (Admin/RSM/ASM).
+
+18. **UAT Connection Debugging & Documentation**:
+    - **MongoDB Encoding**: Identified that the UAT connection failure was caused by an un-encoded '@' symbol in the MongoDB password.
+    - **Fix documented**: Update `.env` with encoded values (`sam@2025` -> `sam%402025`).
+
 ## 🏁 Next Steps / Remaining Tasks
 - [x] Implement Bulk Dispatch API for Logistics Hub.
 - [x] Refactor Book Order UI (Hierarchy removal + Photo slot enhancements).
-- [x] Fix Sales Org Map multi-zone assignment overwrite bug (atomic endpoints).
-- [x] Fix Dashboard Stage 9/10 duplication.
-- [x] Fix `_confirmRemove` missing `slotKey` compilation error.
-- [ ] Refinement of the AI-powered Credit Insights (Gemini integration).
+- [x] Resolve "Missing Orders" by removing local fallbacks and fixing Auth headers.
+- [x] Harden Backend security and implement strict user attribution.
+- [x] Refine Gemini AI Credit Insights with full aging buckets and items.
+- [x] Integrate Mission Timeline into Order Archive.
+- [ ] Implement **Customer Edit/Update** functionality (specifically for updating Email Id like `testing@bigsams.in`).
 - [ ] Expansion of the Logistics Cost Calculator for remote areas.
+- [ ] Verify UAT restoration using the encoded MongoDB password.
 
 ---
 
-**Current Status**: Backend deployed on DigitalOcean with PM2 cluster (`nexus-production`). Atomic org-position endpoints (`/org-add`, `/org-remove`) are live. Frontend `SalesOrgMapScreen` uses dedicated endpoints. Dashboard Supply Chain Lifecycle has 10 clean stages. Project folder `NEW JOB` contains both `/backend` and `/flutter` codebases. GitHub repo: `Aman1945/Job` (`main` branch).
+**Current Status**: Backend hardened and deployed on DigitalOcean. Gemini AI is providing detailed credit risk analysis. Order Archive now features a full process timeline. Current work focus: Implementing Customer Profile editing for better contact management.

@@ -303,12 +303,12 @@ class _QualityControlScreenState extends State<QualityControlScreen> {
 
     // Upload QC proof photo to DO Spaces if captured
     String? qcPhotoUrl;
+    final auth = Provider.of<AuthProvider>(context, listen: false);
     if (_proofImage != null) {
-      qcPhotoUrl = await provider.uploadPhoto(_proofImage!, folder: 'qc-photos');
+      qcPhotoUrl = await provider.uploadPhoto(_proofImage!, folder: 'qc-photos', token: auth.token);
     }
 
     // Update order status
-    final auth = Provider.of<AuthProvider>(context, listen: false);
     await provider.updateOrderStatus(order.id, 'Pending Logistics Cost', token: auth.token);
 
     // Save qcPhoto URL to the order record

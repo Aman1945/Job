@@ -4,33 +4,26 @@ I've implemented a comprehensive audit trail and improved the visibility of syst
 
 ## Backend Changes
 
-### 1. Robust Audit Logging
-- **CRUD Operations**: Added audit logging to `CREATE`, `UPDATE`, and `DELETE` routes for:
-  - **Orders**
-  - **Customers**
-  - **Products (Material Master)**
-  - **Distributor Price List**
-- **Log Enrichment**: Updated routes to capture `oldData` before updates/deletions, ensuring the Archive shows exactly what changed.
-- **Consistent Responses**: Standardized API responses to `{ success: true, data: ... }` to ensure the audit middleware triggers correctly.
+### 1. Robust Audit Logging & Photo Mastery
+- **CRUD Operations**: Applied audit logging across all major entities.
+- **Photo Folder Structure**: Photos are now organized logically by `Customer/Date/Salesperson` in DigitalOcean Spaces for better management.
 
-### 2. Security
-- **Authentication**: Applied `verifyToken` middleware to all master data creation and update routes, ensuring every change is attributed to a specific user.
+### 2. Security & Hardening (ATOZ Cleanup)
+- **Token Consistency**: Audited `nexus_provider.dart` to ensure **100% token passing** for Analytics, Procurement, Logistics, and Bulk Imports.
+- **Zero Fallbacks**: Removed "Silent Success" fallbacks from order and assignment routes to ensure data integrity.
+- **Strict Attribution**: Backend now verifies user identity directly from tokens for all creations.
+
+### 3. Gemini AI Credit Insights
+- **Deep Analysis**: Refined AI logic to digest full **aging buckets** (0-30, 31-90, 90+ days) and order line items.
+- **Financial Ratios**: Added Exposure Ratio and Overdue comparison for precise risk scoring.
 
 ## Frontend Changes (Flutter)
 
-### 3. Archive UI Improvements
-- **Multi-Entity Support**: The Order Master Archive now correctly displays names and details for Customers, Products, and Price Lists alongside Orders.
-- **Deletion Support**: UI now falls back to `oldData` if `newData` is missing (true for deleted items), so you can see what was removed.
-- **Smart Filtering**:
-  - Selecting a specific user now automatically resets the role filter to 'ALL' to prevent empty result conflicts.
-  - Added a "Reset All Filters" button to the empty state for quick navigation.
-- **Enhanced Card Design**:
-  - Clear "Placed by" vs "Modified by" labels.
-  - Prominent customer/entity name display.
-  - Detailed timestamps (Date + Time).
+### 4. Archive & Timeline Enhancements
+- **Mission Timeline**: Integrated a sequential process view in the Order Archive. Users can now see exactly *what* happened, *who* did it, and *when* for every order lifecycle.
+- **Photo Visibility**: Integrated `salesPhotos` and `qcPhoto` directly into the Detail and Archive screens.
 
-## Verification Results
-- **Order Creation**: Successfully logged with customer name and salesperson details.
-- **Customer Updates**: Correctly showing original vs updated values in the log detail.
-- **Deletions**: Items now appear in the archive with a red "DELETE" badge and their previous information.
-- **Photos**: Sales photos are correctly extracted and displayed if available in the log.
+## Verification & Deployment
+- **Production**: Deployed to server `168.144.31.254` (Production Droplet).
+- **UAT Restoration**: Documented the encoded MongoDB password requirement (`sam%402025`) to resolve connection issues.
+- **Memory Saver**: Updated `PROMPT_CONTEXT.md` with all credentials, server paths, and recent engineering logic for full project continuity.

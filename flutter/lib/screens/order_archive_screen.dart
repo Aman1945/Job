@@ -494,16 +494,18 @@ class _OrderArchiveScreenState extends State<OrderArchiveScreen> {
           icon = Icons.delete_forever_rounded;
         }
 
-        return Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-                color: hasPhotos ? NexusTheme.emerald200 : NexusTheme.slate100),
-          ),
-          child: IntrinsicHeight(
-            child: Row(
-              children: [
+        return GestureDetector(
+          onTap: () => _showTimelineDialog(context, entityId),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                  color: hasPhotos ? NexusTheme.emerald200 : NexusTheme.slate100),
+            ),
+            child: IntrinsicHeight(
+              child: Row(
+                children: [
                 Container(
                   width: 40,
                   child: Column(
@@ -582,14 +584,15 @@ class _OrderArchiveScreenState extends State<OrderArchiveScreen> {
                                           color: NexusTheme.emerald600),
                                     ),
                                     if (action == 'STATUS_CHANGE') ...[
-                                      const Icon(Icons.arrow_forward_rounded, size: 10, color: NexusTheme.amber700),
+                                      const Icon(Icons.arrow_forward_rounded, size: 10, color:Colors.amber),
                                       const SizedBox(width: 4),
                                       Text(
                                         'TO: ${data?['status'] ?? 'N/A'}',
                                         style: const TextStyle(
                                             fontSize: 10,
                                             fontWeight: FontWeight.w900,
-                                            color: NexusTheme.amber700),
+                                             color: Colors.amber,
+                                        ),
                                       ),
                                     ] else if (action == 'CREATE') ...[
                                       const Icon(Icons.star_rounded, size: 12, color: NexusTheme.emerald600),
@@ -671,7 +674,7 @@ class _OrderArchiveScreenState extends State<OrderArchiveScreen> {
                           if (salesPhotos.isNotEmpty) _buildPhotosRow('SALES PHOTOS', salesPhotos),
                           if (qcPhoto != null) ...[
                             if (salesPhotos.isNotEmpty) const SizedBox(height: 8),
-                            _buildPhotosRow('QC PROOF PHOTO', [qcPhoto]),
+                            _buildPhotosRow('QC PROOF PHOTO', [qcPhoto!]),
                           ],
                         ],
                       ],
@@ -681,6 +684,7 @@ class _OrderArchiveScreenState extends State<OrderArchiveScreen> {
               ],
             ),
           ),
+        ),
         );
       },
     );
@@ -806,9 +810,119 @@ class _OrderArchiveScreenState extends State<OrderArchiveScreen> {
       ),
     );
   }
+
+  void _showTimelineDialog(BuildContext context, String orderId) {
+    if (orderId == 'N/A') return;
+    
+    final orderLogs = _logs.where((l) => l['entityId'] == orderId).toList();
+    orderLogs.sort((a, b) {
+      final ta = DateTime.tryParse(a['timestamp'] ?? '') ?? DateTime.now();
+      final tb = DateTime.tryParse(b['timestamp'] ?? '') ?? DateTime.now();
+      return ta.compareTo(tb);
+    });
+
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        child: Container(
+          width: MediaQuery.of(context).size.width * 0.9,
+          height: MediaQuery.of(context).size.height * 0.7,
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('MISSION TIMELINE', 
+                        style: TextStyle(fontWeight: FontWeight.w900, fontSize: 10, letterSpacing: 1, color: NexusTheme.slate400)),
+                      Text('ORDER $orderId', 
+                        style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: NexusTheme.slate900)),
+                    ],
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+              const Divider(height: 32),
+              Expanded(
+                child: orderLogs.isEmpty 
+                  ? const Center(child: Text('No details found for this mission.'))
+                  : ListView.builder(
+                    itemCount: orderLogs.length,
+                    itemBuilder: (context, index) {
+                      final log = orderLogs[index];
+                      final action = log['action'] ?? 'UNKNOWN';
+                      final user = log['userName'] ?? 'System';
+                      final ts = DateTime.tryParse(log['timestamp'] ?? '')?.toLocal() ?? DateTime.now();
+                      final data = (log['newData'] ?? log['oldData'] ?? {}) as Map<String, dynamic>;
+                      final status = data['status'] ?? 'N/A';
+                      
+                      Color color = NexusTheme.slate600;
+                      if (action == 'CREATE') color = NexusTheme.emerald600;
+                      else if (action == 'STATUS_CHANGE') color = NexusTheme.amber600;
+                      
+                      return IntrinsicHeight(
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Column(
+                              children: [
+                                Container(
+                                  width: 12, height: 12,
+                                  decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+                                ),
+                                if (index < orderLogs.length - 1)
+                                  Expanded(child: Container(width: 2, color: NexusTheme.slate200)),
+                              ],
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Padding(
+                                padding: const EdgeInsets.only(bottom: 24),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text(action.toString().replaceAll('_', ' '),
+                                          style: TextStyle(fontWeight: FontWeight.w900, fontSize: 10, color: color)),
+                                        Text(DateFormat('hh:mm a').format(ts),
+                                          style: const TextStyle(fontSize: 10, color: NexusTheme.slate400)),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(action == 'CREATE' ? 'Mission Initialized' : 'Status: $status',
+                                      style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: NexusTheme.slate800)),
+                                    const SizedBox(height: 2),
+                                    Text('Action by $user • ${DateFormat('dd MMM').format(ts)}',
+                                      style: const TextStyle(fontSize: 11, color: NexusTheme.slate500)),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
-// ─── CHIP WIDGET ──────────────────────────────────────────────────────────────
+// ─── CHIP WIDGET ───
 class _Chip extends StatelessWidget {
   final String label;
   final Color color;

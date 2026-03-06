@@ -17,6 +17,7 @@ class DownloaderService {
   Future<String?> downloadFile({
     required String url,
     required String fileName,
+    String? token,
     BuildContext? context,
   }) async {
     try {
@@ -52,7 +53,12 @@ class DownloaderService {
       print('📥 Downloading: $fileName to $filePath');
 
       // Download the file
-      final response = await http.get(Uri.parse(url)).timeout(
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+      ).timeout(
         const Duration(seconds: 30),
       );
 
