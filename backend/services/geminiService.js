@@ -42,29 +42,34 @@ async function getCreditInsight(order, customer) {
     }
 
     try {
-        const prompt = `You are a credit risk analyst for NexusOMS, a B2B order management system. Analyze this order approval request and provide a concise credit risk assessment.
+        const prompt = `You are a Senior Credit Risk Analyst for NexusOMS. Analyze the following credit approval request and provide a sophisticated, data-driven risk assessment.
 
-**Customer Details:**
+### DATA INPUTS:
+
+**Customer Portfolio:**
 - Name: ${customer.name}
-- Outstanding Balance: ₹${customer.outstanding || 0}
+- Current Outstanding: ₹${customer.outstanding || 0}
 - Overdue Amount: ₹${customer.overdue || 0}
-- Ageing Days: ${customer.ageingDays || 0} days
-- Credit Limit: ₹${customer.creditLimit || 'Not set'}
-- Payment History: ${customer.paymentHistory || 'No history'}
+- Ageing Profile: ${customer.ageingDays || 0} days (Bucket: ${customer.ageingDays > 60 ? 'CRITICAL' : customer.ageingDays > 30 ? 'WATCHLIST' : 'HEALTHY'})
+- Credit Limit: ₹${customer.creditLimit || 'No limit set'}
+- Payment Reliability: ${customer.paymentHistory || 'New Account'}
 
-**Order Details:**
+**Inbound Order Details:**
 - Order ID: ${order.id}
 - Order Value: ₹${order.total}
-- Items: ${order.items?.length || 0} products
-- Salesperson: ${order.salespersonId || 'Unknown'}
+- Exposure Ratio: ${customer.creditLimit ? (((customer.outstanding || 0) + (order.total || 0)) / customer.creditLimit * 100).toFixed(1) + '%' : 'N/A'}
+- SKU Count: ${order.items?.length || 0} unique lines 
 
-**Task:**
-Provide a 2-3 sentence risk assessment and recommendation. Include:
-1. Risk level (Low/Medium/High)
-2. Key concern (if any)
-3. Recommendation (Approve/Flag for Review/Reject)
+### TASK:
+Provide a critical, concise (maximum 3-4 sentences) analytical assessment. 
 
-Keep it professional and concise.`;
+Structure your response exactly as follows:
+1. **RISK SCORE:** [LOW / MEDIUM / HIGH / CRITICAL]
+2. **CORE ANALYSIS:** One sentence on why this score was assigned (focus on exposure vs. limit or ageing).
+3. **DECISION:** [APPROVE / FLAG FOR FINANCE REVIEW / REJECT]
+4. **JUSTIFICATION:** A brief reason for the final decision.
+
+Be precise, professional, and avoid generic filler text.`;
 
         const result = await model.generateContent(prompt);
         const response = await result.response;

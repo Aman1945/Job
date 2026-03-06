@@ -100,6 +100,11 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
             _buildOrderHeader(widget.order),
             const SizedBox(height: 24),
 
+            if (widget.order.salesPhotos.isNotEmpty || widget.order.qcPhoto != null) ...[
+              _buildOrderPhotos(widget.order),
+              const SizedBox(height: 24),
+            ],
+
             _buildSectionTitle('⚡ 2. Credit Exposure Matrix', 'FINANCIAL HEALTH REVIEW FOR ${widget.order.customerName}'),
             const SizedBox(height: 16),
             if (authProvider.currentUser?.role.label == 'Admin' || authProvider.currentUser?.role.label == 'Credit Control')
@@ -124,6 +129,88 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
             _buildSectionTitle('MISSION WORKFLOW TRACE', ''),
             const SizedBox(height: 16),
             _buildWorkflowTrace(widget.order),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOrderPhotos(Order order) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionTitle('📸 MISSION EVIDENCE', 'VISUAL PROOF FROM THE FIELD'),
+        const SizedBox(height: 16),
+        SizedBox(
+          height: 120,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            children: [
+              ...order.salesPhotos.map((url) => _buildPhotoItem(url, 'SALES')),
+              if (order.qcPhoto != null) _buildPhotoItem(order.qcPhoto!, 'QC PROOF'),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPhotoItem(String url, String label) {
+    return Container(
+      margin: const EdgeInsets.only(right: 12),
+      width: 120,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: NexusTheme.slate200),
+      ),
+      child: Column(
+        children: [
+          Expanded(
+            child: GestureDetector(
+              onTap: () => _showFullPhoto(url),
+              child: ClipRRect(
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                child: Image.network(
+                  url,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) => const Icon(Icons.broken_image, color: Colors.grey),
+                ),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Text(
+              label,
+              style: const TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: NexusTheme.indigo600),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showFullPhoto(String url) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.all(10),
+        child: Stack(
+          alignment: Alignment.topRight,
+          children: [
+            InteractiveViewer(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: Image.network(url, fit: BoxFit.contain),
+              ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.close, color: Colors.white, size: 30),
+              onPressed: () => Navigator.pop(context),
+            ),
           ],
         ),
       ),

@@ -1,11 +1,7 @@
-# Task: Enhance Audit Logging and Archive UI
+# Task: Enhance Order Archive Timeline
 
-- [x] Add audit logging (CREATE/UPDATE) to Order routes in `server.js`
-- [x] Add audit logging (CREATE/UPDATE) to Customer, Product, and Price List routes in `server.js`
-- [x] Improve Order Archive filter UX (reset role on user selection, clear filters button)
-- [x] Add audit logging (DELETE) to relevant routes in `server.js`
-  - [x] Implement `logDelete` for Product routes
-  - [x] Implement `logDelete` for Price List routes
-  - [x] Implement `logDelete` for Order routes
-- [x] Verify photo display in Archive for all entity types (fixed for deletions)
-- [x] Create walkthrough documenting changes
+- [ ] Research current AuditLog implementation and backend logging <!-- id: 0 -->
+- [ ] Create implementation plan for detailed timeline <!-- id: 1 -->
+- [ ] Implement backend changes to ensure all actions are logged with detail <!-- id: 2 -->
+- [ ] Update Order Archive screen to display vertical timeline <!-- id: 3 -->
+- [ ] Verify timeline display with sample data <!-- id: 4 -->

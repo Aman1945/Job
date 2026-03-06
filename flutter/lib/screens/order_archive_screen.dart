@@ -474,7 +474,8 @@ class _OrderArchiveScreenState extends State<OrderArchiveScreen> {
         final List<String> salesPhotos = rawPhotos is List
             ? rawPhotos.whereType<String>().where((s) => s.startsWith('http')).toList()
             : [];
-        final hasPhotos = canSeePhotos && salesPhotos.isNotEmpty;
+        final String? qcPhoto = data?['qcPhoto'];
+        final hasPhotos = canSeePhotos && (salesPhotos.isNotEmpty || qcPhoto != null);
 
         Color color = NexusTheme.slate600;
         IconData icon = Icons.info_outline_rounded;
@@ -504,12 +505,37 @@ class _OrderArchiveScreenState extends State<OrderArchiveScreen> {
             child: Row(
               children: [
                 Container(
-                  width: 5,
-                  decoration: BoxDecoration(
-                    color: color,
-                    borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(16),
-                        bottomLeft: Radius.circular(16)),
+                  width: 40,
+                  child: Column(
+                    children: [
+                      Container(
+                        width: 2,
+                        height: 20,
+                        color: i == 0 ? Colors.transparent : NexusTheme.slate200,
+                      ),
+                      Container(
+                        width: 12,
+                        height: 12,
+                        decoration: BoxDecoration(
+                          color: color,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 2),
+                          boxShadow: [
+                            BoxShadow(
+                              color: color.withOpacity(0.3),
+                              blurRadius: 4,
+                              spreadRadius: 1,
+                            )
+                          ],
+                        ),
+                      ),
+                      Expanded(
+                        child: Container(
+                          width: 2,
+                          color: i == _filteredLogs.length - 1 ? Colors.transparent : NexusTheme.slate200,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 Expanded(
@@ -527,7 +553,8 @@ class _OrderArchiveScreenState extends State<OrderArchiveScreen> {
                               action.toString().replaceAll('_', ' '),
                               style: TextStyle(
                                   fontWeight: FontWeight.w900,
-                                  fontSize: 12,
+                                  fontSize: 10,
+                                  letterSpacing: 1,
                                   color: color),
                             ),
                             const Spacer(),
@@ -548,12 +575,33 @@ class _OrderArchiveScreenState extends State<OrderArchiveScreen> {
                                         size: 10, color: NexusTheme.emerald600),
                                     const SizedBox(width: 4),
                                     Text(
-                                      '${salesPhotos.length} PHOTO${salesPhotos.length > 1 ? 'S' : ''}',
+                                      '${salesPhotos.length + (qcPhoto != null ? 1 : 0)} PHOTO${(salesPhotos.length + (qcPhoto != null ? 1 : 0)) > 1 ? 'S' : ''}',
                                       style: const TextStyle(
                                           fontSize: 9,
                                           fontWeight: FontWeight.w900,
                                           color: NexusTheme.emerald600),
                                     ),
+                                    if (action == 'STATUS_CHANGE') ...[
+                                      const Icon(Icons.arrow_forward_rounded, size: 10, color: NexusTheme.amber700),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        'TO: ${data?['status'] ?? 'N/A'}',
+                                        style: const TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w900,
+                                            color: NexusTheme.amber700),
+                                      ),
+                                    ] else if (action == 'CREATE') ...[
+                                      const Icon(Icons.star_rounded, size: 12, color: NexusTheme.emerald600),
+                                      const SizedBox(width: 4),
+                                      const Text(
+                                        'MISSION STARTED',
+                                        style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w900,
+                                            color: NexusTheme.emerald600),
+                                      ),
+                                    ]
                                   ],
                                 ),
                               ),
@@ -620,7 +668,11 @@ class _OrderArchiveScreenState extends State<OrderArchiveScreen> {
                         ],
                         if (hasPhotos) ...[
                           const SizedBox(height: 12),
-                          _buildSalesPhotosRow(salesPhotos),
+                          if (salesPhotos.isNotEmpty) _buildPhotosRow('SALES PHOTOS', salesPhotos),
+                          if (qcPhoto != null) ...[
+                            if (salesPhotos.isNotEmpty) const SizedBox(height: 8),
+                            _buildPhotosRow('QC PROOF PHOTO', [qcPhoto]),
+                          ],
                         ],
                       ],
                     ),
@@ -634,13 +686,13 @@ class _OrderArchiveScreenState extends State<OrderArchiveScreen> {
     );
   }
 
-  // ─── SALES PHOTOS ─────────────────────────────────────────────────────────
-  Widget _buildSalesPhotosRow(List<String> photos) {
+  // ─── PHOTOS ROW ───────────────────────────────────────────────────────────
+  Widget _buildPhotosRow(String title, List<String> photos) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('SALES PHOTOS',
-            style: TextStyle(
+        Text(title,
+            style: const TextStyle(
                 fontSize: 9,
                 fontWeight: FontWeight.w900,
                 color: NexusTheme.slate400,

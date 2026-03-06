@@ -455,6 +455,8 @@ class Order {
   final double? discountAmount;
   final double? netWeight;
   final double? grossWeight;
+  final List<String> salesPhotos;
+  final String? qcPhoto;
 
   Order({
     required this.id,
@@ -480,6 +482,8 @@ class Order {
     this.discountAmount,
     this.netWeight,
     this.grossWeight,
+    this.salesPhotos = const [],
+    this.qcPhoto,
   });
 
   factory Order.fromJson(Map<String, dynamic> json) {
@@ -518,6 +522,8 @@ class Order {
       discountAmount: (json['discountAmount'] as num?)?.toDouble(),
       netWeight: (json['netWeight'] as num?)?.toDouble(),
       grossWeight: (json['grossWeight'] as num?)?.toDouble(),
+      salesPhotos: json['salesPhotos'] != null ? List<String>.from(json['salesPhotos']) : [],
+      qcPhoto: json['qcPhoto'],
     );
   }
 
@@ -546,6 +552,8 @@ class Order {
       if (discountAmount != null) 'discountAmount': discountAmount,
       if (netWeight != null) 'netWeight': netWeight,
       if (grossWeight != null) 'grossWeight': grossWeight,
+      'salesPhotos': salesPhotos,
+      if (qcPhoto != null) 'qcPhoto': qcPhoto,
     };
   }
 }

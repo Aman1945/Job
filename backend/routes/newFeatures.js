@@ -19,6 +19,7 @@ const PackagingTransaction = require('../models/PackagingTransaction');
 
 // Import services
 const { generateBulkOrderTemplate, parseBulkOrderExcel } = require('../services/excelService');
+const { createAuditLog, logStatusChange } = require('../middleware/auditLogger');
 
 module.exports = (app) => {
 
@@ -671,6 +672,20 @@ module.exports = (app) => {
             const createdOrders = await Order.insertMany(validatedOrders);
 
             console.log(`✅ Created ${createdOrders.length} bulk orders`);
+
+            // Log each order creation in audit logs
+            for (const order of createdOrders) {
+                createAuditLog({
+                    userId: req.user.userId,
+                    userName: req.user.name,
+                    action: 'CREATE',
+                    entityType: 'ORDER',
+                    entityId: order.id,
+                    newData: order,
+                    ipAddress: req.ip || req.connection.remoteAddress,
+                    userAgent: req.get('user-agent')
+                });
+            }
 
             res.status(201).json({
                 success: true,

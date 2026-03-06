@@ -148,7 +148,7 @@ const DistributorPrice = require('./models/DistributorPrice');
 
 // Middleware
 const { verifyToken } = require('./middleware/auth');
-const { logCreate, logUpdate, logDelete } = require('./middleware/auditLogger');
+const { logCreate, logUpdate, logDelete, logStatusChange } = require('./middleware/auditLogger');
 
 
 // ==================== HOME ROUTE ====================
@@ -1044,6 +1044,21 @@ app.patch('/api/orders/:id', verifyToken, logUpdate('ORDER'), async (req, res) =
 
         if (order) {
             console.log(`✅ Order updated: ${id}`);
+
+            // Log status change if applicable
+            if (updateData.status && req.originalData.status !== updateData.status) {
+                logStatusChange(
+                    req.user.userId,
+                    req.user.name,
+                    'ORDER',
+                    id,
+                    req.originalData.status,
+                    updateData.status,
+                    req.ip || req.connection.remoteAddress,
+                    req.get('user-agent')
+                );
+            }
+
             return res.json({ success: true, data: order });
         }
 
@@ -1119,6 +1134,18 @@ app.post('/api/logistics/bulk-assign', verifyToken, async (req, res) => {
                     }
                 },
                 { new: true }
+            );
+
+            // Log status change for bulk assignment
+            logStatusChange(
+                req.user.userId,
+                req.user.name,
+                'ORDER',
+                orderId,
+                order.status,
+                'In Transit',
+                req.ip || req.connection.remoteAddress,
+                req.get('user-agent')
             );
 
             console.log(`🚚 Logistics assigned: ${orderId} → In Transit | Agent: ${logisticsData.deliveryAgentId} | Manifest: ${logisticsData.manifestId}`);
