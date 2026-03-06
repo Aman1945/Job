@@ -42,6 +42,8 @@ async function getCreditInsight(order, customer) {
     }
 
     try {
+        const orderItems = order.items?.map(i => `- ${i.productName} (Qty: ${i.quantity}, Rate: ₹${i.price})`).join('\n') || 'No items listed';
+
         const prompt = `You are a Senior Credit Risk Analyst for NexusOMS. Analyze the following credit approval request and provide a sophisticated, data-driven risk assessment.
 
 ### DATA INPUTS:
@@ -51,25 +53,34 @@ async function getCreditInsight(order, customer) {
 - Current Outstanding: ₹${customer.outstanding || 0}
 - Overdue Amount: ₹${customer.overdue || 0}
 - Ageing Profile: ${customer.ageingDays || 0} days (Bucket: ${customer.ageingDays > 60 ? 'CRITICAL' : customer.ageingDays > 30 ? 'WATCHLIST' : 'HEALTHY'})
+- Ageing Buckets (Breakdown):
+  * 0-30 Days: ₹${(customer.agingBuckets?.['0 to 7'] || 0) + (customer.agingBuckets?.['7 to 15'] || 0) + (customer.agingBuckets?.['15 to 30'] || 0)}
+  * 30-90 Days: ₹${(customer.agingBuckets?.['30 to 45'] || 0) + (customer.agingBuckets?.['45 to 90'] || 0)}
+  * 90+ Days: ₹${(customer.agingBuckets?.['90 to 120'] || 0) + (customer.agingBuckets?.['120 to 150'] || 0) + (customer.agingBuckets?.['150 to 180'] || 0) + (customer.agingBuckets?.['>180'] || 0)}
 - Credit Limit: ₹${customer.creditLimit || 'No limit set'}
 - Payment Reliability: ${customer.paymentHistory || 'New Account'}
 
 **Inbound Order Details:**
 - Order ID: ${order.id}
 - Order Value: ₹${order.total}
+- SKU Count: ${order.items?.length || 0} unique lines
+- Items Breakdown:
+${orderItems}
+
+**Financial Ratios:**
 - Exposure Ratio: ${customer.creditLimit ? (((customer.outstanding || 0) + (order.total || 0)) / customer.creditLimit * 100).toFixed(1) + '%' : 'N/A'}
-- SKU Count: ${order.items?.length || 0} unique lines 
+- Overdue to Outstanding: ${customer.outstanding > 0 ? ((customer.overdue || 0) / customer.outstanding * 100).toFixed(1) + '%' : '0%'}
 
 ### TASK:
-Provide a critical, concise (maximum 3-4 sentences) analytical assessment. 
+Provide a critical, concise (maximum 4-5 sentences) analytical assessment. 
 
 Structure your response exactly as follows:
 1. **RISK SCORE:** [LOW / MEDIUM / HIGH / CRITICAL]
-2. **CORE ANALYSIS:** One sentence on why this score was assigned (focus on exposure vs. limit or ageing).
+2. **CORE ANALYSIS:** A breakdown of the primary risk drivers (exposure, aging profile, or item materiality).
 3. **DECISION:** [APPROVE / FLAG FOR FINANCE REVIEW / REJECT]
-4. **JUSTIFICATION:** A brief reason for the final decision.
+4. **JUSTIFICATION:** A brief, professional reasoning for the final decision.
 
-Be precise, professional, and avoid generic filler text.`;
+Be precise, professional, and avoid generic filler text. Use Indian Rupee (₹) for all currency mentions.`;
 
         const result = await model.generateContent(prompt);
         const response = await result.response;
