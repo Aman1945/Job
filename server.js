@@ -1215,7 +1215,14 @@ app.post('/api/customers/bulk-import', upload.single('file'), async (req, res) =
 
         const workbook = new ExcelJS.Workbook();
         await workbook.xlsx.readFile(req.file.path);
-        const worksheet = workbook.getWorksheet(1);
+        // getWorksheet(1) returns undefined for named sheets; fall back to first sheet
+        let worksheet = workbook.getWorksheet(1);
+        if (!worksheet) {
+            workbook.eachSheet((ws) => { if (!worksheet) worksheet = ws; });
+        }
+        if (!worksheet) {
+            return res.status(400).json({ message: 'No worksheet found in the uploaded file' });
+        }
         const headerRow = worksheet.getRow(1);
         const colMap = {};
 
