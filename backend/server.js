@@ -704,96 +704,143 @@ app.post('/api/products/bulk-import', upload.single('file'), async (req, res) =>
         const colMap = {};
 
         headerRow.eachCell((cell, colNumber) => {
-            const header = cell.value?.toString().trim().toLowerCase();
+            const raw = (cell.value?.toString() ?? '').trim();
+            const header = raw.toLowerCase().replace(/\s+/g, ' ');
             if (!header) return;
-            if (header === 'productcode' || header === 'sku' || header === 'code') colMap.skuCode = colNumber;
-            else if (header === 'productshortname' || header === 'short name') colMap.productShortName = colNumber;
-            else if (header === 'product name' || header === 'name') colMap.name = colNumber;
-            else if (header === 'distributionchannel' || header === 'channel') colMap.distributionChannel = colNumber;
-            else if (header === 'specie') colMap.specie = colNumber;
-            else if (header === 'weight packing' || header === 'weightpack') colMap.weightPacking = colNumber;
-            else if (header === 'weight') colMap.productWeight = colNumber;
-            else if (header === 'packing' || header === 'pack') colMap.productPacking = colNumber;
-            else if (header === 'mrp') colMap.mrp = colNumber;
-            else if (header === 'gst%') colMap.gst = colNumber;
-            else if (header === 'hsncode' || header === 'hsn') colMap.hsnCode = colNumber;
-            else if (header === 'country of origin' || header === 'origin') colMap.countryOfOrigin = colNumber;
-            else if (header === 'shelf life in days' || header.includes('shelf')) colMap.shelfLifeDays = colNumber;
-            else if (header === 'remarks') colMap.remarks = colNumber;
-            else if (header === 'yc70') colMap.yc70 = colNumber;
-            else if (header === 'processing charges' || header === 'processing') colMap.processingCharges = colNumber;
-            else if (header.includes('price') || header.includes('rate')) colMap.price = colNumber;
-            else if (header.includes('stock') || header.includes('qty')) colMap.stock = colNumber;
-            else if (header.includes('category') || header.includes('cat')) colMap.category = colNumber;
+            // Col 1 : ProductCode
+            if (['productcode', 'product code', 'sku', 'sku code', 'code'].includes(header))
+                colMap.skuCode = colNumber;
+            // Col 2 : Product Name
+            else if (['product name', 'productname', 'name'].includes(header))
+                colMap.name = colNumber;
+            // Col 3 : ProductShortName
+            else if (['productshortname', 'product short name', 'short name', 'shortname'].includes(header))
+                colMap.productShortName = colNumber;
+            // Col 4 : DistributionChannel
+            else if (['distributionchannel', 'distribution channel', 'channel'].includes(header) ||
+                     header.startsWith('distributionchan'))
+                colMap.distributionChannel = colNumber;
+            // Col 5 : Specie
+            else if (['specie', 'species'].includes(header))
+                colMap.specie = colNumber;
+            // Col 6 : Weight Packing
+            else if (['weight packing', 'weightpacking', 'wt packing'].includes(header))
+                colMap.weightPacking = colNumber;
+            // Col 7 : Weight
+            else if (header === 'weight')
+                colMap.productWeight = colNumber;
+            // Col 8 : Packing
+            else if (['packing', 'pack'].includes(header))
+                colMap.productPacking = colNumber;
+            // Col 9 : MRP
+            else if (header === 'mrp')
+                colMap.mrp = colNumber;
+            // Col 10 : GST%
+            else if (['gst%', 'gst %', 'gst'].includes(header))
+                colMap.gst = colNumber;
+            // Col 11 : HSNCODE
+            else if (['hsncode', 'hsn code', 'hsn'].includes(header))
+                colMap.hsnCode = colNumber;
+            // Col 12 : COUNTRY OF ORIGIN
+            else if (['country of origin', 'countryoforigin', 'origin'].includes(header) ||
+                     header.startsWith('country of ori'))
+                colMap.countryOfOrigin = colNumber;
+            // Col 13 : Shelf Life in days
+            else if (header.startsWith('shelf life') || header === 'shelflife')
+                colMap.shelfLifeDays = colNumber;
+            // Col 14 : REMARKS
+            else if (['remarks', 'remark'].includes(header))
+                colMap.remarks = colNumber;
+            // Col 15 : YC70
+            else if (header === 'yc70')
+                colMap.yc70 = colNumber;
+            // Col 16 : Processing Charges
+            else if (header.startsWith('processing'))
+                colMap.processingCharges = colNumber;
+            // Optional legacy
+            else if (['price', 'rate', 'base rate'].includes(header))
+                colMap.price = colNumber;
+            else if (['stock', 'qty', 'quantity'].includes(header))
+                colMap.stock = colNumber;
+            else if (['category', 'cat'].includes(header))
+                colMap.category = colNumber;
         });
 
-        // Positional fallback for new 16-column format 
-        // Col1=ProductCode, Col2=Product Name, Col3=ProductShortName, Col4=DistributionChannel,
-        // Col5=Specie, Col6=Weight Packing, Col7=Weight, Col8=Packing,
-        // Col9=MRP, Col10=GST%, Col11=HSNCODE, Col12=COUNTRY OF ORIGIN,
-        // Col13=Shelf Life in days, Col14=REMARKS, Col15=YC70, Col16=Processing charges
-        const totalCols = headerRow.actualCellCount;
-        if (!colMap.name && totalCols >= 2) {
-            console.log('⚠️ Header map missing "name" — applying Material Master positional fallback');
-            if (!colMap.skuCode) colMap.skuCode = 1;
-            if (!colMap.name) colMap.name = 2;
-            if (!colMap.productShortName) colMap.productShortName = 3;
-            if (!colMap.distributionChannel) colMap.distributionChannel = 4;
-            if (!colMap.specie) colMap.specie = 5;
-            if (!colMap.weightPacking) colMap.weightPacking = 6;
-            if (!colMap.productWeight) colMap.productWeight = 7;
-            if (!colMap.productPacking) colMap.productPacking = 8;
-            if (!colMap.mrp) colMap.mrp = 9;
-            if (!colMap.gst) colMap.gst = 10;
-            if (!colMap.hsnCode) colMap.hsnCode = 11;
-            if (!colMap.countryOfOrigin) colMap.countryOfOrigin = 12;
-            if (!colMap.shelfLifeDays) colMap.shelfLifeDays = 13;
-            if (!colMap.remarks) colMap.remarks = 14;
-            if (!colMap.yc70) colMap.yc70 = 15;
-            if (!colMap.processingCharges) colMap.processingCharges = 16;
-        }
-
-        console.log('📍 Product Column map result:', colMap);
+        // ALWAYS apply positional fallback for any column that was not header-detected.
+        // This means the import works correctly whether or not ExcelJS reads the header text.
+        console.log('📍 Header-detected map:', JSON.stringify(colMap));
+        if (!colMap.skuCode)             colMap.skuCode = 1;
+        if (!colMap.name)                colMap.name = 2;
+        if (!colMap.productShortName)    colMap.productShortName = 3;
+        if (!colMap.distributionChannel) colMap.distributionChannel = 4;
+        if (!colMap.specie)              colMap.specie = 5;
+        if (!colMap.weightPacking)       colMap.weightPacking = 6;
+        if (!colMap.productWeight)       colMap.productWeight = 7;
+        if (!colMap.productPacking)      colMap.productPacking = 8;
+        if (!colMap.mrp)                 colMap.mrp = 9;
+        if (!colMap.gst)                 colMap.gst = 10;
+        if (!colMap.hsnCode)             colMap.hsnCode = 11;
+        if (!colMap.countryOfOrigin)     colMap.countryOfOrigin = 12;
+        if (!colMap.shelfLifeDays)       colMap.shelfLifeDays = 13;
+        if (!colMap.remarks)             colMap.remarks = 14;
+        if (!colMap.yc70)                colMap.yc70 = 15;
+        if (!colMap.processingCharges)   colMap.processingCharges = 16;
+        console.log('📍 Final column map (with positional fallback):', JSON.stringify(colMap));
 
         const products = [];
         const parseNum = (val) => {
-            if (val === undefined || val === null) return 0;
+            if (val === undefined || val === null || val === '') return null;
             if (typeof val === 'number') return val;
-            const str = String(val).replace(/,/g, '').replace(/[^\d.-]/g, '').replace('%', '');
-            return parseFloat(str) || 0;
+            const str = String(val).replace(/,/g, '').replace(/%/g, '').trim();
+            const n = parseFloat(str);
+            return isNaN(n) ? null : n;
         };
+        const parseStr = (val) => (val === undefined || val === null) ? '' : String(val).trim();
 
         worksheet.eachRow((row, rowNumber) => {
-            if (rowNumber === 1) return;
-            const getCellVal = (col) => col ? row.getCell(col).value : null;
+            if (rowNumber === 1) return; // skip header
+            const getCell = (col) => col ? row.getCell(col).value : null;
 
-            const rowData = {};
-            if (colMap.skuCode) rowData.skuCode = getCellVal(colMap.skuCode)?.toString()?.trim();
-            if (colMap.name) rowData.name = getCellVal(colMap.name)?.toString()?.trim();
-            if (colMap.productShortName) rowData.productShortName = getCellVal(colMap.productShortName)?.toString()?.trim();
-            if (colMap.distributionChannel) rowData.distributionChannel = getCellVal(colMap.distributionChannel)?.toString()?.trim();
-            if (colMap.specie) rowData.specie = getCellVal(colMap.specie)?.toString()?.trim();
-            if (colMap.weightPacking) rowData.weightPacking = getCellVal(colMap.weightPacking)?.toString()?.trim();
-            if (colMap.productWeight) rowData.productWeight = getCellVal(colMap.productWeight)?.toString()?.trim();
-            if (colMap.productPacking) rowData.productPacking = getCellVal(colMap.productPacking)?.toString()?.trim();
-            if (colMap.mrp) rowData.mrp = parseNum(getCellVal(colMap.mrp));
-            if (colMap.gst) rowData.gst = parseNum(getCellVal(colMap.gst));
-            if (colMap.hsnCode) rowData.hsnCode = getCellVal(colMap.hsnCode)?.toString()?.trim();
-            if (colMap.countryOfOrigin) rowData.countryOfOrigin = getCellVal(colMap.countryOfOrigin)?.toString()?.trim();
-            if (colMap.shelfLifeDays) rowData.shelfLifeDays = parseNum(getCellVal(colMap.shelfLifeDays));
-            if (colMap.remarks) rowData.remarks = getCellVal(colMap.remarks)?.toString()?.trim();
-            if (colMap.yc70) rowData.yc70 = parseNum(getCellVal(colMap.yc70));
-            if (colMap.processingCharges) rowData.processingCharges = parseNum(getCellVal(colMap.processingCharges));
-            
-            // Legacy / fallbacks
-            if (colMap.category) rowData.category = getCellVal(colMap.category)?.toString()?.trim();
-            if (colMap.price) rowData.price = parseNum(getCellVal(colMap.price));
-            if (colMap.stock) rowData.stock = parseNum(getCellVal(colMap.stock));
+            const skuCode = parseStr(getCell(colMap.skuCode));
+            const name    = parseStr(getCell(colMap.name));
+            if (!name) return; // skip empty rows
 
-            if (!rowData.id) rowData.id = rowData.skuCode || `PROD-${Date.now()}-${rowNumber}`;
+            const shortName = parseStr(getCell(colMap.productShortName));
+            const rowData = {
+                skuCode,
+                name,
+                productShortName: shortName,
+                shortName,          // also store as shortName for Flutter model compatibility
+                distributionChannel: parseStr(getCell(colMap.distributionChannel)),
+                specie:              parseStr(getCell(colMap.specie)),
+                weightPacking:       parseStr(getCell(colMap.weightPacking)),
+                productWeight:       parseStr(getCell(colMap.productWeight)),
+                productPacking:      parseStr(getCell(colMap.productPacking)),
+                mrp:                 parseNum(getCell(colMap.mrp)),
+                gst:                 parseNum(getCell(colMap.gst)),
+                hsnCode:             parseStr(getCell(colMap.hsnCode)),
+                countryOfOrigin:     parseStr(getCell(colMap.countryOfOrigin)),
+                shelfLifeDays:       parseNum(getCell(colMap.shelfLifeDays)),
+                remarks:             parseStr(getCell(colMap.remarks)),
+                yc70:                parseNum(getCell(colMap.yc70)),
+                processingCharges:   parseNum(getCell(colMap.processingCharges)),
+            };
 
-            if (rowData.name) products.push(rowData);
+            // Optional extra columns (only if detected by header)
+            if (colMap.category) rowData.category = parseStr(getCell(colMap.category));
+            if (colMap.price)    rowData.price     = parseNum(getCell(colMap.price));
+            if (colMap.stock)    rowData.stock     = parseNum(getCell(colMap.stock));
+
+            // Unique id — use skuCode or auto-generate
+            rowData.id = skuCode || `PROD-${Date.now()}-${rowNumber}`;
+            console.log(`  Row ${rowNumber}: id=${rowData.id} name="${rowData.name}" shortName="${rowData.shortName}"`);
+            products.push(rowData);
         });
+
+        if (products.length === 0) {
+            fs.unlinkSync(req.file.path);
+            return res.status(400).json({ message: 'No valid product rows found. Ensure data rows exist below the header.' });
+        }
 
         const bulkOps = products.map(p => ({
             updateOne: {
@@ -803,12 +850,12 @@ app.post('/api/products/bulk-import', upload.single('file'), async (req, res) =>
             }
         }));
 
-        if (bulkOps.length > 0) await Product.bulkWrite(bulkOps);
+        await Product.bulkWrite(bulkOps);
         fs.unlinkSync(req.file.path);
-        console.log(`🚀 Bulk imported ${products.length} products`);
+        console.log(`✅ Bulk imported ${products.length} products`);
         res.json({ success: true, message: `Successfully imported ${products.length} products` });
     } catch (error) {
-        console.error('Product bulk import error:', error);
+        console.error('❌ Product bulk import error:', error);
         res.status(500).json({ message: 'Error processing file', error: error.message });
     }
 });
