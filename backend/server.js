@@ -707,8 +707,8 @@ app.post('/api/products/bulk-import', upload.single('file'), async (req, res) =>
             const header = cell.value?.toString().trim().toLowerCase();
             if (!header) return;
             if (header === 'productcode' || header === 'sku' || header === 'code') colMap.skuCode = colNumber;
-            else if (header === 'product name' || header.includes('name')) colMap.name = colNumber;
             else if (header === 'productshortname' || header === 'short name') colMap.productShortName = colNumber;
+            else if (header === 'product name' || header === 'name') colMap.name = colNumber;
             else if (header === 'distributionchannel' || header === 'channel') colMap.distributionChannel = colNumber;
             else if (header === 'specie') colMap.specie = colNumber;
             else if (header === 'weight packing' || header === 'weightpack') colMap.weightPacking = colNumber;
