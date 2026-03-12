@@ -274,7 +274,7 @@ class _CustomerMasterScreenState extends State<CustomerMasterScreen> {
           ),
         ],
       ),
-    );
+    ));
   }
 
   Widget _metricCard(String label, String value, Color color, IconData icon) {

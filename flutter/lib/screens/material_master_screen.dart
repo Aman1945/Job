@@ -261,7 +261,7 @@ class _MaterialMasterScreenState extends State<MaterialMasterScreen> {
           ),
         ],
       ),
-    );
+    ));
   }
 
   Widget _metricCard(String label, String value, Color color, IconData icon) {
