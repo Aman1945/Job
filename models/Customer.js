@@ -5,6 +5,7 @@ const customerSchema = new mongoose.Schema({
     name: { type: String, required: true },
     type: { type: String },
     outstanding: { type: Number, default: 0 },
+    osBalance: { type: Number, default: 0 },
     overdue: { type: Number, default: 0 },
     ageingDays: { type: Number },
     creditLimit: { type: Number },
