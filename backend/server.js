@@ -1331,7 +1331,9 @@ app.post('/api/customers/bulk-import', upload.single('file'), async (req, res) =
                 securityChq: getCellVal(colMap.securityChq)?.toString()?.trim() || '-',
                 distributionChannel: getCellVal(colMap.distributionChannel)?.toString()?.trim() || null,
                 osBalance: parseNum(getCellVal(colMap.osBalance)),
+                outstanding: parseNum(getCellVal(colMap.osBalance)), // mirror for legacy field
                 odAmt: parseNum(getCellVal(colMap.odAmt)),
+                overdue: parseNum(getCellVal(colMap.odAmt)),           // mirror for legacy field
                 diffYesterdayToday: parseNum(getCellVal(colMap.diffYesterdayToday)),
                 agingBuckets: {
                     "0 to 7":   parseNum(getCellVal(colMap.bucket0_7)),
