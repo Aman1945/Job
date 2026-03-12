@@ -15,6 +15,8 @@ import '../widgets/row_detail_panel.dart';
 
 // Static distributor price data (from Excel)
 class _DistPrice {
+  final String? distributorCode;
+  final String? distributorName;
   final String code;
   final String name;
   final String materialNumber;
@@ -27,6 +29,8 @@ class _DistPrice {
   final double billingRate;
 
   const _DistPrice({
+    this.distributorCode,
+    this.distributorName,
     required this.code,
     required this.name,
     required this.materialNumber,
@@ -122,6 +126,8 @@ class _DistributorPriceScreenState extends State<DistributorPriceScreen> {
     // Prefer live backend data if available
     if (liveData.isNotEmpty) {
       return liveData.map((d) => _DistPrice(
+        distributorCode: d.distributorCode,
+        distributorName: d.distributorName,
         code: d.code,
         name: d.name,
         materialNumber: d.materialNumber ?? '-',
