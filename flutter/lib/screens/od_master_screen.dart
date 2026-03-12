@@ -146,63 +146,44 @@ class _OdMasterScreenState extends State<OdMasterScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const SizedBox(height: 8),
-                Row(
-                  children: [
-                    _metricCard('OD ACCOUNTS', odCount.toString(), const Color(0xFF6366F1), Icons.account_balance_outlined),
-                    const SizedBox(width: 10),
-                    _metricCard('O/S AMOUNT', '₹${fmt.format(totalOsAmt.toInt())}', Colors.orange, Icons.receipt_long_outlined),
-                    const SizedBox(width: 10),
-                    _metricCard('OD EXPOSURE', '₹${fmt.format(totalOdAmt.toInt())}', Colors.redAccent, Icons.warning_amber_outlined),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Showing ${allOd.length} total customers · Updated: $_lastRefreshed',
-                      style: TextStyle(color: Colors.green.shade500, fontSize: 11, fontWeight: FontWeight.w500),
-                    ),
-                    InkWell(
-                      onTap: () async {
-                        setState(() => _lastRefreshed = "Updating...");
-                        await provider.fetchCustomers();
-                        if (mounted) {
-                          setState(() => _lastRefreshed = DateFormat('HH:mm:ss').format(DateTime.now()));
-                        }
-                      },
-                      child: const Row(children: [
-                        Icon(Icons.refresh, size: 14, color: NexusTheme.indigo600),
-                        SizedBox(width: 4),
-                        Text('REFRESH DATA', style: TextStyle(color: NexusTheme.indigo600, fontSize: 11, fontWeight: FontWeight.w800)),
-                      ]),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Showing ${allOd.length} total customers · Updated: $_lastRefreshed',
-                      style: TextStyle(color: Colors.green.shade500, fontSize: 11, fontWeight: FontWeight.w500),
-                    ),
-                    InkWell(
-                      onTap: () async {
-                        setState(() => _lastRefreshed = "Updating...");
-                        await provider.fetchCustomers();
-                        if (mounted) {
-                          setState(() => _lastRefreshed = DateFormat('HH:mm:ss').format(DateTime.now()));
-                        }
-                      },
-                      child: const Row(children: [
-                        Icon(Icons.refresh, size: 14, color: NexusTheme.indigo600),
-                        SizedBox(width: 4),
-                        Text('REFRESH DATA', style: TextStyle(color: NexusTheme.indigo600, fontSize: 11, fontWeight: FontWeight.w800)),
-                      ]),
-                    ),
-                  ],
-                ),
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: [
+                      _metricCard('OD ACCOUNTS', odCount.toString(), const Color(0xFF6366F1), Icons.account_balance_outlined),
+                      const SizedBox(width: 10), // kept for spacing but Wrap handles it mostly
+                      _metricCard('O/S AMOUNT', '₹${fmt.format(totalOsAmt.toInt())}', Colors.orange, Icons.receipt_long_outlined),
+                      const SizedBox(width: 10),
+                      _metricCard('OD EXPOSURE', '₹${fmt.format(totalOdAmt.toInt())}', Colors.redAccent, Icons.warning_amber_outlined),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    alignment: WrapAlignment.spaceBetween,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      Text(
+                        'Showing ${allOd.length} total customers · Updated: $_lastRefreshed',
+                        style: TextStyle(color: Colors.green.shade500, fontSize: 11, fontWeight: FontWeight.w500),
+                      ),
+                      InkWell(
+                        onTap: () async {
+                          setState(() => _lastRefreshed = "Updating...");
+                          await provider.fetchCustomers();
+                          if (mounted) {
+                            setState(() => _lastRefreshed = DateFormat('HH:mm:ss').format(DateTime.now()));
+                          }
+                        },
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                          Icon(Icons.refresh, size: 14, color: NexusTheme.indigo600),
+                          SizedBox(width: 4),
+                          Text('REFRESH DATA', style: TextStyle(color: NexusTheme.indigo600, fontSize: 11, fontWeight: FontWeight.w800)),
+                        ]),
+                      ),
+                    ],
+                  ),
                 const SizedBox(height: 16),
                 // Search bar
                 TextField(
