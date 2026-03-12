@@ -908,37 +908,81 @@ app.post('/api/distributor-prices/bulk-import', upload.single('file'), async (re
         headerRow.eachCell((cell, colNumber) => {
             const header = cell.value?.toString().trim().toLowerCase();
             if (!header) return;
-            if (header.includes('code') || header.includes('sku')) colMap.code = colNumber;
-            else if (header.includes('name') || header.includes('material name')) colMap.name = colNumber;
-            else if (header.includes('material number') || header.includes('mat. no')) colMap.materialNumber = colNumber;
-            else if (header.includes('in kg') || header.includes('packing') || header.includes('pack size')) colMap.inKg = colNumber;
-            else if (header.includes('mrp')) colMap.mrp = colNumber;
-            else if (header.includes('gst')) colMap.gstPct = colNumber;
-            else if (header.includes('retailer margin') || header.includes('ret. margin')) colMap.retailerMarginOnMrp = colNumber;
-            else if (header.includes('dist margin on cost') || header === 'dist margin\non cost') colMap.distMarginOnCost = colNumber;
-            else if (header.includes('dist margin on mrp') || header === 'dist margin\non mrp') colMap.distMarginOnMrp = colNumber;
-            else if (header.includes('billing rate') || header.includes('billing') || header.includes('rate')) colMap.billingRate = colNumber;
-            else if (header.includes('category') || header.includes('cat')) colMap.category = colNumber;
+            // 1. Code -> distributorCode
+            if (header === 'code') colMap.distributorCode = colNumber;
+            // 2. Name -> distributorName
+            else if (header === 'name' && !colMap.distributorName) colMap.distributorName = colNumber;
+            // 3. Material -> code
+            else if (header === 'material') colMap.code = colNumber;
+            // 4. Material Number -> name
+            else if (header === 'material number') colMap.name = colNumber;
+            // 5. MRP
+            else if (header === 'mrp') colMap.mrp = colNumber;
+            // 6. in Kg
+            else if (header === 'in kg') colMap.inKg = colNumber;
+            // 7. % GST
+            else if (header === '% gst' || header === 'gst %' || header === 'gst') colMap.gstPct = colNumber;
+            // 8. Retailer Margin On MRP
+            else if (header.includes('retailer margin')) colMap.retailerMarginOnMrp = colNumber;
+            // 9. Dist Margin On Cost
+            else if (header.includes('dist margin on cost')) colMap.distMarginOnCost = colNumber;
+            // 10. Dist Margin On MRP
+            else if (header.includes('dist margin on mrp')) colMap.distMarginOnMrp = colNumber;
+            // 11. Billing Rate
+            else if (header.includes('billing rate') || header.includes('billing')) colMap.billingRate = colNumber;
         });
 
+        // Positional fallback for new 11-column format
+        const totalCols = headerRow.actualCellCount;
+        if (!colMap.name && totalCols >= 2) {
+            console.log('⚠️ DP Header map missing "name" — applying positional fallback');
+            if (!colMap.distributorCode) colMap.distributorCode = 1;
+            if (!colMap.distributorName) colMap.distributorName = 2;
+            if (!colMap.code) colMap.code = 3;
+            if (!colMap.name) colMap.name = 4;
+            if (!colMap.mrp) colMap.mrp = 5;
+            if (!colMap.inKg) colMap.inKg = 6;
+            if (!colMap.gstPct) colMap.gstPct = 7;
+            if (!colMap.retailerMarginOnMrp) colMap.retailerMarginOnMrp = 8;
+            if (!colMap.distMarginOnCost) colMap.distMarginOnCost = 9;
+            if (!colMap.distMarginOnMrp) colMap.distMarginOnMrp = 10;
+            if (!colMap.billingRate) colMap.billingRate = 11;
+        }
+
+        console.log('📍 DP Column map result:', colMap);
+
         const items = [];
+        const parseNum = (val) => {
+            if (val === undefined || val === null) return 0;
+            if (typeof val === 'number') return val;
+            const str = String(val).replace(/,/g, '').replace(/[^\d.-]/g, '').replace('%', '');
+            return parseFloat(str) || 0;
+        };
+
         worksheet.eachRow((row, rowNumber) => {
             if (rowNumber === 1) return;
+            const getCellVal = (col) => col ? row.getCell(col).value : null;
+
             const rowData = {};
-            if (colMap.code) rowData.code = row.getCell(colMap.code).value?.toString();
-            if (colMap.name) rowData.name = row.getCell(colMap.name).value?.toString();
-            if (colMap.materialNumber) rowData.materialNumber = row.getCell(colMap.materialNumber).value?.toString();
-            if (colMap.inKg) rowData.inKg = row.getCell(colMap.inKg).value?.toString();
-            if (colMap.mrp) rowData.mrp = parseFloat(row.getCell(colMap.mrp).value) || 0;
-            if (colMap.gstPct) rowData.gstPct = parseFloat(row.getCell(colMap.gstPct).value) || 0;
-            if (colMap.retailerMarginOnMrp) rowData.retailerMarginOnMrp = parseFloat(row.getCell(colMap.retailerMarginOnMrp).value) || 0;
-            if (colMap.distMarginOnCost) rowData.distMarginOnCost = parseFloat(row.getCell(colMap.distMarginOnCost).value) || 0;
-            if (colMap.distMarginOnMrp) rowData.distMarginOnMrp = parseFloat(row.getCell(colMap.distMarginOnMrp).value) || 0;
-            if (colMap.billingRate) rowData.billingRate = parseFloat(row.getCell(colMap.billingRate).value) || 0;
-            if (colMap.category) rowData.category = row.getCell(colMap.category).value?.toString();
-            rowData.id = rowData.code || `DP-${Date.now()}-${rowNumber}`;
+            if (colMap.distributorCode) rowData.distributorCode = getCellVal(colMap.distributorCode)?.toString()?.trim();
+            if (colMap.distributorName) rowData.distributorName = getCellVal(colMap.distributorName)?.toString()?.trim();
+            if (colMap.code) rowData.code = getCellVal(colMap.code)?.toString()?.trim();
+            if (colMap.name) rowData.name = getCellVal(colMap.name)?.toString()?.trim();
+            if (colMap.mrp) rowData.mrp = parseNum(getCellVal(colMap.mrp));
+            if (colMap.inKg) rowData.inKg = getCellVal(colMap.inKg)?.toString()?.trim();
+            if (colMap.gstPct) rowData.gstPct = parseNum(getCellVal(colMap.gstPct));
+            if (colMap.retailerMarginOnMrp) rowData.retailerMarginOnMrp = parseNum(getCellVal(colMap.retailerMarginOnMrp));
+            if (colMap.distMarginOnCost) rowData.distMarginOnCost = parseNum(getCellVal(colMap.distMarginOnCost));
+            if (colMap.distMarginOnMrp) rowData.distMarginOnMrp = parseNum(getCellVal(colMap.distMarginOnMrp));
+            if (colMap.billingRate) rowData.billingRate = parseNum(getCellVal(colMap.billingRate));
+            
+            // Generate composite ID based on distributor and product
+            const distCode = rowData.distributorCode || 'UNK';
+            const prodCode = rowData.code || `PROD-${Date.now()}`;
+            rowData.id = `${distCode}-${prodCode}`;
+            
             rowData.isActive = true;
-            if (rowData.name) items.push(rowData);
+            if (rowData.name && rowData.code) items.push(rowData);
         });
 
         const bulkOps = items.map(item => ({
@@ -965,16 +1009,19 @@ app.get('/api/distributor-prices/import-template', async (req, res) => {
         const workbook = new ExcelJS.Workbook();
         const worksheet = workbook.addWorksheet('Distributor Price Template');
         const headers = [
-            'Code/SKU', 'Material Name', 'Material Number', 'In KG (Pack Size)',
-            'MRP', 'GST %', 'Retailer Margin on MRP %',
-            'Dist Margin on Cost %', 'Dist Margin on MRP %', 'Billing Rate', 'Category'
+            'Code', 'Name', 'Material', 'Material Number',
+            'MRP', 'in Kg', '% GST', 'Retailer Margin On MRP',
+            'Dist Margin On Cost', 'Dist Margin On MRP', 'Billing Rate'
         ];
         const headerRow = worksheet.addRow(headers);
         headerRow.font = { bold: true, color: { argb: 'FFFFFF' } };
         headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '0F172A' } };
-        worksheet.columns = headers.map(() => ({ width: 22 }));
-        // Add example row
-        worksheet.addRow(['SKU-001', 'Example Product 5Kg', 'MAT-10001', '5 Kg', 850, 5, 15, 10, 8.5, 720, 'Poultry']);
+        worksheet.columns = headers.map(() => ({ width: 18 }));
+        // Add example row based on user template
+        worksheet.addRow([
+            '197362', 'MULTIPRODUCTS CORPORATION', '2004643', 'FISH FINGERS RETAIL PACK 200G',
+            220, 0.2, '5%', '34%', '10%', '0%', 116.29
+        ]);
 
         const buffer = await workbook.xlsx.writeBuffer();
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');

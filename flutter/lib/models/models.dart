@@ -339,6 +339,8 @@ class Product {
 // Distributor Price List model (maps to /api/distributor-prices)
 class DistributorPrice {
   final String id;
+  final String? distributorCode;
+  final String? distributorName;
   final String code;
   final String name;
   final String? materialNumber;
@@ -354,6 +356,8 @@ class DistributorPrice {
 
   DistributorPrice({
     required this.id,
+    this.distributorCode,
+    this.distributorName,
     required this.code,
     required this.name,
     this.materialNumber,
@@ -371,6 +375,8 @@ class DistributorPrice {
   factory DistributorPrice.fromJson(Map<String, dynamic> json) {
     return DistributorPrice(
       id: json['id'] ?? json['code'] ?? '',
+      distributorCode: json['distributorCode'],
+      distributorName: json['distributorName'],
       code: json['code'] ?? '',
       name: json['name'] ?? '',
       materialNumber: json['materialNumber'],
@@ -388,6 +394,8 @@ class DistributorPrice {
 
   Map<String, dynamic> toJson() => {
     'id': id,
+    if (distributorCode != null) 'distributorCode': distributorCode,
+    if (distributorName != null) 'distributorName': distributorName,
     'code': code,
     'name': name,
     if (materialNumber != null) 'materialNumber': materialNumber,

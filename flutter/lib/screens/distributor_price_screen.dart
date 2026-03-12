@@ -333,10 +333,11 @@ class _DistributorPriceScreenState extends State<DistributorPriceScreen> {
     // Scrollable columns
     final scrollCols = [
       ('CODE', 90.0),
-      ('MAT. NUMBER', 110.0),
-      ('IN KG', 72.0),
+      ('NAME', 160.0),
+      ('MATERIAL', 100.0),
       ('MRP', 90.0),
-      ('GST %', 65.0),
+      ('IN KG', 72.0),
+      ('% GST', 65.0),
       ('RET. MARGIN\nON MRP', 95.0),
       ('DIST MARGIN\nON COST', 95.0),
       ('DIST MARGIN\nON MRP', 90.0),
@@ -389,7 +390,7 @@ class _DistributorPriceScreenState extends State<DistributorPriceScreen> {
 
     final headerRow = Row(
       children: [
-        frozenCell('MATERIAL NAME', isHeader: true),
+        frozenCell('MATERIAL NUMBER', isHeader: true),
         Expanded(
           child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
@@ -439,15 +440,16 @@ class _DistributorPriceScreenState extends State<DistributorPriceScreen> {
                           color: _selectedPrice?.code == p.code ? const Color(0xFFEEF2FF) : Colors.transparent,
                           child: Row(
                             children: [
-                              scrollCell(p.code, scrollCols[0].$2, textColor: NexusTheme.indigo600),
-                              scrollCell(p.materialNumber, scrollCols[1].$2),
-                              scrollCell(p.inKg, scrollCols[2].$2),
+                              scrollCell(p.distributorCode ?? '-', scrollCols[0].$2, textColor: NexusTheme.indigo600),
+                              scrollCell(p.distributorName ?? '-', scrollCols[1].$2),
+                              scrollCell(p.code, scrollCols[2].$2),
                               scrollCell('₹${p.mrp.toStringAsFixed(0)}', scrollCols[3].$2, textColor: const Color(0xFF059669)),
-                              scrollCell('${p.gstPct.toStringAsFixed(0)}%', scrollCols[4].$2),
-                              scrollCell('${p.retailerMarginOnMrp.toStringAsFixed(1)}%', scrollCols[5].$2, textColor: Colors.orange.shade700),
-                              scrollCell('${p.distMarginOnCost.toStringAsFixed(1)}%', scrollCols[6].$2, textColor: Colors.orange.shade700),
-                              scrollCell('${p.distMarginOnMrp.toStringAsFixed(1)}%', scrollCols[7].$2, textColor: Colors.orange.shade700),
-                              scrollCell('₹${p.billingRate.toStringAsFixed(0)}', scrollCols[8].$2, textColor: const Color(0xFF7C3AED)),
+                              scrollCell(p.inKg ?? '-', scrollCols[4].$2),
+                              scrollCell('${p.gstPct.toStringAsFixed(0)}%', scrollCols[5].$2),
+                              scrollCell('${p.retailerMarginOnMrp.toStringAsFixed(1)}%', scrollCols[6].$2, textColor: Colors.orange.shade700),
+                              scrollCell('${p.distMarginOnCost.toStringAsFixed(1)}%', scrollCols[7].$2, textColor: Colors.orange.shade700),
+                              scrollCell('${p.distMarginOnMrp.toStringAsFixed(1)}%', scrollCols[8].$2, textColor: Colors.orange.shade700),
+                              scrollCell('₹${p.billingRate.toStringAsFixed(0)}', scrollCols[9].$2, textColor: const Color(0xFF7C3AED)),
                             ],
                           ),
                         ),
