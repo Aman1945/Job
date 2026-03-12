@@ -1173,7 +1173,8 @@ app.get('/api/customers/import-template', async (req, res) => {
         const workbook = new ExcelJS.Workbook();
         const worksheet = workbook.addWorksheet('Customer Import Template');
 
-        // Define Headers based on the 22-column structure
+        // Ensure accurate header spacing for dynamic headers. The backend parser handles minor variants,
+        // but it's best to match the exact OD Master export shape so that the template is literally just a blank version.
         const headers = [
             'Customer ID', 'Dist', 'Sales Manager', 'Class', 'Employee respons.',
             'Customer Names', 'Credit Days', 'Credit Limit', 'Security Chq',
@@ -1248,33 +1249,40 @@ app.post('/api/customers/bulk-import', upload.single('file'), async (req, res) =
         });
 
         const customers = [];
+        const parseNum = (val) => {
+            if (val === undefined || val === null) return 0;
+            if (typeof val === 'number') return val;
+            const str = String(val).replace(/,/g, '').replace(/[^\d.-]/g, '');
+            return parseFloat(str) || 0;
+        };
+
         worksheet.eachRow((row, rowNumber) => {
             if (rowNumber === 1) return; // Skip header
 
             const rowData = {
                 id: colMap.id ? row.getCell(colMap.id).value?.toString() : null,
                 name: colMap.name ? row.getCell(colMap.name).value?.toString() : null,
-                location: colMap.location ? row.getCell(colMap.location).value : null,
-                salesManager: colMap.salesManager ? row.getCell(colMap.salesManager).value : null,
-                customerClass: colMap.customerClass ? row.getCell(colMap.customerClass).value : null,
-                employeeResponsible: colMap.employeeResponsible ? row.getCell(colMap.employeeResponsible).value : null,
-                exposureDays: colMap.exposureDays ? (parseInt(row.getCell(colMap.exposureDays).value) || 15) : 15,
-                limit: colMap.limit ? (parseFloat(row.getCell(colMap.limit).value) || 0) : 0,
-                securityChq: colMap.securityChq ? (row.getCell(colMap.securityChq).value || '-') : '-',
-                distributionChannel: colMap.distributionChannel ? row.getCell(colMap.distributionChannel).value : null,
-                osBalance: colMap.osBalance ? (parseFloat(row.getCell(colMap.osBalance).value) || 0) : 0,
-                odAmt: colMap.odAmt ? (parseFloat(row.getCell(colMap.odAmt).value) || 0) : 0,
-                diffYesterdayToday: colMap.diffYesterdayToday ? (parseFloat(row.getCell(colMap.diffYesterdayToday).value) || 0) : 0,
+                location: colMap.location ? row.getCell(colMap.location).value?.toString() : null,
+                salesManager: colMap.salesManager ? row.getCell(colMap.salesManager).value?.toString() : null,
+                customerClass: colMap.customerClass ? row.getCell(colMap.customerClass).value?.toString() : null,
+                employeeResponsible: colMap.employeeResponsible ? row.getCell(colMap.employeeResponsible).value?.toString() : null,
+                exposureDays: colMap.exposureDays ? (parseNum(row.getCell(colMap.exposureDays).value) || 15) : 15,
+                limit: colMap.limit ? parseNum(row.getCell(colMap.limit).value) : 0,
+                securityChq: colMap.securityChq ? (row.getCell(colMap.securityChq).value?.toString() || '-') : '-',
+                distributionChannel: colMap.distributionChannel ? row.getCell(colMap.distributionChannel).value?.toString() : null,
+                osBalance: colMap.osBalance ? parseNum(row.getCell(colMap.osBalance).value) : 0,
+                odAmt: colMap.odAmt ? parseNum(row.getCell(colMap.odAmt).value) : 0,
+                diffYesterdayToday: colMap.diffYesterdayToday ? parseNum(row.getCell(colMap.diffYesterdayToday).value) : 0,
                 agingBuckets: {
-                    "0 to 7": colMap.bucket0_7 ? (parseFloat(row.getCell(colMap.bucket0_7).value) || 0) : 0,
-                    "7 to 15": colMap.bucket7_15 ? (parseFloat(row.getCell(colMap.bucket7_15).value) || 0) : 0,
-                    "15 to 30": colMap.bucket15_30 ? (parseFloat(row.getCell(colMap.bucket15_30).value) || 0) : 0,
-                    "30 to 45": colMap.bucket30_45 ? (parseFloat(row.getCell(colMap.bucket30_45).value) || 0) : 0,
-                    "45 to 90": colMap.bucket45_90 ? (parseFloat(row.getCell(colMap.bucket45_90).value) || 0) : 0,
-                    "90 to 120": colMap.bucket90_120 ? (parseFloat(row.getCell(colMap.bucket90_120).value) || 0) : 0,
-                    "120 to 150": colMap.bucket120_150 ? (parseFloat(row.getCell(colMap.bucket120_150).value) || 0) : 0,
-                    "150 to 180": colMap.bucket150_180 ? (parseFloat(row.getCell(colMap.bucket150_180).value) || 0) : 0,
-                    ">180": colMap.bucketOver180 ? (parseFloat(row.getCell(colMap.bucketOver180).value) || 0) : 0
+                    "0 to 7": colMap.bucket0_7 ? parseNum(row.getCell(colMap.bucket0_7).value) : 0,
+                    "7 to 15": colMap.bucket7_15 ? parseNum(row.getCell(colMap.bucket7_15).value) : 0,
+                    "15 to 30": colMap.bucket15_30 ? parseNum(row.getCell(colMap.bucket15_30).value) : 0,
+                    "30 to 45": colMap.bucket30_45 ? parseNum(row.getCell(colMap.bucket30_45).value) : 0,
+                    "45 to 90": colMap.bucket45_90 ? parseNum(row.getCell(colMap.bucket45_90).value) : 0,
+                    "90 to 120": colMap.bucket90_120 ? parseNum(row.getCell(colMap.bucket90_120).value) : 0,
+                    "120 to 150": colMap.bucket120_150 ? parseNum(row.getCell(colMap.bucket120_150).value) : 0,
+                    "150 to 180": colMap.bucket150_180 ? parseNum(row.getCell(colMap.bucket150_180).value) : 0,
+                    ">180": colMap.bucketOver180 ? parseNum(row.getCell(colMap.bucketOver180).value) : 0
                 }
             };
 
