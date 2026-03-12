@@ -250,11 +250,17 @@ class Product {
   final String category;
   final String? distributionChannel;
   final String? specie;
+  final String? weightPacking;
+  final String? productWeight;
   final String? productPacking;
   final double? mrp;
   final String? hsnCode;
   final double? gst;
   final String? countryOfOrigin;
+  final int? shelfLifeDays;
+  final String? remarks;
+  final double? yc70;
+  final double? processingCharges;
 
   Product({
     required this.id,
@@ -266,11 +272,17 @@ class Product {
     required this.category,
     this.distributionChannel,
     this.specie,
+    this.weightPacking,
+    this.productWeight,
     this.productPacking,
     this.mrp,
     this.hsnCode,
     this.gst,
     this.countryOfOrigin,
+    this.shelfLifeDays,
+    this.remarks,
+    this.yc70,
+    this.processingCharges,
   });
 
   factory Product.fromJson(Map<String, dynamic> json) {
@@ -284,11 +296,17 @@ class Product {
       category: json['category'] ?? 'General',
       distributionChannel: json['distributionChannel'],
       specie: json['specie'],
+      weightPacking: json['weightPacking'],
+      productWeight: json['productWeight']?.toString(),
       productPacking: json['productPacking'],
       mrp: (json['mrp'] ?? 0).toDouble(),
-      hsnCode: json['hsnCode'],
+      hsnCode: json['hsnCode']?.toString(),
       gst: (json['gst'] ?? 0).toDouble(),
       countryOfOrigin: json['countryOfOrigin'],
+      shelfLifeDays: json['shelfLifeDays'] != null ? int.tryParse(json['shelfLifeDays'].toString()) : null,
+      remarks: json['remarks'],
+      yc70: json['yc70'] != null ? double.tryParse(json['yc70'].toString()) : null,
+      processingCharges: json['processingCharges'] != null ? double.tryParse(json['processingCharges'].toString()) : null,
     );
   }
 
@@ -303,11 +321,17 @@ class Product {
       'category': category,
       if (distributionChannel != null) 'distributionChannel': distributionChannel,
       if (specie != null) 'specie': specie,
+      if (weightPacking != null) 'weightPacking': weightPacking,
+      if (productWeight != null) 'productWeight': productWeight,
       if (productPacking != null) 'productPacking': productPacking,
       if (mrp != null) 'mrp': mrp,
       if (hsnCode != null) 'hsnCode': hsnCode,
       if (gst != null) 'gst': gst,
       if (countryOfOrigin != null) 'countryOfOrigin': countryOfOrigin,
+      if (shelfLifeDays != null) 'shelfLifeDays': shelfLifeDays,
+      if (remarks != null) 'remarks': remarks,
+      if (yc70 != null) 'yc70': yc70,
+      if (processingCharges != null) 'processingCharges': processingCharges,
     };
   }
 }

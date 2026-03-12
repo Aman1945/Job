@@ -161,7 +161,7 @@ class _OdMasterScreenState extends State<OdMasterScreen> {
                   children: [
                     Text(
                       'Showing ${allOd.length} total customers · Updated: $_lastRefreshed',
-                      style: TextStyle(color: Colors.slate.shade500, fontSize: 11, fontWeight: FontWeight.w500),
+                      style: TextStyle(color: Colors.green.shade500, fontSize: 11, fontWeight: FontWeight.w500),
                     ),
                     InkWell(
                       onTap: () async {
@@ -185,7 +185,7 @@ class _OdMasterScreenState extends State<OdMasterScreen> {
                   children: [
                     Text(
                       'Showing ${allOd.length} total customers · Updated: $_lastRefreshed',
-                      style: TextStyle(color: Colors.slate.shade500, fontSize: 11, fontWeight: FontWeight.w500),
+                      style: TextStyle(color: Colors.green.shade500, fontSize: 11, fontWeight: FontWeight.w500),
                     ),
                     InkWell(
                       onTap: () async {

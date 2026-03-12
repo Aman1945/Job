@@ -15,6 +15,10 @@ const productSchema = new mongoose.Schema({
     gst: { type: Number },
     hsnCode: { type: String },
     countryOfOrigin: { type: String },
+    shelfLifeDays: { type: Number },
+    remarks: { type: String },
+    yc70: { type: Number },
+    processingCharges: { type: Number },
     category: { type: String },
     unit: { type: String },
     stock: { type: Number, default: 0 }, // Derived from batches
