@@ -2,7 +2,9 @@ const mongoose = require('mongoose');
 
 const distributorPriceSchema = new mongoose.Schema({
     id: { type: String, required: true, unique: true },
-    code: { type: String, required: true },           // SKU Code
+    distributorCode: { type: String },                // Distributor Code
+    distributorName: { type: String },                // Distributor Name
+    code: { type: String, required: true },           // SKU/Material Code
     name: { type: String, required: true },           // Material/Product Name
     materialNumber: { type: String },                 // SAP Material Number
     inKg: { type: String },                           // Packing size e.g. "5 Kg"
