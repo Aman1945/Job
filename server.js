@@ -667,16 +667,21 @@ app.get('/api/products/import-template', async (req, res) => {
         const workbook = new ExcelJS.Workbook();
         const worksheet = workbook.addWorksheet('Material Master Template');
         const headers = [
-            'SKU Code', 'Material Name', 'Category', 'Specie',
-            'Packing (kg)', 'HSN Code', 'GST %', 'MRP', 'Billing Rate',
-            'Stock Qty', 'Country of Origin'
+            'ProductCode', 'Product Name', 'ProductShortName', 'DistributionChannel',
+            'Specie', 'Weight Packing', 'Weight', 'Packing', 'MRP', 'GST%',
+            'HSNCODE', 'COUNTRY OF ORIGIN', 'Shelf Life in days', 'REMARKS',
+            'YC70', 'Processing charges'
         ];
         const headerRow = worksheet.addRow(headers);
         headerRow.font = { bold: true, color: { argb: 'FFFFFF' } };
         headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '0F172A' } };
         worksheet.columns = headers.map(() => ({ width: 18 }));
-        // Add example row
-        worksheet.addRow(['SKU-1001', 'Premium Dog Food', 'Pet Supplies', 'Dog', '5', '23091000', 18, 1200, 950, 100, 'India']);
+        // Add example row based on user template
+        worksheet.addRow([
+            '2004643', 'BREADED FISH FINGERS 200G', 'BREADED FISH FINGERS 200G', 'RETAIL/HD',
+            'BREADED', '200G PKTS', '0.200', 'PKTS', 220, 5,
+            '16042000', 'INDIA', 365, '', '', ''
+        ]);
 
         const buffer = await workbook.xlsx.writeBuffer();
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -701,34 +706,90 @@ app.post('/api/products/bulk-import', upload.single('file'), async (req, res) =>
         headerRow.eachCell((cell, colNumber) => {
             const header = cell.value?.toString().trim().toLowerCase();
             if (!header) return;
-            if (header.includes('sku') || header.includes('code')) colMap.skuCode = colNumber;
-            else if (header.includes('name') || header.includes('product')) colMap.name = colNumber;
-            else if (header.includes('category') || header.includes('cat')) colMap.category = colNumber;
-            else if (header.includes('specie')) colMap.specie = colNumber;
-            else if (header.includes('packing') || header.includes('pack')) colMap.productPacking = colNumber;
-            else if (header.includes('hsn')) colMap.hsnCode = colNumber;
-            else if (header.includes('gst')) colMap.gst = colNumber;
-            else if (header.includes('mrp')) colMap.mrp = colNumber;
+            if (header === 'productcode' || header === 'sku' || header === 'code') colMap.skuCode = colNumber;
+            else if (header === 'product name' || header.includes('name')) colMap.name = colNumber;
+            else if (header === 'productshortname' || header === 'short name') colMap.productShortName = colNumber;
+            else if (header === 'distributionchannel' || header === 'channel') colMap.distributionChannel = colNumber;
+            else if (header === 'specie') colMap.specie = colNumber;
+            else if (header === 'weight packing' || header === 'weightpack') colMap.weightPacking = colNumber;
+            else if (header === 'weight') colMap.productWeight = colNumber;
+            else if (header === 'packing' || header === 'pack') colMap.productPacking = colNumber;
+            else if (header === 'mrp') colMap.mrp = colNumber;
+            else if (header === 'gst%') colMap.gst = colNumber;
+            else if (header === 'hsncode' || header === 'hsn') colMap.hsnCode = colNumber;
+            else if (header === 'country of origin' || header === 'origin') colMap.countryOfOrigin = colNumber;
+            else if (header === 'shelf life in days' || header.includes('shelf')) colMap.shelfLifeDays = colNumber;
+            else if (header === 'remarks') colMap.remarks = colNumber;
+            else if (header === 'yc70') colMap.yc70 = colNumber;
+            else if (header === 'processing charges' || header === 'processing') colMap.processingCharges = colNumber;
             else if (header.includes('price') || header.includes('rate')) colMap.price = colNumber;
             else if (header.includes('stock') || header.includes('qty')) colMap.stock = colNumber;
-            else if (header.includes('origin') || header.includes('country')) colMap.countryOfOrigin = colNumber;
+            else if (header.includes('category') || header.includes('cat')) colMap.category = colNumber;
         });
 
+        // Positional fallback for new 16-column format 
+        // Col1=ProductCode, Col2=Product Name, Col3=ProductShortName, Col4=DistributionChannel,
+        // Col5=Specie, Col6=Weight Packing, Col7=Weight, Col8=Packing,
+        // Col9=MRP, Col10=GST%, Col11=HSNCODE, Col12=COUNTRY OF ORIGIN,
+        // Col13=Shelf Life in days, Col14=REMARKS, Col15=YC70, Col16=Processing charges
+        const totalCols = headerRow.actualCellCount;
+        if (!colMap.name && totalCols >= 2) {
+            console.log('⚠️ Header map missing "name" — applying Material Master positional fallback');
+            if (!colMap.skuCode) colMap.skuCode = 1;
+            if (!colMap.name) colMap.name = 2;
+            if (!colMap.productShortName) colMap.productShortName = 3;
+            if (!colMap.distributionChannel) colMap.distributionChannel = 4;
+            if (!colMap.specie) colMap.specie = 5;
+            if (!colMap.weightPacking) colMap.weightPacking = 6;
+            if (!colMap.productWeight) colMap.productWeight = 7;
+            if (!colMap.productPacking) colMap.productPacking = 8;
+            if (!colMap.mrp) colMap.mrp = 9;
+            if (!colMap.gst) colMap.gst = 10;
+            if (!colMap.hsnCode) colMap.hsnCode = 11;
+            if (!colMap.countryOfOrigin) colMap.countryOfOrigin = 12;
+            if (!colMap.shelfLifeDays) colMap.shelfLifeDays = 13;
+            if (!colMap.remarks) colMap.remarks = 14;
+            if (!colMap.yc70) colMap.yc70 = 15;
+            if (!colMap.processingCharges) colMap.processingCharges = 16;
+        }
+
+        console.log('📍 Product Column map result:', colMap);
+
         const products = [];
+        const parseNum = (val) => {
+            if (val === undefined || val === null) return 0;
+            if (typeof val === 'number') return val;
+            const str = String(val).replace(/,/g, '').replace(/[^\d.-]/g, '').replace('%', '');
+            return parseFloat(str) || 0;
+        };
+
         worksheet.eachRow((row, rowNumber) => {
             if (rowNumber === 1) return;
+            const getCellVal = (col) => col ? row.getCell(col).value : null;
+
             const rowData = {};
-            if (colMap.skuCode) rowData.skuCode = row.getCell(colMap.skuCode).value?.toString();
-            if (colMap.name) rowData.name = row.getCell(colMap.name).value?.toString();
-            if (colMap.category) rowData.category = row.getCell(colMap.category).value?.toString();
-            if (colMap.specie) rowData.specie = row.getCell(colMap.specie).value?.toString();
-            if (colMap.productPacking) rowData.productPacking = row.getCell(colMap.productPacking).value?.toString();
-            if (colMap.hsnCode) rowData.hsnCode = row.getCell(colMap.hsnCode).value?.toString();
-            if (colMap.gst) rowData.gst = parseFloat(row.getCell(colMap.gst).value) || 0;
-            if (colMap.mrp) rowData.mrp = parseFloat(row.getCell(colMap.mrp).value) || 0;
-            if (colMap.price) rowData.price = parseFloat(row.getCell(colMap.price).value) || 0;
-            if (colMap.stock) rowData.stock = parseInt(row.getCell(colMap.stock).value) || 0;
-            if (colMap.countryOfOrigin) rowData.countryOfOrigin = row.getCell(colMap.countryOfOrigin).value?.toString();
+            if (colMap.skuCode) rowData.skuCode = getCellVal(colMap.skuCode)?.toString()?.trim();
+            if (colMap.name) rowData.name = getCellVal(colMap.name)?.toString()?.trim();
+            if (colMap.productShortName) rowData.productShortName = getCellVal(colMap.productShortName)?.toString()?.trim();
+            if (colMap.distributionChannel) rowData.distributionChannel = getCellVal(colMap.distributionChannel)?.toString()?.trim();
+            if (colMap.specie) rowData.specie = getCellVal(colMap.specie)?.toString()?.trim();
+            if (colMap.weightPacking) rowData.weightPacking = getCellVal(colMap.weightPacking)?.toString()?.trim();
+            if (colMap.productWeight) rowData.productWeight = getCellVal(colMap.productWeight)?.toString()?.trim();
+            if (colMap.productPacking) rowData.productPacking = getCellVal(colMap.productPacking)?.toString()?.trim();
+            if (colMap.mrp) rowData.mrp = parseNum(getCellVal(colMap.mrp));
+            if (colMap.gst) rowData.gst = parseNum(getCellVal(colMap.gst));
+            if (colMap.hsnCode) rowData.hsnCode = getCellVal(colMap.hsnCode)?.toString()?.trim();
+            if (colMap.countryOfOrigin) rowData.countryOfOrigin = getCellVal(colMap.countryOfOrigin)?.toString()?.trim();
+            if (colMap.shelfLifeDays) rowData.shelfLifeDays = parseNum(getCellVal(colMap.shelfLifeDays));
+            if (colMap.remarks) rowData.remarks = getCellVal(colMap.remarks)?.toString()?.trim();
+            if (colMap.yc70) rowData.yc70 = parseNum(getCellVal(colMap.yc70));
+            if (colMap.processingCharges) rowData.processingCharges = parseNum(getCellVal(colMap.processingCharges));
+            
+            // Legacy / fallbacks
+            if (colMap.category) rowData.category = getCellVal(colMap.category)?.toString()?.trim();
+            if (colMap.price) rowData.price = parseNum(getCellVal(colMap.price));
+            if (colMap.stock) rowData.stock = parseNum(getCellVal(colMap.stock));
+
             if (!rowData.id) rowData.id = rowData.skuCode || `PROD-${Date.now()}-${rowNumber}`;
 
             if (rowData.name) products.push(rowData);
