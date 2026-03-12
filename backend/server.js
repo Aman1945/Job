@@ -1226,34 +1226,85 @@ app.post('/api/customers/bulk-import', upload.single('file'), async (req, res) =
         const headerRow = worksheet.getRow(1);
         const colMap = {};
 
-        // Dynamic Header Detection
+        // ── Dynamic Header Detection ────────────────────────────────────────────
+        // Order matters: more-specific checks first to avoid false positives.
         headerRow.eachCell((cell, colNumber) => {
-            const header = cell.value?.toString().trim().toLowerCase();
+            const raw = cell.value?.toString().trim() ?? '';
+            const header = raw.toLowerCase();
             if (!header) return;
 
-            if (header.includes('customer id') || header.includes('customer code') || header.includes('id')) colMap.id = colNumber;
-            else if (header.includes('dist') && !header.includes('channel')) colMap.location = colNumber;
-            else if (header.includes('sales manager')) colMap.salesManager = colNumber;
-            else if (header.includes('class')) colMap.customerClass = colNumber;
-            else if (header.includes('employee respons')) colMap.employeeResponsible = colNumber;
-            else if (header.includes('customer name')) colMap.name = colNumber;
-            else if (header.includes('credit day')) colMap.exposureDays = colNumber;
-            else if (header.includes('credit limit') || header.includes('limit')) colMap.limit = colNumber;
-            else if (header.includes('security chq')) colMap.securityChq = colNumber;
-            else if (header.includes('dist channel')) colMap.distributionChannel = colNumber;
-            else if (header.includes('o/s amt') || header.includes('outstanding')) colMap.osBalance = colNumber;
-            else if (header.includes('od amt') || header.includes('overdue')) colMap.odAmt = colNumber;
-            else if (header.includes('diffn')) colMap.diffYesterdayToday = colNumber;
-            else if (header === '0 to 7') colMap.bucket0_7 = colNumber;
-            else if (header === '7 to 15') colMap.bucket7_15 = colNumber;
-            else if (header === '15 to 30') colMap.bucket15_30 = colNumber;
-            else if (header === '30 to 45') colMap.bucket30_45 = colNumber;
-            else if (header === '45 to 90') colMap.bucket45_90 = colNumber;
-            else if (header === '90 to 120') colMap.bucket90_120 = colNumber;
-            else if (header === '120 to 150') colMap.bucket120_150 = colNumber;
-            else if (header === '150 to 180') colMap.bucket150_180 = colNumber;
-            else if (header === '>180') colMap.bucketOver180 = colNumber;
+            // Name detection FIRST (before generic 'id' catch)
+            if (header.includes('customer name') || header === 'name' || header === 'cust name') {
+                colMap.name = colNumber;
+            } else if (header.includes('customer id') || header.includes('customer code') || header === 'id' || header === 'cust id' || header === 'code') {
+                colMap.id = colNumber;
+            } else if (header.includes('sales manager') || header === 'manager') {
+                colMap.salesManager = colNumber;
+            } else if (header.includes('employee respons') || header.includes('emp resp')) {
+                colMap.employeeResponsible = colNumber;
+            } else if ((header.includes('dist') || header.includes('location')) && !header.includes('channel') && !header.includes('diffn')) {
+                colMap.location = colNumber;
+            } else if (header.includes('class')) {
+                colMap.customerClass = colNumber;
+            } else if (header.includes('credit day') || header === 'cr.days' || header === 'cr days') {
+                colMap.exposureDays = colNumber;
+            } else if (header.includes('credit limit') || header.includes('cr.limit') || header === 'limit') {
+                colMap.limit = colNumber;
+            } else if (header.includes('security chq') || header.includes('sec chq')) {
+                colMap.securityChq = colNumber;
+            } else if (header.includes('dist channel') || header.includes('channel')) {
+                colMap.distributionChannel = colNumber;
+            } else if (header.includes('o/s amt') || header.includes('os amt') || header.includes('outstanding') || header.includes('os balance')) {
+                colMap.osBalance = colNumber;
+            } else if (header.includes('od amt') || header.includes('od amount') || header.includes('overdue')) {
+                colMap.odAmt = colNumber;
+            } else if (header.includes('diffn') || header.includes('diff btw') || header.includes('diff ydy')) {
+                colMap.diffYesterdayToday = colNumber;
+            } else if (header === '0 to 7' || header === '0-7') colMap.bucket0_7 = colNumber;
+            else if (header === '7 to 15' || header === '7-15') colMap.bucket7_15 = colNumber;
+            else if (header === '15 to 30' || header === '15-30') colMap.bucket15_30 = colNumber;
+            else if (header === '30 to 45' || header === '30-45') colMap.bucket30_45 = colNumber;
+            else if (header === '45 to 90' || header === '45-90') colMap.bucket45_90 = colNumber;
+            else if (header === '90 to 120' || header === '90-120') colMap.bucket90_120 = colNumber;
+            else if (header === '120 to 150' || header === '120-150') colMap.bucket120_150 = colNumber;
+            else if (header === '150 to 180' || header === '150-180') colMap.bucket150_180 = colNumber;
+            else if (header === '>180' || header === 'above 180' || header === 'above180') colMap.bucketOver180 = colNumber;
         });
+
+        // ── Positional fallback ─────────────────────────────────────────────────
+        // Standard OD Master 22-column format (from our app export):
+        // Col1=CustomerID, Col2=CustomerName, Col3=Dist, Col4=SalesManager,
+        // Col5=Class, Col6=EmpResponsible, Col7=CreditDays, Col8=CreditLimit,
+        // Col9=SecurityChq, Col10=DistChannel, Col11=OsAmt, Col12=OdAmt,
+        // Col13=Diff, Col14-22=Aging buckets
+        const totalCols = headerRow.actualCellCount;
+        if (!colMap.name && totalCols >= 2) {
+            console.log('⚠️  Header map missing "name" — applying positional fallback');
+            if (!colMap.id)   colMap.id   = 1;
+            if (!colMap.name) colMap.name = 2;
+            if (!colMap.location)          colMap.location          = 3;
+            if (!colMap.salesManager)      colMap.salesManager      = 4;
+            if (!colMap.customerClass)     colMap.customerClass     = 5;
+            if (!colMap.employeeResponsible) colMap.employeeResponsible = 6;
+            if (!colMap.exposureDays)      colMap.exposureDays      = 7;
+            if (!colMap.limit)             colMap.limit             = 8;
+            if (!colMap.securityChq)       colMap.securityChq       = 9;
+            if (!colMap.distributionChannel) colMap.distributionChannel = 10;
+            if (!colMap.osBalance)         colMap.osBalance         = 11;
+            if (!colMap.odAmt)             colMap.odAmt             = 12;
+            if (!colMap.diffYesterdayToday) colMap.diffYesterdayToday = 13;
+            if (!colMap.bucket0_7)   colMap.bucket0_7   = 14;
+            if (!colMap.bucket7_15)  colMap.bucket7_15  = 15;
+            if (!colMap.bucket15_30) colMap.bucket15_30 = 16;
+            if (!colMap.bucket30_45) colMap.bucket30_45 = 17;
+            if (!colMap.bucket45_90) colMap.bucket45_90 = 18;
+            if (!colMap.bucket90_120)  colMap.bucket90_120  = 19;
+            if (!colMap.bucket120_150) colMap.bucket120_150 = 20;
+            if (!colMap.bucket150_180) colMap.bucket150_180 = 21;
+            if (!colMap.bucketOver180) colMap.bucketOver180 = 22;
+        }
+
+        console.log('📋 Column map:', JSON.stringify(colMap));
 
         const customers = [];
         const parseNum = (val) => {
@@ -1266,36 +1317,39 @@ app.post('/api/customers/bulk-import', upload.single('file'), async (req, res) =
         worksheet.eachRow((row, rowNumber) => {
             if (rowNumber === 1) return; // Skip header
 
+            const getCellVal = (col) => col ? row.getCell(col).value : null;
+
             const rowData = {
-                id: colMap.id ? row.getCell(colMap.id).value?.toString() : null,
-                name: colMap.name ? row.getCell(colMap.name).value?.toString() : null,
-                location: colMap.location ? row.getCell(colMap.location).value?.toString() : null,
-                salesManager: colMap.salesManager ? row.getCell(colMap.salesManager).value?.toString() : null,
-                customerClass: colMap.customerClass ? row.getCell(colMap.customerClass).value?.toString() : null,
-                employeeResponsible: colMap.employeeResponsible ? row.getCell(colMap.employeeResponsible).value?.toString() : null,
-                exposureDays: colMap.exposureDays ? (parseNum(row.getCell(colMap.exposureDays).value) || 15) : 15,
-                limit: colMap.limit ? parseNum(row.getCell(colMap.limit).value) : 0,
-                securityChq: colMap.securityChq ? (row.getCell(colMap.securityChq).value?.toString() || '-') : '-',
-                distributionChannel: colMap.distributionChannel ? row.getCell(colMap.distributionChannel).value?.toString() : null,
-                osBalance: colMap.osBalance ? parseNum(row.getCell(colMap.osBalance).value) : 0,
-                odAmt: colMap.odAmt ? parseNum(row.getCell(colMap.odAmt).value) : 0,
-                diffYesterdayToday: colMap.diffYesterdayToday ? parseNum(row.getCell(colMap.diffYesterdayToday).value) : 0,
+                id: getCellVal(colMap.id)?.toString()?.trim() || null,
+                name: getCellVal(colMap.name)?.toString()?.trim() || null,
+                location: getCellVal(colMap.location)?.toString()?.trim() || null,
+                salesManager: getCellVal(colMap.salesManager)?.toString()?.trim() || null,
+                customerClass: getCellVal(colMap.customerClass)?.toString()?.trim() || null,
+                employeeResponsible: getCellVal(colMap.employeeResponsible)?.toString()?.trim() || null,
+                exposureDays: colMap.exposureDays ? (parseNum(getCellVal(colMap.exposureDays)) || 15) : 15,
+                limit: parseNum(getCellVal(colMap.limit)),
+                securityChq: getCellVal(colMap.securityChq)?.toString()?.trim() || '-',
+                distributionChannel: getCellVal(colMap.distributionChannel)?.toString()?.trim() || null,
+                osBalance: parseNum(getCellVal(colMap.osBalance)),
+                odAmt: parseNum(getCellVal(colMap.odAmt)),
+                diffYesterdayToday: parseNum(getCellVal(colMap.diffYesterdayToday)),
                 agingBuckets: {
-                    "0 to 7": colMap.bucket0_7 ? parseNum(row.getCell(colMap.bucket0_7).value) : 0,
-                    "7 to 15": colMap.bucket7_15 ? parseNum(row.getCell(colMap.bucket7_15).value) : 0,
-                    "15 to 30": colMap.bucket15_30 ? parseNum(row.getCell(colMap.bucket15_30).value) : 0,
-                    "30 to 45": colMap.bucket30_45 ? parseNum(row.getCell(colMap.bucket30_45).value) : 0,
-                    "45 to 90": colMap.bucket45_90 ? parseNum(row.getCell(colMap.bucket45_90).value) : 0,
-                    "90 to 120": colMap.bucket90_120 ? parseNum(row.getCell(colMap.bucket90_120).value) : 0,
-                    "120 to 150": colMap.bucket120_150 ? parseNum(row.getCell(colMap.bucket120_150).value) : 0,
-                    "150 to 180": colMap.bucket150_180 ? parseNum(row.getCell(colMap.bucket150_180).value) : 0,
-                    ">180": colMap.bucketOver180 ? parseNum(row.getCell(colMap.bucketOver180).value) : 0
+                    "0 to 7":   parseNum(getCellVal(colMap.bucket0_7)),
+                    "7 to 15":  parseNum(getCellVal(colMap.bucket7_15)),
+                    "15 to 30": parseNum(getCellVal(colMap.bucket15_30)),
+                    "30 to 45": parseNum(getCellVal(colMap.bucket30_45)),
+                    "45 to 90": parseNum(getCellVal(colMap.bucket45_90)),
+                    "90 to 120":  parseNum(getCellVal(colMap.bucket90_120)),
+                    "120 to 150": parseNum(getCellVal(colMap.bucket120_150)),
+                    "150 to 180": parseNum(getCellVal(colMap.bucket150_180)),
+                    ">180": parseNum(getCellVal(colMap.bucketOver180))
                 }
             };
 
-            // Vital validation: require name and some form of ID
-            if (rowData.name) {
-                if (!rowData.id) rowData.id = rowData.name; // Fallback to name if ID missing
+            // Accept row if name OR id is present (not both required)
+            if (rowData.name || rowData.id) {
+                if (!rowData.name) rowData.name = rowData.id;  // fill missing name
+                if (!rowData.id)   rowData.id   = rowData.name; // fill missing id
                 customers.push(rowData);
             }
         });
