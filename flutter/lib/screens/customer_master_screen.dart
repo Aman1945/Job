@@ -8,6 +8,7 @@ import 'package:open_file/open_file.dart';
 import '../providers/nexus_provider.dart';
 import '../utils/theme.dart';
 import '../utils/master_actions.dart';
+import '../providers/auth_provider.dart';
 import '../models/models.dart';
 import '../widgets/row_detail_panel.dart';
 
@@ -264,6 +265,7 @@ class _CustomerMasterScreenState extends State<CustomerMasterScreen> {
             onImport: () => MasterActions.importExcel(
               context: context,
               uploadRoute: '/customers/bulk-import',
+              token: Provider.of<AuthProvider>(context, listen: false).token,
               onSuccess: provider.fetchCustomers,
             ),
             onExport: () => _exportCustomersToExcel(context, provider),
@@ -544,6 +546,7 @@ class _CustomerMasterScreenState extends State<CustomerMasterScreen> {
               final ok = await MasterActions.postRecord(
                 context: context,
                 route: '/customers',
+                token: Provider.of<AuthProvider>(context, listen: false).token,
                 data: {
                   'name': name.text.trim(),
                   'id': id.text.trim(),
@@ -587,50 +590,39 @@ class _CustomerMasterScreenState extends State<CustomerMasterScreen> {
 
   Future<void> _exportCustomersToExcel(BuildContext context, NexusProvider provider) async {
     final customers = provider.customers;
-    if (customers.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No customer data to export'), backgroundColor: Colors.orange),
-      );
-      return;
-    }
-
+    
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('📊 Preparing Excel export...'), backgroundColor: NexusTheme.indigo500, behavior: SnackBarBehavior.floating),
     );
 
     try {
       final excel = xl.Excel.createExcel();
+      // Rename default sheet to 'OD Master'
+      excel.rename('Sheet1', 'OD Master');
       final sheet = excel['OD Master'];
 
-      // Headers from User Template
       final headers = [
-        'Dist', 'Sales Manager', 'Class', 'Employee respons.', 'Customer Names',
-        'Code', 'Credit Days', 'Credit Limit', 'Security Chq', 'Dist Channel',
-        'O/s Amt', '< -30', '-30 to -15', '-15 to -7', '-7 to 0', 'OD Amt',
-        'Diffn btw ydy & tday', '0 to 7', '7 to 15', '15 to 30', '30 to 45',
-        '45 to 90', '90 to 120', '120 to 150', '150 to 180', '>180', 'Provision'
+        'Customer ID', 'Dist', 'Sales Manager', 'Class', 'Employee respons.', 
+        'Customer Names', 'Credit Days', 'Credit Limit', 'Security Chq', 'Dist Channel',
+        'O/s Amt', 'OD Amt', 'Diffn btw ydy & tday', '0 to 7', '7 to 15', '15 to 30', 
+        '30 to 45', '45 to 90', '90 to 120', '120 to 150', '150 to 180', '>180'
       ];
       sheet.appendRow(headers.map((h) => xl.TextCellValue(h)).toList());
 
-      // Data rows
       for (final c in customers) {
         final ag = c.agingData;
         sheet.appendRow([
+          xl.TextCellValue(c.id),                             // Customer ID
           xl.TextCellValue(c.location ?? ''),                 // Dist
           xl.TextCellValue(c.salesManager ?? ''),             // Sales Manager
           xl.TextCellValue(c.customerClass ?? ''),            // Class
           xl.TextCellValue(c.employeeResponsible ?? ''),      // Employee respons.
           xl.TextCellValue(c.name),                           // Customer Names
-          xl.TextCellValue(c.id),                             // Code
           xl.TextCellValue('${c.exposureDays} days'),         // Credit Days
           xl.DoubleCellValue(c.limit),                        // Credit Limit
           xl.TextCellValue(c.securityChq),                    // Security Chq
           xl.TextCellValue(c.distributionChannel ?? ''),      // Dist Channel
           xl.DoubleCellValue(c.osBalance),                    // O/s Amt
-          xl.TextCellValue('-'),                              // < -30 (Static or based on logic)
-          xl.TextCellValue('-'),                              // -30 to -15
-          xl.TextCellValue('-'),                              // -15 to -7
-          xl.TextCellValue('-'),                              // -7 to 0
           xl.DoubleCellValue(c.odAmt),                        // OD Amt
           xl.DoubleCellValue(c.diffYesterdayToday),           // Diffn btw ydy & tday
           xl.DoubleCellValue((ag['0to7'] ?? ag['0 to 7'] ?? 0).toDouble()),
@@ -642,9 +634,9 @@ class _CustomerMasterScreenState extends State<CustomerMasterScreen> {
           xl.DoubleCellValue((ag['120to150'] ?? ag['120 to 150'] ?? 0).toDouble()),
           xl.DoubleCellValue((ag['150to180'] ?? ag['150 to 180'] ?? 0).toDouble()),
           xl.DoubleCellValue((ag['>180'] ?? ag['above180'] ?? 0).toDouble()),
-          xl.TextCellValue('-'),                              // Provision
         ]);
       }
+
 
       final dir = await getExternalStorageDirectory();
       final filePath = '${dir!.path}/OD_Master_Export_${DateTime.now().millisecondsSinceEpoch}.xlsx';

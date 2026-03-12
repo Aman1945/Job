@@ -6,7 +6,9 @@ import 'package:path_provider/path_provider.dart';
 import 'package:open_file/open_file.dart';
 import '../providers/nexus_provider.dart';
 import '../utils/theme.dart';
+import '../utils/theme.dart';
 import '../utils/master_actions.dart';
+import '../providers/auth_provider.dart';
 import '../models/models.dart';
 import '../config/api_config.dart';
 import '../widgets/row_detail_panel.dart';
@@ -287,6 +289,7 @@ class _DistributorPriceScreenState extends State<DistributorPriceScreen> {
             onImport: () => MasterActions.importExcel(
               context: context,
               uploadRoute: '/distributor-prices/bulk-import',
+              token: Provider.of<AuthProvider>(context, listen: false).token,
               onSuccess: provider.fetchDistributorPrices,
             ),
             onExport: () => _exportDistPricesToExcel(context, allItems),
@@ -551,6 +554,7 @@ class _DistributorPriceScreenState extends State<DistributorPriceScreen> {
               final ok = await MasterActions.postRecord(
                 context: context,
                 route: '/distributor-prices',
+                token: Provider.of<AuthProvider>(context, listen: false).token,
                 data: {
                   'code': code.text.trim(),
                   'name': name.text.trim(),

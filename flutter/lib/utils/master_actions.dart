@@ -45,6 +45,7 @@ class MasterActions {
   static Future<void> importExcel({
     required BuildContext context,
     required String uploadRoute,   // e.g. '/products/bulk-import'
+    String? token,                 // JWT Auth token
     required VoidCallback onSuccess,
   }) async {
     // 1. Pick file
@@ -82,7 +83,13 @@ class MasterActions {
       final formData = FormData.fromMap({
         'file': await MultipartFile.fromFile(filePath, filename: filePath.split(Platform.pathSeparator).last),
       });
-      final response = await _dio.post(uploadRoute, data: formData);
+      final response = await _dio.post(
+        uploadRoute, 
+        data: formData,
+        options: Options(headers: {
+          if (token != null) 'Authorization': 'Bearer $token',
+        }),
+      );
 
       if (context.mounted) Navigator.pop(context); // close loader
       if (response.statusCode == 200) {
@@ -107,6 +114,7 @@ class MasterActions {
     required BuildContext context,
     required String templateRoute,     // e.g. '/products/import-template'
     required String fileName,          // e.g. 'Material_Master_Template.xlsx'
+    String? token,                     // JWT Auth token
   }) async {
     // Let the user pick where to save
     final savePath = await FilePicker.platform.saveFile(
@@ -140,7 +148,12 @@ class MasterActions {
       await _dio.download(
         templateRoute,
         savePath,
-        options: Options(responseType: ResponseType.bytes),
+        options: Options(
+          responseType: ResponseType.bytes,
+          headers: {
+            if (token != null) 'Authorization': 'Bearer $token',
+          },
+        ),
       );
       if (context.mounted) Navigator.pop(context);
       if (context.mounted) showSuccess(context, 'Saved to $savePath');
@@ -156,11 +169,15 @@ class MasterActions {
     required BuildContext context,
     required String route,
     required Map<String, dynamic> data,
+    String? token,
   }) async {
     try {
       final response = await _dio.post(route,
         data: data,
-        options: Options(headers: {'Content-Type': 'application/json'}),
+        options: Options(headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        }),
       );
       if (response.statusCode == 201 || response.statusCode == 200) {
         return true;

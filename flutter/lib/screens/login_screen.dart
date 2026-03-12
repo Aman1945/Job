@@ -28,6 +28,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (success && mounted) {
         final nexusProvider = Provider.of<NexusProvider>(context, listen: false);
         nexusProvider.setCurrentUser(authProvider.currentUser);
+        nexusProvider.setToken(authProvider.token);  // ← store token so all fetches are authenticated
         nexusProvider.refreshData();
         debugPrint('🎯 Login successful, navigation will trigger via main.dart');
       }

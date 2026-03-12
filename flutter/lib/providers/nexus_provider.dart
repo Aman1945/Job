@@ -24,6 +24,7 @@ class NexusProvider with ChangeNotifier {
   List<ProcurementItem> _procurementItems = [];
   List<DistributorPrice> _distributorPrices = [];
   bool _isLoading = false;
+  String? _token; // Auth token stored here so all fetch methods use it automatically
 
   User? get currentUser => _currentUser;
   List<Order> get orders => _orders;
@@ -167,12 +168,22 @@ class NexusProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  /// Store auth token so all fetch calls are automatically authenticated.
+  void setToken(String? token) {
+    _token = token;
+  }
+
   // --- Fetching Data ---
 
   Future<void> fetchOrders() async {
     try {
       debugPrint('🛰️ Fetching orders from: $_baseUrl/orders');
-      final response = await http.get(Uri.parse('$_baseUrl/orders')).timeout(const Duration(seconds: 30));
+      final response = await http.get(
+        Uri.parse('$_baseUrl/orders'),
+        headers: {
+          if (_token != null) 'Authorization': 'Bearer $_token',
+        },
+      ).timeout(const Duration(seconds: 30));
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
         _orders = data.map((json) => Order.fromJson(json)).toList();
@@ -229,7 +240,12 @@ class NexusProvider with ChangeNotifier {
   Future<void> fetchDistributorPrices() async {
     try {
       debugPrint('🛰️ Fetching distributor prices...');
-      final response = await http.get(Uri.parse('$_baseUrl/distributor-prices')).timeout(const Duration(seconds: 30));
+      final response = await http.get(
+        Uri.parse('$_baseUrl/distributor-prices'),
+        headers: {
+          if (_token != null) 'Authorization': 'Bearer $_token',
+        },
+      ).timeout(const Duration(seconds: 30));
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
         _distributorPrices = data.map((json) => DistributorPrice.fromJson(json)).toList();
@@ -245,7 +261,12 @@ class NexusProvider with ChangeNotifier {
   Future<void> fetchUsers() async {
     try {
       debugPrint('🛰️ Fetching users...');
-      final response = await http.get(Uri.parse('$_baseUrl/users')).timeout(const Duration(seconds: 30));
+      final response = await http.get(
+        Uri.parse('$_baseUrl/users'),
+        headers: {
+          if (_token != null) 'Authorization': 'Bearer $_token',
+        },
+      ).timeout(const Duration(seconds: 30));
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
         _users = data.map((json) => User.fromJson(json)).toList();

@@ -157,6 +157,12 @@
     - **MongoDB Encoding**: Identified that the UAT connection failure was caused by an un-encoded '@' symbol in the MongoDB password.
     - **Fix documented**: Update `.env` with encoded values (`sam@2025` -> `sam%402025`).
 
+19. **Excel Export Refinements & Fixes (Mar 2026)**:
+    - **Token Authentication**: Implemented robust Token Passing via `master_actions.dart` & `nexus_provider.dart` for all GET requests and Excel Imports. Fixed 401 Unauthorized errors affecting data load.
+    - **Customer & OD Master**: Restructured the Export functionalilty in `CustomerMasterScreen`. Now creates a multi-sheet Excel file with **Customer Master** (format matching backend bulk import template) and **OD Master** (aging buckets, OD limits, diffs).
+    - **Material Master (SKU)**: Replaced empty template download with dynamic Data Export. Maps `Product` model to legacy SKU Master column headers (`ProductCode`, `Specie`, `Packing`, `MRP`, `GST%`).
+    - **Bug Fix**: Addressed undefined getter `isActive` on `Customer` model during export by replacing it with the `status` string field.
+
 ## 🏁 Next Steps / Remaining Tasks
 - [x] Implement Bulk Dispatch API for Logistics Hub.
 - [x] Refactor Book Order UI (Hierarchy removal + Photo slot enhancements).

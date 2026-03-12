@@ -1,3 +1,7 @@
+import 'dart:io';
+import 'package:excel/excel.dart' as xl;
+import 'package:path_provider/path_provider.dart';
+import 'package:open_file/open_file.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/nexus_provider.dart';
@@ -5,6 +9,7 @@ import '../utils/theme.dart';
 import '../utils/master_actions.dart';
 import '../models/models.dart';
 import '../config/api_config.dart';
+import '../providers/auth_provider.dart';
 import '../widgets/row_detail_panel.dart';
 
 class MaterialMasterScreen extends StatefulWidget {
@@ -247,13 +252,10 @@ class _MaterialMasterScreenState extends State<MaterialMasterScreen> {
             onImport: () => MasterActions.importExcel(
               context: context,
               uploadRoute: '/products/bulk-import',
+              token: Provider.of<AuthProvider>(context, listen: false).token,
               onSuccess: provider.fetchProducts,
             ),
-            onExport: () => MasterActions.downloadTemplate(
-              context: context,
-              templateRoute: '${ApiConfig.baseUrl}/products/import-template',
-              fileName: 'Material_Master_Template.xlsx',
-            ),
+            onExport: () => _exportProductsToExcel(context, allProducts),
           ),
         ],
       ),
@@ -515,6 +517,7 @@ class _MaterialMasterScreenState extends State<MaterialMasterScreen> {
               final ok = await MasterActions.postRecord(
                 context: context,
                 route: '/products',
+                token: Provider.of<AuthProvider>(context, listen: false).token,
                 data: {
                   'name': name.text.trim(),
                   'skuCode': sku.text.trim(),
@@ -554,5 +557,63 @@ class _MaterialMasterScreenState extends State<MaterialMasterScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _exportProductsToExcel(BuildContext context, List<Product> products) async {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('📊 Preparing Excel export...'), backgroundColor: NexusTheme.indigo500, behavior: SnackBarBehavior.floating),
+    );
+
+    try {
+      final excel = xl.Excel.createExcel();
+      final sheet = excel['SKU Master'];
+
+      // Headers matching the user's provided Excel Template Image
+      final headers = [
+        'ProductCode', 'Product Name', 'ProductShortName', 'DistributionChannel', 
+        'Specie', 'Packing', 'MRP', 'GST%', 'HSNCODE', 'COUNTRY OF ORIGIN'
+      ];
+      sheet.appendRow(headers.map((h) => xl.TextCellValue(h)).toList());
+
+      // Data rows
+      for (final p in products) {
+        sheet.appendRow([
+          xl.TextCellValue(p.skuCode),                             // ProductCode
+          xl.TextCellValue(p.name),                                // Product Name
+          xl.TextCellValue(p.shortName ?? ''),                     // ProductShortName
+          xl.TextCellValue(p.distributionChannel ?? ''),           // DistributionChannel
+          xl.TextCellValue(p.specie ?? ''),                        // Specie
+          xl.TextCellValue(p.productPacking ?? ''),                // Packing
+          xl.DoubleCellValue(p.mrp ?? 0),                          // MRP
+          xl.TextCellValue(p.gst != null ? '${p.gst!.toStringAsFixed(0)}%' : ''), // GST%
+          xl.TextCellValue(p.hsnCode ?? ''),                       // HSNCODE
+          xl.TextCellValue(p.countryOfOrigin ?? ''),               // COUNTRY OF ORIGIN
+        ]);
+      }
+
+      final dir = await getExternalStorageDirectory();
+      final filePath = '${dir!.path}/SKU_Master_Export_${DateTime.now().millisecondsSinceEpoch}.xlsx';
+      
+      final fileBytes = excel.save();
+      if (fileBytes != null) {
+        await File(filePath).writeAsBytes(fileBytes);
+        await OpenFile.open(filePath);
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('✅ Exported ${products.length} SKU Master records!'),
+              backgroundColor: Colors.green,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('❌ Export failed: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
   }
 }
