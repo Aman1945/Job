@@ -60,7 +60,7 @@ class _MasterDataScreenState extends State<MasterDataScreen> {
                 _buildTerminalToggle('CUSTOMER MASTER', navigateTo: '/customer-master'),
                 _buildTerminalToggle('MATERIAL MASTER', navigateTo: '/material-master'),
                 _buildTerminalToggle('DELIVERY PERSON'),
-                _buildTerminalToggle('OD MASTER'),
+                _buildTerminalToggle('OD MASTER', navigateTo: '/od-master'),
                 _buildTerminalToggle('DIST. PRICE', navigateTo: '/distributor-price'),
               ],
             ),
@@ -223,6 +223,71 @@ class _MasterDataScreenState extends State<MasterDataScreen> {
                           icon: Icons.download_rounded,
                           label: 'EXPORT EXCEL',
                           onTap: () => _exportProductsToExcel(context),
+                          isPrimary: false,
+                          fullWidth: true,
+                        ),
+                      ],
+                      if (_selectedTab == 'OD MASTER') ...[
+                        const SizedBox(height: 12),
+                        _buildActionButton(
+                          icon: Icons.upload_file,
+                          label: 'IMPORT EXCEL DATA',
+                          onTap: () => _handleOdBulkImport(context),
+                          isPrimary: true,
+                          fullWidth: true,
+                        ),
+                        const SizedBox(height: 12),
+                        GestureDetector(
+                          onTap: () async {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('📥 Download starting...'),
+                                backgroundColor: NexusTheme.indigo500,
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                            await _downloadOdTemplate();
+                          },
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(color: const Color(0xFF6366F1), width: 1.5),
+                            ),
+                            child: const Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.description_outlined, size: 16, color: Color(0xFF6366F1)),
+                                SizedBox(width: 8),
+                                Text(
+                                  'DOWNLOAD EXCEL FORMAT',
+                                  style: TextStyle(
+                                    fontFamily: 'Montserrat',
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w800,
+                                    color: Color(0xFF6366F1),
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        _buildActionButton(
+                          icon: Icons.download_rounded,
+                          label: 'EXPORT EXCEL',
+                          onTap: () => _exportOdMasterToExcel(context),
+                          isPrimary: false,
+                          fullWidth: true,
+                        ),
+                        const SizedBox(height: 12),
+                        _buildActionButton(
+                          icon: Icons.print_rounded,
+                          label: 'PRINT OD REPORT',
+                          onTap: () => _printOdMaster(context),
                           isPrimary: false,
                           fullWidth: true,
                         ),
@@ -996,18 +1061,21 @@ class _MasterDataScreenState extends State<MasterDataScreen> {
                     ? Colors.white
                     : const Color(0xFFFAFAFA),
               ),
-              child: Row(
-                children: [
-                  // Frozen name skeleton
-                  _skeletonBox(130, 14, opacity),
-                  const SizedBox(width: 1),
-                  // Dist skeleton
-                  _skeletonBox(130, 14, opacity),
-                  const SizedBox(width: 1),
-                  // Other columns
-                  ...[70.0, 65.0, 85.0, 75.0, 85.0, 75.0, 60.0, 60.0]
-                      .map((w) => _skeletonBox(w, 10, opacity)),
-                ],
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    // Frozen name skeleton
+                    _skeletonBox(130, 14, opacity),
+                    const SizedBox(width: 1),
+                    // Dist skeleton
+                    _skeletonBox(130, 14, opacity),
+                    const SizedBox(width: 1),
+                    // Other columns
+                    ...[70.0, 65.0, 85.0, 75.0, 85.0, 75.0, 60.0, 60.0]
+                        .map((w) => _skeletonBox(w, 10, opacity)),
+                  ],
+                ),
               ),
             );
           }),
@@ -1367,6 +1435,201 @@ class _MasterDataScreenState extends State<MasterDataScreen> {
       } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Bulk import failed. Please check the file format.'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  Future<void> _handleOdBulkImport(BuildContext context) async {
+    final provider = Provider.of<NexusProvider>(context, listen: false);
+
+    FilePickerResult? result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['xlsx'],
+    );
+
+    if (result != null && result.files.single.path != null) {
+      setState(() => _isLoading = true);
+      final success = await provider.importCustomers(result.files.single.path!);
+      setState(() => _isLoading = false);
+
+      if (success && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('✅ OD Master import completed successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('❌ OD Master import failed. Check file format.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _downloadOdTemplate() async {
+    final provider = Provider.of<NexusProvider>(context, listen: false);
+    await provider.downloadCustomerTemplate();
+  }
+
+  Future<void> _exportOdMasterToExcel(BuildContext context) async {
+    final provider = Provider.of<NexusProvider>(context, listen: false);
+    final customers = provider.customers
+        .where((c) => c.odAmt > 0 || c.osBalance > 0)
+        .toList();
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('📊 Preparing OD Master Excel export...'),
+        backgroundColor: NexusTheme.indigo500,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+
+    try {
+      final excel = xl.Excel.createExcel();
+      final sheet = excel['OD Master'];
+
+      // Headers — same 22-column OD Master format
+      final headers = [
+        'Customer ID', 'Customer Name', 'Dist', 'Sales Manager', 'Class',
+        'Employee Respons.', 'Credit Days', 'Credit Limit', 'Security Chq',
+        'Dist Channel', 'O/s Amt', 'OD Amt', 'Diffn btw ydy & tday',
+        '0 to 7', '7 to 15', '15 to 30', '30 to 45', '45 to 90',
+        '90 to 120', '120 to 150', '150 to 180', '>180'
+      ];
+      sheet.appendRow(headers.map((h) => xl.TextCellValue(h)).toList());
+
+      for (final c in customers) {
+        final ag = c.agingData;
+        sheet.appendRow([
+          xl.TextCellValue(c.id),
+          xl.TextCellValue(c.name),
+          xl.TextCellValue(c.location ?? ''),
+          xl.TextCellValue(c.salesManager ?? ''),
+          xl.TextCellValue(c.customerClass ?? ''),
+          xl.TextCellValue(c.employeeResponsible ?? ''),
+          xl.IntCellValue(c.exposureDays),
+          xl.DoubleCellValue(c.limit),
+          xl.TextCellValue(c.securityChq),
+          xl.TextCellValue(c.distributionChannel ?? ''),
+          xl.DoubleCellValue(c.osBalance),
+          xl.DoubleCellValue(c.odAmt),
+          xl.DoubleCellValue(c.diffYesterdayToday),
+          xl.DoubleCellValue((ag['0to7'] ?? ag['0 to 7'] ?? 0).toDouble()),
+          xl.DoubleCellValue((ag['7to15'] ?? ag['7 to 15'] ?? 0).toDouble()),
+          xl.DoubleCellValue((ag['15to30'] ?? ag['15 to 30'] ?? 0).toDouble()),
+          xl.DoubleCellValue((ag['30to45'] ?? ag['30 to 45'] ?? 0).toDouble()),
+          xl.DoubleCellValue((ag['45to90'] ?? ag['45 to 90'] ?? 0).toDouble()),
+          xl.DoubleCellValue((ag['90to120'] ?? ag['90 to 120'] ?? 0).toDouble()),
+          xl.DoubleCellValue((ag['120to150'] ?? ag['120 to 150'] ?? 0).toDouble()),
+          xl.DoubleCellValue((ag['150to180'] ?? ag['150 to 180'] ?? 0).toDouble()),
+          xl.DoubleCellValue((ag['>180'] ?? ag['above180'] ?? 0).toDouble()),
+        ]);
+      }
+
+      final dir = await getExternalStorageDirectory();
+      final filePath = '${dir!.path}/OD_Master_Export_${DateTime.now().millisecondsSinceEpoch}.xlsx';
+      final fileBytes = excel.encode();
+      if (fileBytes != null) {
+        await File(filePath).writeAsBytes(fileBytes);
+        await OpenFile.open(filePath);
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('✅ Exported ${customers.length} OD accounts!'),
+              backgroundColor: Colors.green,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('❌ Export failed: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  Future<void> _printOdMaster(BuildContext context) async {
+    final provider = Provider.of<NexusProvider>(context, listen: false);
+    final customers = provider.customers
+        .where((c) => c.odAmt > 0 || c.osBalance > 0)
+        .toList();
+
+    if (customers.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No OD accounts to print.'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('🖨️ Preparing OD Report for print...'),
+        backgroundColor: NexusTheme.indigo500,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+
+    try {
+      // Build a plain-text print report
+      final buf = StringBuffer();
+      buf.writeln('═══════════════════════════════════════════════════════');
+      buf.writeln('                  OD MASTER REPORT');
+      buf.writeln('           Generated: ${DateTime.now().toLocal()}');
+      buf.writeln('═══════════════════════════════════════════════════════');
+      buf.writeln('');
+      buf.writeln(
+        '${'Customer'.padRight(30)} ${'Dist'.padRight(12)} ${'Cr.Days'.padLeft(7)} '
+        '${'Cr.Limit'.padLeft(12)} ${'O/s Amt'.padLeft(12)} ${'OD Amt'.padLeft(12)}',
+      );
+      buf.writeln('─' * 91);
+
+      for (final c in customers) {
+        buf.writeln(
+          '${c.name.padRight(30)} ${(c.location ?? '-').padRight(12)} '
+          '${c.exposureDays.toString().padLeft(7)} '
+          '${c.limit.toStringAsFixed(0).padLeft(12)} '
+          '${c.osBalance.toStringAsFixed(0).padLeft(12)} '
+          '${c.odAmt.toStringAsFixed(0).padLeft(12)}',
+        );
+      }
+
+      buf.writeln('─' * 91);
+      buf.writeln('Total OD Accounts: ${customers.length}');
+      buf.writeln('Total O/s Amount : ${customers.fold(0.0, (s, c) => s + c.osBalance).toStringAsFixed(0)}');
+      buf.writeln('Total OD Amount  : ${customers.fold(0.0, (s, c) => s + c.odAmt).toStringAsFixed(0)}');
+      buf.writeln('═' * 91);
+
+      // Save as a .txt file and open with system viewer (which supports printing)
+      final dir = await getExternalStorageDirectory();
+      final filePath = '${dir!.path}/OD_Report_${DateTime.now().millisecondsSinceEpoch}.txt';
+      await File(filePath).writeAsString(buf.toString());
+      await OpenFile.open(filePath);
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('🖨️ OD Report ready — ${customers.length} accounts'),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('❌ Print failed: $e'), backgroundColor: Colors.red),
         );
       }
     }

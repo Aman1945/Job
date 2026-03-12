@@ -2,6 +2,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:open_file/open_file.dart';
 import '../config/api_config.dart';
 
 /// Shared helpers for Master Data screens (Add / Import / Export)
@@ -109,21 +111,14 @@ class MasterActions {
 
   // ───────────────────────────── EXPORT / TEMPLATE ─────────────────────
 
-  /// Download an Excel template or export from [templateRoute].
+  /// Download an Excel template from [templateRoute] and open it.
+  /// Works on Android, iOS, and desktop.
   static Future<void> downloadTemplate({
     required BuildContext context,
-    required String templateRoute,     // e.g. '/products/import-template'
-    required String fileName,          // e.g. 'Material_Master_Template.xlsx'
-    String? token,                     // JWT Auth token
+    required String templateRoute,     // e.g. '/customers/import-template'
+    required String fileName,          // e.g. 'OD_Master_Template.xlsx'
+    String? token,
   }) async {
-    // Let the user pick where to save
-    final savePath = await FilePicker.platform.saveFile(
-      dialogTitle: 'Save template as',
-      fileName: fileName,
-      allowedExtensions: ['xlsx'],
-      type: FileType.custom,
-    );
-    if (savePath == null) return;
     if (!context.mounted) return;
 
     showDialog(
@@ -137,7 +132,7 @@ class MasterActions {
             child: Column(mainAxisSize: MainAxisSize.min, children: [
               CircularProgressIndicator(),
               SizedBox(height: 14),
-              Text('Downloading...', style: TextStyle(fontWeight: FontWeight.w700)),
+              Text('Downloading template...', style: TextStyle(fontWeight: FontWeight.w700)),
             ]),
           ),
         ),
@@ -145,6 +140,10 @@ class MasterActions {
     );
 
     try {
+      // Get downloads/external storage directory (works on Android)
+      final dir = await getExternalStorageDirectory();
+      final savePath = '${dir!.path}/$fileName';
+
       await _dio.download(
         templateRoute,
         savePath,
@@ -155,11 +154,17 @@ class MasterActions {
           },
         ),
       );
-      if (context.mounted) Navigator.pop(context);
-      if (context.mounted) showSuccess(context, 'Saved to $savePath');
+
+      if (context.mounted) Navigator.pop(context); // close loader
+      // Open the downloaded file
+      await OpenFile.open(savePath);
+      if (context.mounted) showSuccess(context, '✅ Template downloaded: $fileName');
     } on DioException catch (e) {
       if (context.mounted) Navigator.pop(context);
       if (context.mounted) showError(context, e.message ?? 'Download failed');
+    } catch (e) {
+      if (context.mounted) Navigator.pop(context);
+      if (context.mounted) showError(context, 'Download error: $e');
     }
   }
 

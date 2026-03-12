@@ -11,6 +11,7 @@ import 'screens/book_order_screen.dart';
 import 'screens/material_master_screen.dart';
 import 'screens/distributor_price_screen.dart';
 import 'screens/customer_master_screen.dart';
+import 'screens/od_master_screen.dart';
 import 'utils/theme.dart';
 
 import 'package:hive_flutter/hive_flutter.dart';
@@ -89,6 +90,7 @@ class _NexusAppState extends State<NexusApp> {
         '/material-master': (context) => const MaterialMasterScreen(),
         '/distributor-price': (context) => const DistributorPriceScreen(),
         '/customer-master': (context) => const CustomerMasterScreen(),
+        '/od-master': (context) => const OdMasterScreen(),
       },
       home: Consumer<AuthProvider>(
         builder: (context, auth, child) {

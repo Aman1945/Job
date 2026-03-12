@@ -199,11 +199,12 @@ class NexusProvider with ChangeNotifier {
 
   Future<void> fetchProducts({String? token}) async {
     try {
+      final effectiveToken = token ?? _token;
       debugPrint('🛰️ Fetching products...');
       final response = await http.get(
         Uri.parse('$_baseUrl/products'),
         headers: {
-          if (token != null) 'Authorization': 'Bearer $token',
+          if (effectiveToken != null) 'Authorization': 'Bearer $effectiveToken',
         },
       ).timeout(const Duration(seconds: 30));
       if (response.statusCode == 200) {
@@ -219,11 +220,12 @@ class NexusProvider with ChangeNotifier {
 
   Future<void> fetchCustomers({String? token}) async {
     try {
+      final effectiveToken = token ?? _token;
       debugPrint('🛰️ Fetching customers...');
       final response = await http.get(
         Uri.parse('$_baseUrl/customers'),
         headers: {
-          if (token != null) 'Authorization': 'Bearer $token',
+          if (effectiveToken != null) 'Authorization': 'Bearer $effectiveToken',
         },
       ).timeout(const Duration(seconds: 30));
       if (response.statusCode == 200) {

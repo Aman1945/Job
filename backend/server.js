@@ -1304,7 +1304,7 @@ app.post('/api/customers/bulk-import', upload.single('file'), async (req, res) =
             if (!colMap.bucketOver180) colMap.bucketOver180 = 22;
         }
 
-        console.log('📋 Column map:', JSON.stringify(colMap));
+        console.log('📍 Column map result:', colMap);
 
         const customers = [];
         const parseNum = (val) => {
@@ -1347,6 +1347,11 @@ app.post('/api/customers/bulk-import', upload.single('file'), async (req, res) =
                     ">180": parseNum(getCellVal(colMap.bucketOver180))
                 }
             };
+
+            // Log first 2 rows to verify data parsing
+            if (customers.length < 2) {
+                console.log(`📝 Row ${rowNumber} parsed sample:`, { name: rowData.name, os: rowData.osBalance, od: rowData.odAmt });
+            }
 
             // Accept row if name OR id is present (not both required)
             if (rowData.name || rowData.id) {
