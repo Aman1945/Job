@@ -624,7 +624,7 @@ class _DistributorPriceScreenState extends State<DistributorPriceScreen> {
 
       // Headers from User Template
       final headers = [
-        'Material', 'Material Number', 'MRP', 'in Kg', '% GST',
+        'Code', 'Name', 'Material', 'Material Number', 'MRP', 'in Kg', '% GST',
         'Retailer Margin On MRP', 'Dist Margin On Cost', 'Dist Margin On MRP', 'Billing Rate'
       ];
       sheet.appendRow(headers.map((h) => xl.TextCellValue(h)).toList());
@@ -632,8 +632,10 @@ class _DistributorPriceScreenState extends State<DistributorPriceScreen> {
       // Data rows
       for (final p in items) {
         sheet.appendRow([
-          xl.TextCellValue(p.code),                                // Material (SKU/Code)
-          xl.TextCellValue(p.materialNumber),                        // Material Number
+          xl.TextCellValue(p.distributorCode ?? ''),                 // Code
+          xl.TextCellValue(p.distributorName ?? ''),                 // Name
+          xl.TextCellValue(p.code),                                  // Material
+          xl.TextCellValue(p.name),                                  // Material Number (Product Description)
           xl.DoubleCellValue(p.mrp),                                 // MRP
           xl.TextCellValue(p.inKg),                                  // in Kg
           xl.TextCellValue('${p.gstPct.toStringAsFixed(0)}%'),       // % GST
