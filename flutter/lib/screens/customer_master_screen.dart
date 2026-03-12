@@ -24,7 +24,7 @@ class _CustomerMasterScreenState extends State<CustomerMasterScreen> {
   String _searchQuery = '';
   String _selectedStatus = 'ALL';
   int _currentPage = 0;
-  static const int _pageSize = 15;
+  static const int _pageSize = 10;
   Customer? _selectedCustomer;
 
   // Scroll controllers for frozen-column table
@@ -121,9 +121,10 @@ class _CustomerMasterScreenState extends State<CustomerMasterScreen> {
           style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 1, color: Color(0xFF1E293B)),
         ),
       ),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+      body: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
           // ── Metric banner ──
           Container(
             color: Colors.white,
@@ -188,7 +189,8 @@ class _CustomerMasterScreenState extends State<CustomerMasterScreen> {
           ),
 
           // ── Table ──
-          Expanded(
+          SizedBox(
+            height: 650,
             child: Container(
               margin: const EdgeInsets.all(16),
               decoration: BoxDecoration(

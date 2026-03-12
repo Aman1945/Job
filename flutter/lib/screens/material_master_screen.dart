@@ -24,7 +24,7 @@ class _MaterialMasterScreenState extends State<MaterialMasterScreen> {
   String _searchQuery = '';
   String _selectedCategory = 'ALL';
   int _currentPage = 0;
-  static const int _pageSize = 15;
+  static const int _pageSize = 10;
   Product? _selectedProduct;
 
   late final ScrollController _vFrozen;
@@ -114,9 +114,10 @@ class _MaterialMasterScreenState extends State<MaterialMasterScreen> {
           style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 1, color: Color(0xFF1E293B)),
         ),
       ),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+      body: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
           // ── Metric banner ──────────────────────────────────────────────
           Container(
             color: Colors.white,
@@ -186,7 +187,8 @@ class _MaterialMasterScreenState extends State<MaterialMasterScreen> {
           ),
 
           // ── Table ──────────────────────────────────────────────────────
-          Expanded(
+          SizedBox(
+            height: 650,
             child: Container(
               margin: const EdgeInsets.all(16),
               decoration: BoxDecoration(

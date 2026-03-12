@@ -67,7 +67,7 @@ class _DistributorPriceScreenState extends State<DistributorPriceScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   int _currentPage = 0;
-  static const int _pageSize = 15;
+  static const int _pageSize = 10;
   _DistPrice? _selectedPrice;
 
   late final ScrollController _vFrozen;
@@ -193,9 +193,10 @@ class _DistributorPriceScreenState extends State<DistributorPriceScreen> {
           style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 1, color: Color(0xFF1E293B)),
         ),
       ),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+      body: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
           // ── Header metrics ──
           Container(
             color: Colors.white,
@@ -231,7 +232,8 @@ class _DistributorPriceScreenState extends State<DistributorPriceScreen> {
           ),
 
           // ── Table ──
-          Expanded(
+          SizedBox(
+            height: 650,
             child: Container(
               margin: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -302,7 +304,7 @@ class _DistributorPriceScreenState extends State<DistributorPriceScreen> {
           ),
         ],
       ),
-    );
+    ));
   }
 
   Widget _metricCard(String label, String value, Color color, IconData icon) {
