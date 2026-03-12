@@ -543,6 +543,30 @@ class NexusProvider with ChangeNotifier {
     }
   }
 
+  Future<bool> updateCustomer(String customerId, Map<String, dynamic> updates, {String? token}) async {
+    try {
+      final response = await http.patch(
+        Uri.parse('$_baseUrl/customers/$customerId'),
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode(updates),
+      );
+
+      if (response.statusCode == 200) {
+        await fetchCustomers();
+        return true;
+      } else {
+        debugPrint('Failed to update customer: ${response.statusCode} - ${response.body}');
+        return false;
+      }
+    } catch (e) {
+      debugPrint('Error updating customer: $e');
+      return false;
+    }
+  }
+
   Future<bool> createProduct(Map<String, dynamic> productData, {String? token}) async {
     try {
       final response = await http.post(

@@ -12,6 +12,8 @@ class RowDetailPanel extends StatelessWidget {
   final Color? accentColor;
   /// Optional document photos: list of (label, url) pairs shown below the fields.
   final List<(String, String)>? photos;
+  /// Optional callback to trigger an edit dialog for this record.
+  final VoidCallback? onEdit;
 
   const RowDetailPanel({
     super.key,
@@ -21,6 +23,7 @@ class RowDetailPanel extends StatelessWidget {
     required this.onClose,
     this.accentColor,
     this.photos,
+    this.onEdit,
   });
 
   @override
@@ -62,6 +65,21 @@ class RowDetailPanel extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
+                if (onEdit != null) ...[
+                  GestureDetector(
+                    onTap: onEdit,
+                    child: Container(
+                      padding: const EdgeInsets.all(5),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: accent.withOpacity(0.3)),
+                      ),
+                      child: Icon(Icons.edit_outlined, size: 13, color: accent),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                ],
                 GestureDetector(
                   onTap: onClose,
                   child: Container(

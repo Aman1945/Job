@@ -228,6 +228,7 @@ class _CustomerMasterScreenState extends State<CustomerMasterScreen> {
                               icon: Icons.person_outline,
                               accentColor: const Color(0xFF6366F1),
                               onClose: () => setState(() => _selectedCustomer = null),
+                              onEdit: () => _showEditDialog(context, provider, c),
                               fields: [
                                 ('Customer Name', c.name),
                                 ('Customer ID', c.id),
@@ -567,6 +568,88 @@ class _CustomerMasterScreenState extends State<CustomerMasterScreen> {
               }
             },
             child: const Text('SAVE', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ───────────────────────── EDIT CUSTOMER DIALOG ─────────────────────────
+  void _showEditDialog(BuildContext context, NexusProvider provider, Customer customer) {
+    final formKey = GlobalKey<FormState>();
+    final name    = TextEditingController(text: customer.name);
+    final channel = TextEditingController(text: customer.distributionChannel);
+    final limit   = TextEditingController(text: customer.limit.toString());
+    final email   = TextEditingController(text: customer.customerEmail);
+    final address = TextEditingController(text: customer.address);
+    final postal  = TextEditingController(text: customer.postalCode);
+    final manager = TextEditingController(text: customer.salesManager);
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            const Icon(Icons.edit_outlined, color: Color(0xFF6366F1), size: 20),
+            const SizedBox(width: 8),
+            Expanded(child: Text('Edit ${customer.name}', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16), overflow: TextOverflow.ellipsis)),
+          ],
+        ),
+        content: SizedBox(
+          width: 380,
+          child: Form(
+            key: formKey,
+            child: SingleChildScrollView(
+              child: Column(
+                children: [
+                  _field('Customer Name *', name, required: true),
+                  _field('Distribution Channel', channel),
+                  _field('Credit Limit (₹)', limit, numeric: true),
+                  _field('Email', email),
+                  _field('Sales Manager', manager),
+                  _field('Postal Code', postal),
+                  _field('Address', address),
+                ],
+              ),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('CANCEL')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF0F172A), 
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))
+            ),
+            onPressed: () async {
+              if (!formKey.currentState!.validate()) return;
+              
+              final updates = {
+                'name': name.text.trim(),
+                'distributionChannel': channel.text.trim(),
+                'limit': double.tryParse(limit.text) ?? 0,
+                'customerEmail': email.text.trim(),
+                'salesManager': manager.text.trim(),
+                'postalCode': postal.text.trim(),
+                'address': address.text.trim(),
+              };
+
+              final ok = await provider.updateCustomer(
+                customer.id, 
+                updates, 
+                token: Provider.of<AuthProvider>(context, listen: false).token
+              );
+
+              if (ok && ctx.mounted) {
+                Navigator.pop(ctx);
+                MasterActions.showSuccess(context, 'Customer updated successfully');
+                setState(() => _selectedCustomer = null); 
+              } else if (ctx.mounted) {
+                ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('Update failed. Check your data.')));
+              }
+            },
+            child: const Text('UPDATE', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
           ),
         ],
       ),
