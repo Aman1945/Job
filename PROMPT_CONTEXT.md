@@ -163,6 +163,32 @@
     - **Material Master (SKU)**: Replaced empty template download with dynamic Data Export. Maps `Product` model to legacy SKU Master column headers (`ProductCode`, `Specie`, `Packing`, `MRP`, `GST%`).
     - **Bug Fix**: Addressed undefined getter `isActive` on `Customer` model during export by replacing it with the `status` string field.
 
+20. **Material Master Upload Fix & Excel Templates (13 Mar 2026)**:
+    - **Robust Backend Parsing**: Rewrote `/api/products/bulk-import` in `server.js` with flexible header matching (trimmed lowercase) and a guaranteed **positional fallback** for all 16 columns. Handles `ProductCode`, `Product Name`, `ProductShortName`, `DistributionChannel`, `Specie`, `Weight Packing`, `Weight`, `Packing`, `MRP`, `GST%`, `HSNCODE`, `COUNTRY OF ORIGIN`, `Shelf Life in days`, `REMARKS`, `YC70`, `Processing Charges`.
+    - **Seed File Generated**: Created `seed_material_master.xlsx` (520 rows) from user's raw tab-separated data using `exceljs`. Placed in `C:\Users\AIA\Desktop\BIGSAMS\`.
+    - **Standardized Import Templates**: Generated 3 ready-to-use `.xlsx` template files with headers and sample data:
+      - `Template_Material_Master.xlsx` (16 columns)
+      - `Template_Distributor_Price.xlsx` (11 columns: Code, Name, Material, Material Number, MRP, in Kg, % GST, Retailer Margin On MRP, Dist Margin On Cost, Dist Margin On MRP, Billing Rate)
+      - `Template_Customer_OD_Master.xlsx` (22 columns: CustomerID through >180 aging buckets)
+    - All templates stored in project root `C:\Users\AIA\Desktop\BIGSAMS\`.
+
+21. **User Master & Delivery Person UI/UX Overhaul (13 Mar 2026)**:
+    - **New Screen: `user_master_screen.dart`**: Created a dedicated premium screen for User management, matching the `CustomerMasterScreen` aesthetic. Features:
+      - Metric cards (Total Users, Admins, Sales Team).
+      - Frozen "User Name" column with synced horizontal/vertical scroll.
+      - Role filter chips (ALL, Admin, Sales, RSM, ASM, Sales Executive, Warehouse, Delivery Team).
+      - Search by User ID, Name, Zone.
+      - Expandable `RowDetailPanel` showing full user profile (ID, Role, Zone, Location, Dept, Channel, WhatsApp, Manager).
+      - Role badges with color coding (Admin=red, Warehouse=green, others=indigo).
+    - **New Screen: `delivery_master_screen.dart`**: Specialized view filtered to `UserRole.deliveryTeam` members only. Features:
+      - Metric cards (Total Drivers, On Duty, Regions).
+      - Frozen "Person Name" column.
+      - Table columns: Staff ID, Zone/Region, Location, WhatsApp, Status.
+      - Detail panel with delivery-specific fields.
+    - **Route Registration**: Added `/user-master` and `/delivery-master` routes in `main.dart`.
+    - **Master Terminal Integration**: Updated `master_data_screen.dart` to navigate to the new dedicated screens when tapping "USER MASTER" and "DELIVERY PERSON" tabs.
+    - **Bug Fix**: Fixed `RangeError` crash caused by empty `_selectedTab` default. Changed default to `''` (empty) and added safety check in title formatting to display "Master Terminal" when no tab is selected.
+
 ## 🏁 Next Steps / Remaining Tasks
 - [x] Implement Bulk Dispatch API for Logistics Hub.
 - [x] Refactor Book Order UI (Hierarchy removal + Photo slot enhancements).
@@ -170,10 +196,14 @@
 - [x] Harden Backend security and implement strict user attribution.
 - [x] Refine Gemini AI Credit Insights with full aging buckets and items.
 - [x] Integrate Mission Timeline into Order Archive.
+- [x] Material Master Upload Fix (robust header parsing + positional fallback).
+- [x] Excel Import Templates for all Master Data (Material, Customer/OD, Distributor Price).
+- [x] User Master & Delivery Person premium UI/UX screens.
 - [ ] Implement **Customer Edit/Update** functionality (specifically for updating Email Id like `testing@bigsams.in`).
 - [ ] Expansion of the Logistics Cost Calculator for remote areas.
 - [ ] Verify UAT restoration using the encoded MongoDB password.
+- [ ] Git push latest changes and deploy to VPS (User Master, Delivery Master, Templates, Material Master upload fix).
 
 ---
 
-**Current Status**: Backend hardened and deployed on DigitalOcean. Gemini AI is providing detailed credit risk analysis. Order Archive now features a full process timeline. Current work focus: Implementing Customer Profile editing for better contact management.
+**Current Status**: All Master Data screens now have premium UI/UX parity (Customer, Material, OD, Distributor Price, User, Delivery Person). Material Master bulk import is hardened with robust header detection and positional fallback. Standardized Excel templates are available for all import types. Pending: Git push & VPS deployment of latest changes.

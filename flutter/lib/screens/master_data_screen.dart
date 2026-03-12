@@ -8,6 +8,9 @@ import '../widgets/nexus_components.dart';
 import 'material_master_screen.dart';
 import 'distributor_price_screen.dart';
 import 'customer_master_screen.dart';
+import 'user_master_screen.dart';
+import 'delivery_master_screen.dart';
+
 import 'package:file_picker/file_picker.dart';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
@@ -24,7 +27,8 @@ class MasterDataScreen extends StatefulWidget {
 }
 
 class _MasterDataScreenState extends State<MasterDataScreen> {
-  String _selectedTab = 'USER MASTER';
+  String _selectedTab = '';
+
   bool _isLoading = false;
   late AuthProvider authProvider;
   late NexusProvider provider;
@@ -56,10 +60,10 @@ class _MasterDataScreenState extends State<MasterDataScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Row(
               children: [
-                _buildTerminalToggle('USER MASTER'),
+                _buildTerminalToggle('USER MASTER', navigateTo: '/user-master'),
                 _buildTerminalToggle('CUSTOMER MASTER', navigateTo: '/customer-master'),
                 _buildTerminalToggle('MATERIAL MASTER', navigateTo: '/material-master'),
-                _buildTerminalToggle('DELIVERY PERSON'),
+                _buildTerminalToggle('DELIVERY PERSON', navigateTo: '/delivery-master'),
                 _buildTerminalToggle('OD MASTER', navigateTo: '/od-master'),
                 _buildTerminalToggle('DIST. PRICE', navigateTo: '/distributor-price'),
               ],
@@ -77,10 +81,12 @@ class _MasterDataScreenState extends State<MasterDataScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    _selectedTab
-                        .split(' ')
-                        .map((s) => s[0] + s.substring(1).toLowerCase())
-                        .join(' '),
+                    _selectedTab.isEmpty 
+                        ? 'Master Terminal'
+                        : _selectedTab
+                            .split(' ')
+                            .map((s) => s.isEmpty ? '' : s[0] + s.substring(1).toLowerCase())
+                            .join(' '),
                     style: const TextStyle(
                       fontWeight: FontWeight.w900,
                       fontSize: 28,
@@ -446,6 +452,7 @@ class _MasterDataScreenState extends State<MasterDataScreen> {
           setState(() => _selectedTab = title);
         }
       },
+
       child: Container(
         margin: const EdgeInsets.only(right: 8),
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
