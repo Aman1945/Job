@@ -585,7 +585,8 @@ class _MaterialMasterScreenState extends State<MaterialMasterScreen> {
       // Headers matching the user's provided Excel Template Image
       final headers = [
         'ProductCode', 'Product Name', 'ProductShortName', 'DistributionChannel', 
-        'Specie', 'Packing', 'MRP', 'GST%', 'HSNCODE', 'COUNTRY OF ORIGIN'
+        'Specie', 'Weight Packing', 'Weight', 'Packing', 'MRP', 'GST%', 'HSNCODE', 
+        'COUNTRY OF ORIGIN', 'Shelf Life in days', 'REMARKS', 'YC70', 'Processing Charges'
       ];
       sheet.appendRow(headers.map((h) => xl.TextCellValue(h)).toList());
 
@@ -597,11 +598,17 @@ class _MaterialMasterScreenState extends State<MaterialMasterScreen> {
           xl.TextCellValue(p.shortName ?? ''),                     // ProductShortName
           xl.TextCellValue(p.distributionChannel ?? ''),           // DistributionChannel
           xl.TextCellValue(p.specie ?? ''),                        // Specie
+          xl.TextCellValue(p.weightPacking ?? ''),                 // Weight Packing
+          xl.TextCellValue(p.productWeight ?? ''),                 // Weight
           xl.TextCellValue(p.productPacking ?? ''),                // Packing
           xl.DoubleCellValue(p.mrp ?? 0),                          // MRP
           xl.TextCellValue(p.gst != null ? '${p.gst!.toStringAsFixed(0)}%' : ''), // GST%
           xl.TextCellValue(p.hsnCode ?? ''),                       // HSNCODE
           xl.TextCellValue(p.countryOfOrigin ?? ''),               // COUNTRY OF ORIGIN
+          xl.TextCellValue(p.shelfLifeDays != null ? p.shelfLifeDays.toString() : ''), // Shelf Life in days
+          xl.TextCellValue(p.remarks ?? ''),                       // REMARKS
+          xl.TextCellValue(p.yc70 != null ? p.yc70.toString() : ''),// YC70
+          xl.TextCellValue(p.processingCharges != null ? p.processingCharges.toString() : ''), // Processing Charges
         ]);
       }
 

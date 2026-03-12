@@ -290,7 +290,7 @@ class Product {
       id: json['id'] ?? json['skuCode'] ?? '',
       skuCode: json['skuCode'] ?? '',
       name: json['name'] ?? '',
-      shortName: json['shortName'],
+      shortName: json['shortName'] ?? json['productShortName'],
       price: (json['price'] ?? 0).toDouble(),
       stock: json['stock'] ?? 0,
       category: json['category'] ?? 'General',

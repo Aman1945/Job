@@ -7,6 +7,7 @@ const productSchema = new mongoose.Schema({
     productShortName: { type: String },
     distributionChannel: { type: String },
     specie: { type: String },
+    weightPacking: { type: String },
     productWeight: { type: String },
     productPacking: { type: String },
     mrp: { type: Number },
