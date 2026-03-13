@@ -7,11 +7,13 @@ import '../models/models.dart';
 import '../config/api_config.dart';
 
 // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ PALETTE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-const _kBg      = Color(0xFFF1F5F9);
+const _kBg      = Color(0xFFF8FAFC);
 const _kDark    = Color(0xFF0F172A);
-const _kTeal    = Color(0xFF14B8A6);
+const _kBlue    = Color(0xFF1E40AF);
+const _kTeal    = Color(0xFF0D9488);
 const _kSub     = Color(0xFF64748B);
 const _kBorder  = Color(0xFFE2E8F0);
+const _kCard    = Colors.white;
 
 class StepAssignmentScreen extends StatefulWidget {
   const StepAssignmentScreen({super.key});
@@ -27,22 +29,13 @@ class _StepAssignmentScreenState extends State<StepAssignmentScreen> {
   String _zoneFilter = 'ALL';
   String _roleFilter = 'ALL';
 
-  // State maps to hold un-saved modifications
-  final Map<String, Map<String, String>> _modifications = {}; 
+  User? _selectedUser;
+  Map<String, String> _modifications = {};
   bool _isSaving = false;
 
-  final List<String> _stages = [
-    'Creation',
-    'Placed Order',
-    'Credit Approval',
-    'Warehouse',
-    'Packing',
-    'QC',
-    'Logistics Cost',
-    'Invoice',
-    'Dispatch & Load',
-    'Delivery Ack'
-  ];
+  final List<String> _intake = ['Creation', 'Placed Order', 'Credit Approval', 'Warehouse'];
+  final List<String> _processing = ['Packing', 'QC', 'Logistics Cost'];
+  final List<String> _outbound = ['Invoice', 'Dispatch & Load', 'Delivery Ack'];
 
   @override
   void initState() {
@@ -58,40 +51,40 @@ class _StepAssignmentScreenState extends State<StepAssignmentScreen> {
         final List data = json.decode(res.body);
         setState(() {
           _users = data.map((u) => User.fromJson(u)).where((u) => u.role.label != 'Admin').toList();
-          _modifications.clear();
         });
       }
     } catch (_) {}
     setState(() => _isLoading = false);
   }
 
-  Future<void> _saveAllChanges() async {
-    if (_modifications.isEmpty) return;
+  Future<void> _saveChanges() async {
+    if (_selectedUser == null || _modifications.isEmpty) return;
     setState(() => _isSaving = true);
     
     try {
       final auth = Provider.of<AuthProvider>(context, listen: false);
       final headers = Map<String, String>.from(auth.authHeaders)..['Content-Type'] = 'application/json';
 
-      int successCount = 0;
-      for (var userId in _modifications.keys) {
-        final accessMap = _modifications[userId]!;
-        final res = await http.patch(
-          Uri.parse('${ApiConfig.baseUrl}/users/$userId/step-access'),
-          headers: headers,
-          body: json.encode({'stepAccess': accessMap}),
-        );
-        if (res.statusCode == 200) successCount++;
-      }
+      final res = await http.patch(
+        Uri.parse('${ApiConfig.baseUrl}/users/${_selectedUser!.id}/step-access'),
+        headers: headers,
+        body: json.encode({'stepAccess': _modifications}),
+      );
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('âœ… Successfully updated assignments for $successCount user(s)'),
-          backgroundColor: _kTeal,
-          behavior: SnackBarBehavior.floating,
-        ));
+      if (res.statusCode == 200) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('âœ… Step Access updated successfully!'),
+            backgroundColor: _kTeal,
+            behavior: SnackBarBehavior.floating,
+          ));
+        }
+        await _fetchUsers();
+        setState(() {
+          _selectedUser = null;
+          _modifications.clear();
+        });
       }
-      await _fetchUsers();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -101,33 +94,21 @@ class _StepAssignmentScreenState extends State<StepAssignmentScreen> {
     setState(() => _isSaving = false);
   }
 
-  // Toggles cycle: no -> view -> full -> no
-  void _toggleAccess(String userId, String stage) {
-    if (!_modifications.containsKey(userId)) {
-      final user = _users.firstWhere((u) => u.id == userId);
-      _modifications[userId] = Map<String, String>.from(user.stepAccess);
-    }
-
-    final current = _modifications[userId]![stage] ?? 'no';
-    String next = 'no';
-    if (current == 'no') next = 'view';
-    else if (current == 'view') next = 'full';
-    
+  void _openUser(User u) {
     setState(() {
-      _modifications[userId]![stage] = next;
+      _selectedUser = u;
+      _modifications = Map<String, String>.from(u.stepAccess); // copy current state
     });
-  }
-
-  String _getAccess(String userId, String stage) {
-    if (_modifications.containsKey(userId) && _modifications[userId]!.containsKey(stage)) {
-      return _modifications[userId]![stage]!;
-    }
-    final user = _users.firstWhere((u) => u.id == userId, orElse: () => _users[0]);
-    return user.stepAccess[stage] ?? 'no';
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_selectedUser != null) return _buildDetailsScreen();
+    return _buildDirectoryScreen();
+  }
+
+  // â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â•  USER DIRECTORY SCREEN â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• 
+  Widget _buildDirectoryScreen() {
     final filteredUsers = _users.where((u) {
       final matchQ = _searchQuery.isEmpty || u.name.toLowerCase().contains(_searchQuery.toLowerCase());
       final matchZ = _zoneFilter == 'ALL' || u.zone.toUpperCase() == _zoneFilter;
@@ -135,218 +116,155 @@ class _StepAssignmentScreenState extends State<StepAssignmentScreen> {
       return matchQ && matchZ && matchR;
     }).toList();
 
-    // Collect distinct zones and roles for filters
     final zones = ['ALL', ..._users.map((u) => u.zone.toUpperCase()).toSet().toList()..sort()];
     final roles = ['ALL', ..._users.map((u) => u.role.label).toSet().toList()..sort()];
 
     return Scaffold(
       backgroundColor: _kBg,
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 1,
-        shadowColor: Colors.black.withOpacity(0.05),
-        title: const Row(
-          children: [
-            Icon(Icons.assignment_ind_rounded, color: _kTeal, size: 22),
-            SizedBox(width: 10),
-            Text('Step Assignment Map', style: TextStyle(
-              fontWeight: FontWeight.w900, fontSize: 18, color: _kDark, letterSpacing: -0.3,
-            )),
-          ],
-        ),
+        backgroundColor: _kBg,
+        elevation: 0,
+        title: const Text('User / Role Management', style: TextStyle(
+          fontWeight: FontWeight.w900, fontSize: 18, color: _kDark, letterSpacing: -0.5,
+        )),
         actions: [
-          if (_modifications.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(right: 12, top: 10, bottom: 10),
-              child: ElevatedButton.icon(
-                onPressed: _isSaving ? null : _saveAllChanges,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _kDark,
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                ),
-                icon: _isSaving
-                    ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                    : const Icon(Icons.save_alt_rounded, size: 16),
-                label: const Text('Save Changes', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
-              ),
-            ),
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded, color: _kSub),
-            onPressed: _fetchUsers,
-          ),
-          const SizedBox(width: 8),
+          IconButton(icon: const Icon(Icons.search_rounded, color: _kDark), onPressed: () {}),
         ],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: _kTeal))
+          ? const Center(child: CircularProgressIndicator(color: _kBlue))
           : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Filters Row
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    border: Border(bottom: BorderSide(color: _kBorder)),
-                  ),
-                  child: Row(
+                // Search & Filter Row
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Column(
                     children: [
-                      // Search
-                      Expanded(
+                      Container(
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: _kBorder),
+                        ),
+                        child: TextField(
+                          onChanged: (v) => setState(() => _searchQuery = v),
+                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                          decoration: const InputDecoration(
+                            hintText: 'Search users or roles',
+                            hintStyle: TextStyle(color: _kSub, fontSize: 14),
+                            prefixIcon: Icon(Icons.search, color: _kSub, size: 18),
+                            border: InputBorder.none,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: [
+                            _filterDropdown('All Regions', _zoneFilter, zones, (v) => setState(() => _zoneFilter = v!)),
+                            const SizedBox(width: 8),
+                            _filterDropdown('All Roles', _roleFilter, roles, (v) => setState(() => _roleFilter = v!)),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                
+                const SizedBox(height: 20),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('USER DIRECTORY', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: _kSub, letterSpacing: 0.5)),
+                      Text('${filteredUsers.length} Total Users', style: const TextStyle(fontSize: 12, color: _kSub, fontWeight: FontWeight.w600)),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                // Users List (Premium Card Style)
+                Expanded(
+                  child: ListView.separated(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    itemCount: filteredUsers.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 12),
+                    itemBuilder: (context, index) {
+                      final u = filteredUsers[index];
+                      // Just checking if any access is granted for the quick-badge
+                      final hasAccess = u.stepAccess.values.any((v) => v == 'full' || v == 'view');
+                      
+                      return GestureDetector(
+                        onTap: () => _openUser(u),
                         child: Container(
-                          height: 40,
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
-                            color: _kBg,
-                            borderRadius: BorderRadius.circular(8),
+                            color: _kCard,
+                            borderRadius: BorderRadius.circular(12),
                             border: Border.all(color: _kBorder),
+                            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 4, offset: const Offset(0, 2))],
                           ),
                           child: Row(
                             children: [
-                              const Icon(Icons.search, size: 16, color: _kSub),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: TextField(
-                                  onChanged: (v) => setState(() => _searchQuery = v),
-                                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                                  decoration: const InputDecoration(
-                                    hintText: 'Search user...',
-                                    border: InputBorder.none,
-                                    isDense: true,
-                                    contentPadding: EdgeInsets.zero,
+                              // Avatar
+                              Container(
+                                width: 42, height: 42,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFE0F2FE),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    u.name.isNotEmpty ? u.name.substring(0, 2).toUpperCase() : '??',
+                                    style: const TextStyle(color: _kBlue, fontWeight: FontWeight.w900, fontSize: 15),
                                   ),
                                 ),
+                              ),
+                              const SizedBox(width: 14),
+                              
+                              // Info
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(u.name, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: _kDark)),
+                                    const SizedBox(height: 4),
+                                    Row(
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                          decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(4)),
+                                          child: Text(u.role.label, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: _kSub)),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Text(u.zone.toUpperCase(), style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: _kSub, letterSpacing: 0.5)),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              
+                              // Access Status Pill
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: hasAccess ? const Color(0xFF2563EB) : const Color(0xFFF1F5F9),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(hasAccess ? 'YES' : 'NO', style: TextStyle(
+                                  fontSize: 11, fontWeight: FontWeight.w900,
+                                  color: hasAccess ? Colors.white : _kSub,
+                                )),
                               ),
                             ],
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      
-                      // Zone Filter
-                      _dropdown('Zone', _zoneFilter, zones, (v) => setState(() => _zoneFilter = v!)),
-                      const SizedBox(width: 12),
-
-                      // Role Filter
-                      _dropdown('Role', _roleFilter, roles, (v) => setState(() => _roleFilter = v!)),
-                    ],
-                  ),
-                ),
-
-                // Table
-                Expanded(
-                  child: Container(
-                    margin: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: _kBorder),
-                      boxShadow: [BoxShadow(color: _kDark.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 4))],
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(16),
-                      child: SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        physics: const BouncingScrollPhysics(),
-                        child: SingleChildScrollView(
-                          physics: const BouncingScrollPhysics(),
-                          child: ConstrainedBox(
-                            constraints: BoxConstraints(minWidth: MediaQuery.of(context).size.width - 40),
-                            child: DataTable(
-                              headingRowColor: MaterialStateProperty.all(const Color(0xFFF8FAFC)),
-                              dividerThickness: 1,
-                              horizontalMargin: 20,
-                              columnSpacing: 24,
-                              dataRowMaxHeight: 64,
-                              dataRowMinHeight: 64,
-                              columns: [
-                                const DataColumn(label: Text('USER / ROLE', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 11, color: _kSub, letterSpacing: 0.5))),
-                                ..._stages.map((stg) => DataColumn(
-                                  label: SizedBox(
-                                    width: 80,
-                                    child: Text(stg.toUpperCase(), textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 10, color: _kDark)),
-                                  ),
-                                )),
-                              ],
-                              rows: filteredUsers.map((u) {
-                                return DataRow(
-                                  cells: [
-                                    DataCell(
-                                      SizedBox(
-                                        width: 180,
-                                        child: Column(
-                                          mainAxisAlignment: MainAxisAlignment.center,
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(u.name, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: _kDark), maxLines: 1, overflow: TextOverflow.ellipsis),
-                                            const SizedBox(height: 2),
-                                            Row(
-                                              children: [
-                                                _badge(u.role.label, _kTeal),
-                                                const SizedBox(width: 4),
-                                                _badge(u.zone.toUpperCase(), const Color(0xFF6366F1)),
-                                              ],
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                    // Stage boxes
-                                    ..._stages.map((stg) {
-                                      final access = _getAccess(u.id, stg);
-                                      return DataCell(
-                                        Center(
-                                          child: GestureDetector(
-                                            onTap: () => _toggleAccess(u.id, stg),
-                                            child: AnimatedContainer(
-                                              duration: const Duration(milliseconds: 150),
-                                              width: 56, height: 32,
-                                              decoration: BoxDecoration(
-                                                color: access == 'full' ? _kTeal : access == 'view' ? const Color(0xFF3B82F6) : const Color(0xFFF1F5F9),
-                                                borderRadius: BorderRadius.circular(8),
-                                                border: Border.all(
-                                                  color: access == 'no' ? _kBorder : Colors.transparent,
-                                                ),
-                                              ),
-                                              child: Center(
-                                                child: Text(
-                                                  access.toUpperCase(),
-                                                  style: TextStyle(
-                                                    fontWeight: FontWeight.w800, fontSize: 10,
-                                                    color: access == 'no' ? _kSub : Colors.white,
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      );
-                                    }),
-                                  ],
-                                );
-                              }).toList(),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                
-                // Legend
-                Container(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      _legendItem('FULL', _kTeal),
-                      const SizedBox(width: 20),
-                      _legendItem('VIEW', const Color(0xFF3B82F6)),
-                      const SizedBox(width: 20),
-                      _legendItem('NO', const Color(0xFFF1F5F9), hasBorder: true),
-                    ],
+                      );
+                    },
                   ),
                 ),
               ],
@@ -354,9 +272,246 @@ class _StepAssignmentScreenState extends State<StepAssignmentScreen> {
     );
   }
 
-  Widget _dropdown(String hint, String value, List<String> items, Function(String?) onChanged) {
+  // â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â•  USER DETAILS SCREEN â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• 
+  Widget _buildDetailsScreen() {
+    return DefaultTabController(
+      length: 3,
+      child: Scaffold(
+        backgroundColor: _kBg,
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_rounded, color: _kDark),
+            onPressed: () {
+              // Exit without saving
+              setState(() { _selectedUser = null; _modifications.clear(); });
+            },
+          ),
+          title: Text(_selectedUser!.name, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: _kDark, letterSpacing: -0.5)),
+          actions: [
+            IconButton(icon: const Icon(Icons.more_vert_rounded, color: _kDark), onPressed: () {}),
+          ],
+          bottom: const TabBar(
+            labelColor: _kBlue,
+            unselectedLabelColor: _kSub,
+            indicatorColor: _kBlue,
+            indicatorWeight: 3,
+            labelStyle: TextStyle(fontWeight: FontWeight.w800, fontSize: 11, letterSpacing: 0.5),
+            tabs: [
+              Tab(text: 'INTAKE'),
+              Tab(text: 'PROCESSING'),
+              Tab(text: 'OUTBOUND'),
+            ],
+          ),
+        ),
+        body: Column(
+          children: [
+            Expanded(
+              child: TabBarView(
+                // The three screens identical to screenshots
+                children: [
+                  _tabViewList(_intake),
+                  _tabViewCards(_processing),
+                  _tabViewList(_outbound), // Invoice / Dispatch / Delivery style
+                ],
+              ),
+            ),
+            
+            // Bottom Save Bar
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                border: const Border(top: BorderSide(color: _kBorder)),
+                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, -4))],
+              ),
+              child: SafeArea(
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: _isSaving ? null : _saveChanges,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _kBlue,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: _isSaving 
+                          ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                          : const Text('SAVE ASSIGNMENTS', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 0.5)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // A sleek list style (like Screenshot 3 & 4)
+  Widget _tabViewList(List<String> stages) {
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: stages.length,
+      itemBuilder: (context, index) {
+        final stg = stages[index];
+        final val = _modifications[stg] ?? 'no';
+        
+        return Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: _kCard,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: _kBorder),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(stg.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 12, color: _kDark)),
+                    const SizedBox(height: 4),
+                    Text('Workflow Stage Module', style: TextStyle(fontSize: 11, color: _kSub, fontWeight: FontWeight.w500)),
+                  ],
+                ),
+              ),
+              _segmentToggle(stg, val),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // A Card style with internal splits (like Screenshot 2)
+  Widget _tabViewCards(List<String> stages) {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            color: _kCard,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: _kBorder),
+          ),
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    const Icon(Icons.settings_suggest_rounded, color: _kTeal, size: 20),
+                    const SizedBox(width: 8),
+                    const Expanded(child: Text('Operational Access Settings', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: _kDark))),
+                  ],
+                ),
+              ),
+              const Divider(height: 1, color: _kBorder),
+              IntrinsicHeight(
+                child: Row(
+                  children: stages.map((stg) {
+                    final val = _modifications[stg] ?? 'no';
+                    return Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 8),
+                        decoration: BoxDecoration(
+                          border: stg != stages.last ? const Border(right: BorderSide(color: _kBorder)) : null,
+                        ),
+                        child: Column(
+                          children: [
+                            Text(stg.toUpperCase(), textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 10, color: _kSub)),
+                            const SizedBox(height: 12),
+                            _pillButton(stg, val),
+                          ],
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              )
+            ],
+          ),
+        )
+      ],
+    );
+  }
+
+  // The cool segmented toggle for Lists
+  Widget _segmentToggle(String stage, String currentVal) {
+    Widget seg(String label, String valCode, Color activeColor) {
+      final active = currentVal == valCode;
+      return GestureDetector(
+        onTap: () => setState(() => _modifications[stage] = valCode),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: active ? activeColor.withOpacity(0.15) : Colors.transparent,
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Text(label, style: TextStyle(
+            fontSize: 10, fontWeight: FontWeight.w900,
+            color: active ? activeColor : _kSub,
+          )),
+        ),
+      );
+    }
+    
     return Container(
-      height: 40,
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F5F9),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: _kBorder),
+      ),
+      padding: const EdgeInsets.all(2),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          seg('NO', 'no', _kSub),
+          seg('VIEW', 'view', const Color(0xFF3B82F6)),
+          seg('FULL', 'full', _kTeal),
+        ],
+      ),
+    );
+  }
+
+  // The cool pill button for Cards that Cycles on Tap
+  Widget _pillButton(String stage, String currentVal) {
+    Color bg = const Color(0xFFF1F5F9);
+    Color txt = _kSub;
+    if (currentVal == 'full') { bg = const Color(0xFFD1FAE5); txt = _kTeal; }
+    else if (currentVal == 'view') { bg = const Color(0xFFDBEAFE); txt = const Color(0xFF2563EB); }
+
+    void cycle() {
+      String nxt = 'no';
+      if (currentVal == 'no') nxt = 'view';
+      else if (currentVal == 'view') nxt = 'full';
+      setState(() => _modifications[stage] = nxt);
+    }
+
+    return GestureDetector(
+      onTap: cycle,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(20)),
+        child: Text(currentVal.toUpperCase(), style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: txt)),
+      ),
+    );
+  }
+
+  // Helper for Directory Dropsdowns
+  Widget _filterDropdown(String hint, String current, List<String> items, Function(String?) onChange) {
+    return Container(
+      height: 36,
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -365,41 +520,19 @@ class _StepAssignmentScreenState extends State<StepAssignmentScreen> {
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
-          value: value,
-          icon: const Icon(Icons.arrow_drop_down_rounded, color: _kSub),
-          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: _kDark),
-          items: items.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
-          onChanged: onChanged,
+          value: current == 'ALL' ? hint : current,
+          icon: const Icon(Icons.keyboard_arrow_down_rounded, color: _kSub, size: 16),
+          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: _kDark),
+          items: items.map((e) {
+            final val = e == 'ALL' ? hint : e;
+            return DropdownMenuItem(value: val, child: Text(val));
+          }).toList(),
+          onChanged: (v) {
+            String out = v == hint ? 'ALL' : v!;
+            onChange(out);
+          },
         ),
       ),
-    );
-  }
-
-  Widget _badge(String label, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Text(label, style: TextStyle(fontSize: 8, fontWeight: FontWeight.w800, color: color)),
-    );
-  }
-
-  Widget _legendItem(String label, Color color, {bool hasBorder = false}) {
-    return Row(
-      children: [
-        Container(
-          width: 12, height: 12,
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(3),
-            border: hasBorder ? Border.all(color: _kBorder) : null,
-          ),
-        ),
-        const SizedBox(width: 6),
-        Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: _kSub)),
-      ],
     );
   }
 }

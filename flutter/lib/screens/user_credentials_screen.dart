@@ -265,21 +265,27 @@ class _UserCredentialsScreenState extends State<UserCredentialsScreen> {
                                             ),
                                             maxLines: 1, overflow: TextOverflow.ellipsis,
                                           ),
-                                          const SizedBox(height: 3),
                                           Row(
                                             children: [
                                               _chip(u.role.label, isSelected),
                                               const SizedBox(width: 6),
-                                              if ((u.email ?? '').isNotEmpty)
-                                                Expanded(
-                                                  child: Text(u.email!,
-                                                    style: TextStyle(
-                                                      fontSize: 10, fontWeight: FontWeight.w500,
-                                                      color: isSelected ? Colors.white70 : _kSub,
-                                                    ),
-                                                    maxLines: 1, overflow: TextOverflow.ellipsis,
+                                              _chip(u.zone.toUpperCase(), isSelected),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 6),
+                                          Row(
+                                            children: [
+                                              Icon(Icons.login_rounded, size: 12, color: isSelected ? Colors.white70 : _kSub),
+                                              const SizedBox(width: 4),
+                                              Expanded(
+                                                child: Text('Login ID: ${(u.email?.isNotEmpty == true ? u.email : (u.employeeId?.isNotEmpty == true ? u.employeeId : u.id))!}',
+                                                  style: TextStyle(
+                                                    fontSize: 10, fontWeight: FontWeight.w700,
+                                                    color: isSelected ? Colors.white : _kDark,
                                                   ),
+                                                  maxLines: 1, overflow: TextOverflow.ellipsis,
                                                 ),
+                                              ),
                                             ],
                                           ),
                                         ],
