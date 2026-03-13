@@ -18,7 +18,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   final List<Widget> _screens = [
     const DashboardScreen(),
     const LiveMissionsScreen(),
-    const DashboardScreen(),
     const WarehouseInventoryScreen(),
     const SettingsScreen(),
   ];
@@ -62,10 +61,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             BottomNavigationBarItem(
               icon: Icon(Icons.list_alt_rounded),
               label: 'Orders',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.hub_rounded),
-              label: 'Hub',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.inventory_2_rounded),
