@@ -180,6 +180,7 @@ class User {
   // Credentials fields
   final String? email;
   final String? employeeId;
+  final String? address;
 
   User({
     required this.id,
@@ -198,6 +199,7 @@ class User {
     this.orgPositions = const [],
     this.email,
     this.employeeId,
+    this.address,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -224,6 +226,7 @@ class User {
           : (json['orgPosition'] != null ? [json['orgPosition'].toString()] : []),
       email:      json['email'] as String?,
       employeeId: json['employeeId'] as String?,
+      address:    json['address'] as String?,
     );
   }
 
@@ -245,6 +248,7 @@ class User {
       'orgPositions': orgPositions,
       if (email != null) 'email': email,
       if (employeeId != null) 'employeeId': employeeId,
+      if (address != null) 'address': address,
     };
   }
 }

@@ -547,15 +547,15 @@ app.patch('/api/users/:id/manager', async (req, res) => {
 app.patch('/api/users/:id/credentials', verifyToken, async (req, res) => {
     try {
         const { id } = req.params;
-        const { name, email, employeeId, password } = req.body;
+        const { name, email, employeeId, address, password } = req.body;
 
         const update = {};
         if (name)       update.name       = name;
         if (email)      update.email      = email;
         if (employeeId) update.employeeId = employeeId;
+        if (address !== undefined) update.address = address;
 
-        if (password && password.length > 0) {
-            const bcrypt = require('bcryptjs');
+        if (password && password.length > 0) {            const bcrypt = require('bcryptjs');
             update.password = await bcrypt.hash(password, 10);
             console.log(`🔑 Password reset for user ${id}`);
         }

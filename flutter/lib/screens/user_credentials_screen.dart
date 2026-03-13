@@ -30,6 +30,7 @@ class _UserCredentialsScreenState extends State<UserCredentialsScreen> {
   final _nameCtrl     = TextEditingController();
   final _emailCtrl    = TextEditingController();
   final _userIdCtrl   = TextEditingController();
+  final _addressCtrl  = TextEditingController();
   final _passwordCtrl = TextEditingController();
   bool _saving = false;
   bool _showPassword = false;
@@ -45,6 +46,7 @@ class _UserCredentialsScreenState extends State<UserCredentialsScreen> {
     _nameCtrl.dispose();
     _emailCtrl.dispose();
     _userIdCtrl.dispose();
+    _addressCtrl.dispose();
     _passwordCtrl.dispose();
     super.dispose();
   }
@@ -71,6 +73,7 @@ class _UserCredentialsScreenState extends State<UserCredentialsScreen> {
       _nameCtrl.text     = u.name;
       _emailCtrl.text    = u.email ?? '';
       _userIdCtrl.text   = u.employeeId ?? '';
+      _addressCtrl.text  = u.address ?? '';
       _passwordCtrl.text = '';
     });
   }
@@ -88,6 +91,7 @@ class _UserCredentialsScreenState extends State<UserCredentialsScreen> {
         'name':       _nameCtrl.text.trim(),
         'email':      _emailCtrl.text.trim(),
         'employeeId': _userIdCtrl.text.trim(),
+        'address':    _addressCtrl.text.trim(),
       };
       if (_passwordCtrl.text.isNotEmpty) {
         body['password'] = _passwordCtrl.text;
@@ -163,7 +167,7 @@ class _UserCredentialsScreenState extends State<UserCredentialsScreen> {
               children: [
                 // ── LEFT: user list ──
                 Container(
-                  width: MediaQuery.of(context).size.width > 700 ? 340 : double.infinity,
+                  width: MediaQuery.of(context).size.width > 700 ? 340 : MediaQuery.of(context).size.width,
                   color: _kCard,
                   child: Column(
                     children: [
@@ -406,12 +410,14 @@ class _UserCredentialsScreenState extends State<UserCredentialsScreen> {
             _inputField('Email Address', _emailCtrl, icon: Icons.email_outlined, keyboard: TextInputType.emailAddress),
             const SizedBox(height: 12),
             _inputField('Employee / User Code', _userIdCtrl, icon: Icons.badge_outlined),
+            const SizedBox(height: 12),
+            _inputField('Home/Office Address', _addressCtrl, icon: Icons.location_on_outlined),
 
             const SizedBox(height: 24),
             _sectionLabel('SET NEW PASSWORD'),
             const SizedBox(height: 4),
             const Text(
-              'Leave blank to keep the existing password unchanged.',
+              'For security, the current password is encrypted and cannot be viewed. Leave blank to keep existing password.',
               style: TextStyle(fontSize: 11, color: _kSub),
             ),
             const SizedBox(height: 12),
