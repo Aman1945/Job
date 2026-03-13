@@ -1,10 +1,10 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/nexus_provider.dart';
 import '../providers/auth_provider.dart';
 import '../utils/theme.dart';
 import '../models/models.dart';
+import 'order_lifecycle_screen.dart';
 
 class LiveMissionsScreen extends StatefulWidget {
   const LiveMissionsScreen({super.key});
@@ -14,24 +14,19 @@ class LiveMissionsScreen extends StatefulWidget {
 }
 
 class _LiveMissionsScreenState extends State<LiveMissionsScreen> {
+  String _searchQuery = '';
+  String _activeFilter = 'All Orders';
   Order? _selectedOrder;
-  final TextEditingController _noteController = TextEditingController();
-  Timer? _refreshTimer;
+  late TextEditingController _noteController;
 
   @override
   void initState() {
     super.initState();
-    // Set up auto-sync every 5 seconds
-    _refreshTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
-      if (mounted && _selectedOrder == null) {
-        Provider.of<NexusProvider>(context, listen: false).fetchOrders();
-      }
-    });
+    _noteController = TextEditingController();
   }
 
   @override
   void dispose() {
-    _refreshTimer?.cancel();
     _noteController.dispose();
     super.dispose();
   }
@@ -39,357 +34,276 @@ class _LiveMissionsScreenState extends State<LiveMissionsScreen> {
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<NexusProvider>(context);
-    final orders = provider.orders.where((o) => o.status != 'Delivered' && o.status != 'Rejected').toList();
+    final allOrders = provider.orders;
+    
+    // Filtering logic
+    final filteredOrders = allOrders.where((o) {
+      final matchesSearch = o.id.contains(_searchQuery) || o.customerName.toLowerCase().contains(_searchQuery.toLowerCase());
+      bool matchesFilter = true;
+      if (_activeFilter == 'In Transit') matchesFilter = o.status == 'In Transit';
+      if (_activeFilter == 'Pending') matchesFilter = o.status.contains('Pending');
+      return matchesSearch && matchesFilter;
+    }).toList();
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: NexusTheme.slate50,
       appBar: AppBar(
-        title: const Text('LIVE MISSIONS TERMINAL', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 0.5)),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context),
-        ),
-      ),
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          final isDesktop = constraints.maxWidth > 1000;
-          
-          if (_selectedOrder == null) {
-            return _buildMissionList(orders);
-          }
-
-          return isDesktop 
-            ? _buildDesktopDetailView(_selectedOrder!, provider) 
-            : _buildMobileDetailView(_selectedOrder!, provider);
-        },
-      ),
-    );
-  }
-
-  Widget _buildMissionList(List<Order> orders) {
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Live Pulse Command Center Hero
+        backgroundColor: Colors.white,
+        elevation: 0,
+        title: const Text('Nexus OMS', style: TextStyle(color: NexusTheme.slate900, fontWeight: FontWeight.w900, fontSize: 18)),
+        actions: [
           Container(
-            width: double.infinity,
-            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-            padding: const EdgeInsets.all(24),
+            margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 12),
             decoration: BoxDecoration(
-              color: const Color(0xFF0F172A),
-              borderRadius: BorderRadius.circular(32),
-              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 40, offset: const Offset(0, 20))],
+              color: NexusTheme.primaryBlue.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(20),
             ),
-            child: Stack(
+            child: const Center(
+              child: Text(
+                'Premium Management',
+                style: TextStyle(color: NexusTheme.primaryBlue, fontSize: 11, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ),
+        ],
+      ),
+      body: Column(
+        children: [
+          // Top Metrics Bar
+          Container(
+            color: Colors.white,
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                Positioned(
-                  right: -50,
-                  bottom: -50,
-                  child: Opacity(
-                    opacity: 0.1,
-                    child: Icon(Icons.waves, size: 200, color: Colors.indigo[400]),
+                _buildHeaderStats('Daily Volume', '1,284', '+12%', true),
+                _buildDivider(),
+                _buildHeaderStats('On-Time Rate', '98.2%', '+0.4%', true),
+                _buildDivider(),
+                _buildHeaderStats('Exceptions', '3 alerts', '-2', false, isNeutral: true),
+              ],
+            ),
+          ),
+          
+          // Search and Filters
+          Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Column(
+              children: [
+                // Search Bar
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: NexusTheme.slate200),
+                  ),
+                  child: TextField(
+                    onChanged: (v) => setState(() => _searchQuery = v),
+                    decoration: const InputDecoration(
+                      icon: Icon(Icons.search_rounded, color: NexusTheme.slate400),
+                      hintText: 'Search Order ID, Client or SKU...',
+                      border: InputBorder.none,
+                      hintStyle: TextStyle(color: NexusTheme.slate400, fontSize: 14),
+                    ),
                   ),
                 ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                const SizedBox(height: 16),
+                // Filter Chips
+                Row(
                   children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          margin: const EdgeInsets.only(top: 8),
-                          width: 8, 
-                          height: 8, 
-                          decoration: const BoxDecoration(color: Color(0xFFE11D48), shape: BoxShape.circle)
-                        ),
-                        const SizedBox(width: 12),
-                        const Expanded(
-                          child: Text('Live Pulse Command\nCenter', 
-                            style: TextStyle(fontSize: 32, fontWeight: FontWeight.w900, color: Colors.white, height: 1.1, letterSpacing: -1)
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    Text('MONITORING ${orders.length} ACTIVE SUPPLY MISSIONS\n(INCLUDING PARTIALS)', 
-                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Colors.white.withOpacity(0.5), letterSpacing: 0.5, height: 1.4)
-                    ),
-                    const SizedBox(height: 32),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.05),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: Colors.white.withOpacity(0.1)),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('${orders.length}', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Colors.white)),
-                              const Text('IN FLIGHT', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: Colors.white54, letterSpacing: 1)),
-                            ],
-                          ),
-                          const SizedBox(width: 20),
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(color: Colors.indigo[500]!.withOpacity(0.2), borderRadius: BorderRadius.circular(12)),
-                            child: const Icon(Icons.bolt, color: Color(0xFF818CF8), size: 20),
-                          ),
-                        ],
-                      ),
-                    ),
+                    _buildFilterChip('All Orders'),
+                    const SizedBox(width: 8),
+                    _buildFilterChip('In Transit'),
+                    const SizedBox(width: 8),
+                    _buildFilterChip('Pending'),
                   ],
                 ),
               ],
             ),
           ),
 
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          Expanded(
+            child: ListView.builder(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              itemCount: filteredOrders.length,
+              itemBuilder: (context, index) {
+                final order = filteredOrders[index];
+                return GestureDetector(
+                  onTap: () => Navigator.push(
+                    context, 
+                    MaterialPageRoute(builder: (context) => OrderLifecycleScreen(order: order))
+                  ),
+                  child: _buildOrderCard(order),
+                );
+              },
+            ),
+          ),
+
+          // Pagination Info (Mock)
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              border: Border(top: BorderSide(color: NexusTheme.slate200)),
+            ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Expanded(
-                  child: Text('ACTIVE MISSIONS DASHBOARD', 
-                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF94A3B8), letterSpacing: 0.5)
-                  ),
+                const Text(
+                  'Showing 1 to 4 of 42 orders',
+                  style: TextStyle(color: NexusTheme.slate500, fontSize: 12),
                 ),
-                _buildLiveSignal(),
-              ],
-            ),
-          ),
-
-          ListView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemCount: orders.length,
-            itemBuilder: (context, index) {
-              final order = orders[index];
-              return _buildMissionRow(order);
-            },
-          ),
-          
-          // GLOBAL STATUS FEED Header
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 32),
-            child: Row(
-              children: [
-                const Icon(Icons.show_chart_rounded, color: Color(0xFFF43F5E), size: 20),
-                const SizedBox(width: 12),
-                const Text('GLOBAL STATUS FEED', 
-                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF94A3B8), letterSpacing: 1)
+                Row(
+                  children: [
+                    _buildPageButton('1', isActive: true),
+                    const SizedBox(width: 4),
+                    _buildPageButton('2'),
+                    const SizedBox(width: 4),
+                    _buildPageButton('3'),
+                  ],
                 ),
               ],
             ),
           ),
-
-          // Activity Feed
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Column(
-              children: orders.take(2).map((order) => _buildFeedItem(order)).toList(),
-            ),
-          ),
-          const SizedBox(height: 48),
         ],
       ),
     );
   }
 
-  Widget _buildFeedItem(Order order) {
+  Widget _buildHeaderStats(String label, String value, String trend, bool isPositive, {bool isNeutral = false}) {
+    return Column(
+      children: [
+        Text(label, style: const TextStyle(color: NexusTheme.slate500, fontSize: 11, fontWeight: FontWeight.w600)),
+        const SizedBox(height: 4),
+        Row(
+          children: [
+            Text(value, style: const TextStyle(color: NexusTheme.slate900, fontSize: 16, fontWeight: FontWeight.w900)),
+            const SizedBox(width: 4),
+            Text(
+              trend,
+              style: TextStyle(
+                color: isNeutral ? NexusTheme.slate400 : (isPositive ? NexusTheme.success : NexusTheme.error),
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDivider() {
+    return Container(width: 1, height: 30, color: NexusTheme.slate200);
+  }
+
+  Widget _buildFilterChip(String label) {
+    final isActive = _activeFilter == label;
+    return GestureDetector(
+      onTap: () => setState(() => _activeFilter = label),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: isActive ? NexusTheme.primaryBlue : Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: isActive ? NexusTheme.primaryBlue : NexusTheme.slate200),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isActive ? Colors.white : NexusTheme.slate600,
+            fontSize: 13,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOrderCard(Order order) {
+    // Generate initials for mock avatar
+    final initials = order.customerName.isNotEmpty ? order.customerName.split(' ').map((e) => e[0]).take(2).join().toUpperCase() : '??';
+    
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(32),
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(48),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.01), blurRadius: 40, offset: const Offset(0, 20))],
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: NexusTheme.slate200.withOpacity(0.5)),
       ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Column(
-            children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF0F172A),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(Icons.bolt_rounded, color: Colors.white, size: 18),
-              ),
-              Container(
-                width: 2,
-                height: 40,
-                margin: const EdgeInsets.only(top: 8),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [const Color(0xFFF1F5F9), const Color(0xFFF8FAFC).withOpacity(0)],
-                  ),
-                ),
-              ),
-            ],
+          CircleAvatar(
+            backgroundColor: NexusTheme.slate100,
+            child: Text(initials, style: const TextStyle(color: NexusTheme.primaryBlue, fontWeight: FontWeight.bold, fontSize: 12)),
           ),
-          const SizedBox(width: 24),
+          const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(order.customerName.toUpperCase(), 
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: Color(0xFF0F172A), letterSpacing: -0.2)
+                Text(
+                  'Order #${order.id.substring(order.id.length - 4)}',
+                  style: const TextStyle(fontWeight: FontWeight.w900, color: NexusTheme.slate900, fontSize: 15),
                 ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Text(order.id, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF6366F1))),
-                    const SizedBox(width: 10),
-                    Container(width: 4, height: 4, decoration: const BoxDecoration(color: Color(0xFFE2E8F0), shape: BoxShape.circle)),
-                    const SizedBox(width: 10),
-                    const Text('09:33', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF94A3B8))),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                RichText(
-                  text: TextSpan(
-                    style: const TextStyle(fontSize: 13, color: Color(0xFF64748B), height: 1.4),
-                    children: [
-                      const TextSpan(text: 'Status moved to '),
-                      TextSpan(
-                        text: order.status, 
-                        style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF0F172A))
-                      ),
-                    ],
-                  ),
+                Text(
+                  order.customerName,
+                  style: const TextStyle(color: NexusTheme.slate500, fontSize: 13),
                 ),
               ],
             ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              _buildStatusBadge(order.status),
+              const SizedBox(height: 4),
+              const Text('2 hrs ago', style: TextStyle(color: NexusTheme.slate400, fontSize: 11)),
+            ],
           ),
         ],
       ),
     );
   }
 
-  Widget _buildMissionRow(Order order) {
+  Widget _buildStatusBadge(String status) {
+    Color color = NexusTheme.success;
+    if (status.contains('Pending')) color = NexusTheme.warning;
+    if (status == 'Rejected') color = NexusTheme.error;
+    if (status == 'In Transit') color = NexusTheme.primaryBlue;
+
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 20, offset: const Offset(0, 10))],
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
       ),
-      child: InkWell(
-        onTap: () => setState(() => _selectedOrder = order),
-        borderRadius: BorderRadius.circular(24),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF1F5F9),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(Icons.access_time_rounded, color: Color(0xFF94A3B8), size: 24),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Text(order.id, 
-                              style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: Color(0xFF6366F1))
-                            ),
-                            const SizedBox(width: 8),
-                            if (order.isSTN == true)
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(color: const Color(0xFF6366F1), borderRadius: BorderRadius.circular(6)),
-                                child: const Text('STN', 
-                                  style: TextStyle(fontSize: 7, fontWeight: FontWeight.w900, color: Colors.white)
-                                ),
-                              ),
-                            const SizedBox(width: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(6)),
-                              child: Text(order.status.toUpperCase(), 
-                                style: const TextStyle(fontSize: 7, fontWeight: FontWeight.w900, color: Color(0xFF64748B))
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Text(order.customerName.toUpperCase(), 
-                          style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: Color(0xFF0F172A), letterSpacing: -0.5)
-                        ),
-                        const SizedBox(height: 2),
-                        Text(order.partnerType ?? 'Distributor', 
-                          style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF94A3B8), letterSpacing: 0.5)
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Text('₹${order.total.toStringAsFixed(0)}', 
-                style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w900, color: Color(0xFF0F172A), letterSpacing: -1)
-              ),
-              const Text('CONSOLIDATED VALUE', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: Color(0xFF94A3B8))),
-              const SizedBox(height: 24),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text('JOURNEY PROGRESS', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: Color(0xFF94A3B8), letterSpacing: 1)),
-                  Text('${(_calculateProgress(order.status) * 100).toInt()}% - ${order.status == 'On Hold' ? 'PAUSED' : 'ON TRACK'}', 
-                    style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: order.status == 'On Hold' ? Colors.orange : const Color(0xFF6366F1))
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Container(
-                height: 8,
-                width: double.infinity,
-                decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(4)),
-                child: FractionallySizedBox(
-                  alignment: Alignment.centerLeft,
-                  widthFactor: _calculateProgress(order.status),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: order.status == 'On Hold' ? Colors.orange : const Color(0xFF6366F1),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              const Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text('CREDIT', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: Color(0xFFCBD5E1))),
-                  Text('PACKING', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: Color(0xFFCBD5E1))),
-                  Text('LOGISTICS', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: Color(0xFFCBD5E1))),
-                  Text('BILLING', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: Color(0xFFCBD5E1))),
-                  Text('FINAL', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: Color(0xFFCBD5E1))),
-                ],
-              ),
-            ],
+      child: Text(
+        status.toUpperCase(),
+        style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.w900),
+      ),
+    );
+  }
+
+  Widget _buildPageButton(String label, {bool isActive = false}) {
+    return Container(
+      width: 30,
+      height: 30,
+      decoration: BoxDecoration(
+        color: isActive ? NexusTheme.primaryBlue : Colors.transparent,
+        borderRadius: BorderRadius.circular(8),
+        border: isActive ? null : Border.all(color: NexusTheme.slate200),
+      ),
+      child: Center(
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isActive ? Colors.white : NexusTheme.slate600,
+            fontWeight: FontWeight.bold,
+            fontSize: 12,
           ),
         ),
       ),
@@ -418,16 +332,6 @@ class _LiveMissionsScreenState extends State<LiveMissionsScreen> {
     );
   }
 
-  Widget _buildStatusBadge(String status) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-      decoration: BoxDecoration(
-        color: NexusTheme.indigo50,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Text(status.toUpperCase(), style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: NexusTheme.indigo600, letterSpacing: 0.5)),
-    );
-  }
 
   Widget _buildDesktopDetailView(Order order, NexusProvider provider) {
     return Row(

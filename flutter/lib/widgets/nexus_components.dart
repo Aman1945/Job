@@ -24,7 +24,7 @@ class NexusComponents {
           ('Sales Manager', customer.salesManager ?? '-'),
           ('Class', customer.customerClass ?? '-'),
           ('Employee respons.', customer.employeeResponsible ?? '-'),
-          ('Customer Names', customer.name),
+          ('Customer Names', customer.name),  
           ('Credit Days', '${customer.exposureDays} days'),
           ('Credit Limit', '₹${currencyFormat.format(customer.limit)}'),
           ('Security Chq', customer.securityChq),

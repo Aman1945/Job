@@ -16,6 +16,7 @@ import 'screens/user_master_screen.dart';
 import 'screens/delivery_master_screen.dart';
 import 'screens/user_credentials_screen.dart';
 import 'screens/attendance_screen.dart';
+import 'screens/main_navigation_screen.dart';
 import 'utils/theme.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'controllers/testdrive/drive_state_manager.dart';
@@ -108,7 +109,7 @@ class _NexusAppState extends State<NexusApp> {
           if (!auth.isAuthenticated) {
             return LoginScreen();
           } else {
-            return DashboardScreen();
+            return const MainNavigationScreen();
           }
         },
       ),

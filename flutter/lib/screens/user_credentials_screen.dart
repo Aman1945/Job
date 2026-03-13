@@ -562,12 +562,33 @@ class _UserCredentialsScreenState extends State<UserCredentialsScreen> {
           labelText: 'New Password',
           labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _kSub),
           prefixIcon: const Icon(Icons.lock_outline_rounded, size: 18, color: _kSub),
-          suffixIcon: GestureDetector(
-            onTap: () { setState(() => _showPassword = !_showPassword); setS(() {}); },
-            child: Icon(
-              _showPassword ? Icons.visibility_off_rounded : Icons.visibility_rounded,
-              size: 18, color: _kSub,
-            ),
+          suffixIcon: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextButton(
+                onPressed: () {
+                  const chars = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789';
+                  final r = DateTime.now().microsecondsSinceEpoch;
+                  String result = '';
+                  for (int i = 0; i < 10; i++) {
+                    result += chars[(r + i * 13) % chars.length];
+                  }
+                  setState(() => _passwordCtrl.text = result);
+                  setS(() {});
+                },
+                child: const Text('✨ GEN', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: _kTeal)),
+              ),
+              GestureDetector(
+                onTap: () { setState(() => _showPassword = !_showPassword); setS(() {}); },
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 12),
+                  child: Icon(
+                    _showPassword ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                    size: 18, color: _kSub,
+                  ),
+                ),
+              ),
+            ],
           ),
           filled: true, fillColor: _kCard,
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),

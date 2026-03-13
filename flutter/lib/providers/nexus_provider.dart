@@ -591,7 +591,7 @@ class NexusProvider with ChangeNotifier {
     }
   }
 
-  Future<bool> createUser(Map<String, dynamic> userData, {String? token}) async {
+  Future<dynamic> createUser(Map<String, dynamic> userData, {String? token}) async {
     try {
       final response = await http.post(
         Uri.parse('$_baseUrl/users'),
@@ -604,7 +604,7 @@ class NexusProvider with ChangeNotifier {
 
       if (response.statusCode == 201) {
         await fetchUsers();
-        return true;
+        return jsonDecode(response.body);
       } else {
         debugPrint('Failed to create user: ${response.statusCode} - ${response.body}');
         throw Exception('Failed to create user: Server responded with ${response.statusCode}');

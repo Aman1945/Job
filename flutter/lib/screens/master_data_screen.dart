@@ -1,15 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/nexus_provider.dart';
 import '../providers/auth_provider.dart';
 import '../utils/theme.dart';
 import '../models/models.dart';
 import '../widgets/nexus_components.dart';
-import 'material_master_screen.dart';
-import 'distributor_price_screen.dart';
-import 'customer_master_screen.dart';
-import 'user_master_screen.dart';
-import 'delivery_master_screen.dart';
+import '../widgets/nexus_components.dart';
 
 import 'package:file_picker/file_picker.dart';
 import 'dart:io';
@@ -17,7 +14,6 @@ import 'package:path_provider/path_provider.dart';
 import 'package:open_file/open_file.dart';
 import 'package:excel/excel.dart' as xl;
 import '../widgets/row_detail_panel.dart';
-import 'package:excel/excel.dart' as xl;
 
 class MasterDataScreen extends StatefulWidget {
   const MasterDataScreen({super.key});
@@ -1283,23 +1279,49 @@ class _MasterDataScreenState extends State<MasterDataScreen> {
                     child: SingleChildScrollView(
                       child: Column(
                         children: [
-                          ...fields.map((f) => Padding(
-                            padding: const EdgeInsets.only(bottom: 24),
-                            child: TextField(
-                              controller: controllers[f],
-                              style: const TextStyle(color: Color(0xFF0F172A), fontWeight: FontWeight.bold, fontSize: 14),
-                              decoration: InputDecoration(
-                                labelText: f.toUpperCase(),
-                                labelStyle: const TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.w900, fontSize: 10, letterSpacing: 1),
-                                floatingLabelBehavior: FloatingLabelBehavior.always,
-                                enabledBorder: OutlineInputBorder(borderSide: const BorderSide(color: Color(0xFF0F172A), width: 1.5), borderRadius: BorderRadius.circular(16)),
-                                focusedBorder: OutlineInputBorder(borderSide: const BorderSide(color: Color(0xFF6366F1), width: 2), borderRadius: BorderRadius.circular(16)),
-                                filled: true,
-                                fillColor: const Color(0xFFF8FAFC),
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+                          ...fields.map((f) {
+                            bool isPassword = f == 'PASSWORD';
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 24),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  TextField(
+                                    controller: controllers[f],
+                                    style: const TextStyle(color: Color(0xFF0F172A), fontWeight: FontWeight.bold, fontSize: 14),
+                                    obscureText: isPassword,
+                                    decoration: InputDecoration(
+                                      labelText: f.toUpperCase(),
+                                      labelStyle: const TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.w900, fontSize: 10, letterSpacing: 1),
+                                      floatingLabelBehavior: FloatingLabelBehavior.always,
+                                      enabledBorder: OutlineInputBorder(borderSide: const BorderSide(color: Color(0xFF0F172A), width: 1.5), borderRadius: BorderRadius.circular(16)),
+                                      focusedBorder: OutlineInputBorder(borderSide: const BorderSide(color: Color(0xFF6366F1), width: 2), borderRadius: BorderRadius.circular(16)),
+                                      filled: true,
+                                      fillColor: const Color(0xFFF8FAFC),
+                                      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+                                      suffixIcon: isPassword ? TextButton(
+                                        onPressed: () {
+                                          const chars = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789';
+                                          final r = DateTime.now().microsecondsSinceEpoch;
+                                          String result = '';
+                                          for(int i=0; i<8; i++) {
+                                            result += chars[(r + i * 7) % chars.length];
+                                          }
+                                          controllers[f]!.text = result;
+                                        },
+                                        child: const Text('✨ AUTO', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF6366F1))),
+                                      ) : null,
+                                    ),
+                                  ),
+                                  if (isPassword)
+                                    const Padding(
+                                      padding: EdgeInsets.only(top: 4, left: 4),
+                                      child: Text('Leave blank for server-side auto-generation', style: TextStyle(fontSize: 9, color: Color(0xFF64748B), fontWeight: FontWeight.w600)),
+                                    ),
+                                ],
                               ),
-                            ),
-                          )).toList(),
+                            );
+                          }),
                           if (_selectedTab == 'CUSTOMER MASTER' && 
                               initialData is Customer && 
                               (authProvider.currentUser?.role.label == 'Admin' || authProvider.currentUser?.role.label == 'Credit Control')) ...[
@@ -1322,7 +1344,7 @@ class _MasterDataScreenState extends State<MasterDataScreen> {
                         
                         try {
                           if (_selectedTab == 'USER MASTER') {
-                            success = await provider.createUser({
+                            final res = await provider.createUser({
                               'name': controllers['NAME']!.text,
                               'id': controllers['EMAIL']!.text,
                               'role': controllers['ROLE']!.text,
@@ -1333,6 +1355,49 @@ class _MasterDataScreenState extends State<MasterDataScreen> {
                               'channel': controllers['CHANNEL']!.text,
                               'whatsappNumber': controllers['WHATSAPP']!.text,
                             });
+                            
+                            if (res != null && res is Map<String, dynamic>) {
+                              success = true;
+                              if (res['tempPassword'] != null && context.mounted) {
+                                // Show special success with password
+                                await showDialog(
+                                  context: context,
+                                  builder: (ctx) => AlertDialog(
+                                    title: const Text('User Created Successfully!', style: TextStyle(fontWeight: FontWeight.w900)),
+                                    content: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        const Text('The following temporary password has been generated:'),
+                                        const SizedBox(height: 16),
+                                        Container(
+                                          padding: const EdgeInsets.all(16),
+                                          decoration: BoxDecoration(color: Colors.blue.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+                                          child: Row(
+                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              Text(res['tempPassword'], style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, letterSpacing: 2, color: Colors.blue)),
+                                              IconButton(
+                                                icon: const Icon(Icons.copy),
+                                                onPressed: () {
+                                                  Clipboard.setData(ClipboardData(text: res['tempPassword']));
+                                                  ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('Password copied to clipboard')));
+                                                },
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        const SizedBox(height: 12),
+                                        const Text('Please share this password with the user immediately.', style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic)),
+                                      ],
+                                    ),
+                                    actions: [
+                                      TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('CLOSE')),
+                                    ],
+                                  ),
+                                );
+                              }
+                            }
                           } else if (_selectedTab == 'CUSTOMER MASTER') {
                             success = await provider.createCustomer({
                               'id': controllers['ID']!.text,

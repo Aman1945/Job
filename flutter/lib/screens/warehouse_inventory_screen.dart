@@ -1,10 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../providers/nexus_provider.dart';
-import '../providers/auth_provider.dart';
 import '../utils/theme.dart';
-import '../models/models.dart';
-import 'package:lucide_icons/lucide_icons.dart';
 
 class WarehouseInventoryScreen extends StatefulWidget {
   const WarehouseInventoryScreen({super.key});
@@ -14,345 +9,354 @@ class WarehouseInventoryScreen extends StatefulWidget {
 }
 
 class _WarehouseInventoryScreenState extends State<WarehouseInventoryScreen> {
-  Order? selectedOrder;
-  final Map<String, String> _itemBatches = {};
-  final Map<String, int> _packaging = {
-    'Small Carton': 0,
-    'Large Carton': 0,
-    'Ice Gel Packs': 0,
-    'Dry Ice (KG)': 0,
-  };
-
   @override
   Widget build(BuildContext context) {
-    final provider = Provider.of<NexusProvider>(context);
-    final pendingOrders = provider.orders.where((o) => o.status == 'Pending Packing').toList();
-
     return Scaffold(
-      backgroundColor: const Color(0xFFF1F5F9), // Slate 100
+      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: Text(selectedOrder == null ? '3. WAREHOUSE OPERATIONS' : 'WMS PACKING TERMINAL', 
-            style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 1, color: Color(0xFF1E293B))),
         backgroundColor: Colors.white,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Color(0xFF1E293B)),
-          onPressed: () {
-            if (selectedOrder != null) {
-              setState(() => selectedOrder = null);
-            } else {
-              Navigator.pop(context);
-            }
-          },
-        ),
-      ),
-      body: selectedOrder == null
-          ? _buildOrderQueue(pendingOrders)
-          : _buildPackingTerminal(selectedOrder!),
-    );
-  }
-
-  Widget _buildOrderQueue(List<Order> orders) {
-    if (orders.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+        toolbarHeight: 80,
+        title: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(32),
-              decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-              child: const Icon(LucideIcons.packageCheck, size: 80, color: Color(0xFF10B981)),
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: NexusTheme.primaryBlue,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.grid_view_rounded, color: Colors.white, size: 24),
             ),
-            const SizedBox(height: 24),
-            const Text('ALL ORDERS PACKED', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18)),
-            const Text('Warehouse dispatch queue is clear.', style: TextStyle(color: Colors.grey)),
+            const SizedBox(width: 16),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Nexus OMS', style: TextStyle(color: NexusTheme.slate900, fontSize: 18, fontWeight: FontWeight.w900)),
+                Text('INVENTORY CONTROL', style: TextStyle(color: NexusTheme.slate400, fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 1)),
+              ],
+            ),
           ],
         ),
-      );
-    }
-
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: orders.length,
-      itemBuilder: (context, index) {
-        final order = orders[index];
-        return Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(24),
-            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10)],
-          ),
-          child: ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-            title: Text(order.id, style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF6366F1))),
-            subtitle: Text(order.customerName, style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
-            trailing: ElevatedButton(
-              onPressed: () => setState(() => selectedOrder = order),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF1E293B),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        actions: [
+          IconButton(icon: const Icon(Icons.search, color: NexusTheme.slate600), onPressed: () {}),
+          Stack(
+            children: [
+              IconButton(icon: const Icon(Icons.notifications_none_rounded, color: NexusTheme.slate600), onPressed: () {}),
+              Positioned(
+                right: 12,
+                top: 12,
+                child: Container(
+                  width: 8,
+                  height: 8,
+                  decoration: const BoxDecoration(color: Color(0xFFF43F5E), shape: BoxShape.circle),
+                ),
               ),
-              child: const Text('START PACKING', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+            ],
+          ),
+          const Padding(
+            padding: EdgeInsets.only(right: 16, left: 8),
+            child: CircleAvatar(
+              radius: 18,
+              backgroundImage: NetworkImage('https://i.pravatar.cc/150?u=nexus_admin'),
             ),
           ),
-        );
-      },
-    );
-  }
-
-  Widget _buildPackingTerminal(Order order) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isMobile = constraints.maxWidth < 900;
-
-        return SingleChildScrollView(
-          padding: EdgeInsets.all(isMobile ? 16 : 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildMissionHeader(order, isMobile),
-              const SizedBox(height: 32),
-              
-              if (isMobile) ...[
-                _buildItemVerificationCard(order),
-                const SizedBox(height: 24),
-                _buildPackagingConsumptionCard(),
-                const SizedBox(height: 24),
-                _buildOperationSummary(order),
-              ] else
+        ],
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Top Metrics
+            _buildMetricCard(
+              'Total SKUs',
+              '12,480',
+              '+2.4%',
+              NexusTheme.primaryBlue,
+              Icons.inventory_2_outlined,
+              isTrendPositive: true,
+            ),
+            const SizedBox(height: 16),
+            _buildMetricCard(
+              'Low Stock Alerts',
+              '142',
+              'Urgent',
+              const Color(0xFFF59E0B),
+              Icons.warning_amber_rounded,
+            ),
+            const SizedBox(height: 16),
+            _buildMetricCard(
+              'Pending Transfers',
+              '28',
+              'Real-time',
+              const Color(0xFF8B5CF6),
+              Icons.swap_horiz_rounded,
+            ),
+            
+            const SizedBox(height: 40),
+            
+            // System Utilities Section Header
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
                 Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      flex: 2,
-                      child: Column(
-                        children: [
-                          _buildItemVerificationCard(order),
-                          const SizedBox(height: 24),
-                          _buildPackagingConsumptionCard(),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 24),
-                    Expanded(
-                      child: _buildOperationSummary(order),
-                    ),
+                    const Icon(Icons.settings_suggest_outlined, color: NexusTheme.primaryBlue, size: 24),
+                    const SizedBox(width: 12),
+                    const Text('System Utilities', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: NexusTheme.slate900, letterSpacing: -0.5)),
                   ],
                 ),
-            ],
-          ),
-        );
-      },
+                TextButton(
+                  onPressed: () {},
+                  child: const Text('View All', style: TextStyle(color: NexusTheme.primaryBlue, fontWeight: FontWeight.w900, fontSize: 13)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            
+            // Utilities Grid
+            GridView.count(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              crossAxisCount: 2,
+              mainAxisSpacing: 16,
+              crossAxisSpacing: 16,
+              childAspectRatio: 1.0,
+              children: [
+                _buildUtilityCard('Stock Transfer', 'INTERNAL MOVEMENTS', Icons.compare_arrows_rounded),
+                _buildUtilityCard('SKU Master', 'CATALOG MANAGEMENT', Icons.assignment_outlined),
+                _buildUtilityCard('Inventory Audit', 'COMPLIANCE CHECK', Icons.verified_outlined),
+                _buildUtilityCard('Zone Mapping', 'WAREHOUSE LAYOUT', Icons.location_on_outlined),
+                _buildUtilityCard('Batch Tracking', 'LOT MANAGEMENT', Icons.qr_code_scanner_rounded),
+                _buildUtilityCard('Supplier Sync', 'EXTERNAL APIS', Icons.sync_alt_rounded),
+              ],
+            ),
+            
+            const SizedBox(height: 40),
+            
+            // Storage Distribution
+            Container(
+              padding: const EdgeInsets.all(32),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(32),
+                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.01), blurRadius: 40, offset: const Offset(0, 20))],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('STORAGE DISTRIBUTION', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: NexusTheme.slate400, letterSpacing: 1.5)),
+                  const SizedBox(height: 32),
+                  _buildStorageBar('Warehouse Alpha (NY)', 0.85, '85% Capacity'),
+                  const SizedBox(height: 24),
+                  _buildStorageBar('Warehouse Bravo (CA)', 0.42, '42% Capacity'),
+                ],
+              ),
+            ),
+            
+            const SizedBox(height: 40),
+            
+            // Recent System Logs
+            Container(
+              padding: const EdgeInsets.all(32),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(32),
+                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.01), blurRadius: 40, offset: const Offset(0, 20))],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('RECENT SYSTEM LOGS', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: NexusTheme.slate400, letterSpacing: 1.5)),
+                  const SizedBox(height: 32),
+                  _buildSystemLog(
+                    'SKU-402 Price Updated',
+                    '2 minutes ago by Administrator',
+                    'LOG-9921',
+                    const Color(0xFFEFF6FF),
+                    NexusTheme.primaryBlue,
+                    Icons.edit_outlined,
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 24),
+                    child: Divider(height: 1, color: Color(0xFFF1F5F9)),
+                  ),
+                  _buildSystemLog(
+                    'Low Stock Trigger: Item #881',
+                    '14 minutes ago via Automation',
+                    'LOG-9918',
+                    const Color(0xFFFFF7ED),
+                    const Color(0xFFF59E0B),
+                    Icons.bolt_rounded,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
-  Widget _buildMissionHeader(Order order, bool isMobile) {
+  Widget _buildMetricCard(String label, String value, String tag, Color color, IconData icon, {bool isTrendPositive = false}) {
     return Container(
-      padding: EdgeInsets.all(isMobile ? 20 : 32),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(32)),
-      child: isMobile
-        ? Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+      padding: const EdgeInsets.all(28),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.01), blurRadius: 40, offset: const Offset(0, 10))],
+      ),
+      child: Stack(
+        children: [
+          Row(
             children: [
-              const Text('MISSION REFERENCE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Colors.grey, letterSpacing: 1.5)),
-              const SizedBox(height: 8),
-              Text(order.id, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Color(0xFF1E293B))),
-              Text('Consignee: ${order.customerName}', style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF6366F1))),
-              const SizedBox(height: 16),
-              const Divider(),
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text('TOTAL LINE ITEMS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Colors.grey)),
-                  Text('${order.items.length}', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Color(0xFF1E293B))),
-                ],
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Icon(icon, color: color, size: 28),
               ),
-            ],
-          )
-        : Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
+              const SizedBox(width: 24),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('MISSION REFERENCE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Colors.grey, letterSpacing: 1.5)),
-                  Text(order.id, style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w900, color: Color(0xFF1E293B))),
-                  Text('Consignee: ${order.customerName}', style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF6366F1))),
+                  Text(label, style: const TextStyle(color: NexusTheme.slate400, fontSize: 14, fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 8),
+                  Text(value, style: const TextStyle(color: NexusTheme.slate900, fontSize: 28, fontWeight: FontWeight.w900, letterSpacing: -1)),
                 ],
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(16)),
-                child: Column(
-                  children: [
-                    const Text('TOTAL LINE ITEMS', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: Colors.grey)),
-                    Text('${order.items.length}', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Color(0xFF1E293B))),
-                  ],
-                ),
               ),
             ],
           ),
-    );
-  }
-
-  Widget _buildItemVerificationCard(Order order) {
-    return Container(
-      padding: const EdgeInsets.all(32),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(32)),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('LINE ITEM BATCH VERIFICATION', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 11, color: Colors.grey, letterSpacing: 1)),
-          const SizedBox(height: 24),
-          ...order.items.map((item) => _buildItemRow(item)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildItemRow(OrderItem item) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: const Color(0xFFF8FAFC), borderRadius: BorderRadius.circular(16), border: Border.all(color: const Color(0xFFE2E8F0))),
-      child: Row(
-        children: [
-          const Icon(LucideIcons.box, size: 20, color: Color(0xFF94A3B8)),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(item.name, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13)),
-                Text('SKU: ${item.skuCode} | Qty: ${item.quantity}', style: const TextStyle(fontSize: 11, color: Colors.grey)),
-              ],
+          Positioned(
+            top: 0,
+            right: 0,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: isTrendPositive ? const Color(0xFFECFDF5) : const Color(0xFFFFF7ED),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (isTrendPositive) const Icon(Icons.trending_up, color: Color(0xFF10B981), size: 14),
+                  const SizedBox(width: 6),
+                  Text(
+                    tag,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w900,
+                      color: isTrendPositive ? const Color(0xFF10B981) : const Color(0xFFD97706),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-          DropdownButton<String>(
-            hint: const Text('Select Batch', style: TextStyle(fontSize: 10)),
-            value: _itemBatches[item.skuCode],
-            underline: const SizedBox(),
-            items: ['B24-001 (Jan 26)', 'B24-005 (Feb 15)'].map((b) => DropdownMenuItem(value: b, child: Text(b, style: const TextStyle(fontSize: 11)))).toList(),
-            onChanged: (val) => setState(() => _itemBatches[item.skuCode] = val!),
-          ),
         ],
       ),
     );
   }
 
-  Widget _buildPackagingConsumptionCard() {
+  Widget _buildUtilityCard(String title, String subtitle, IconData icon) {
     return Container(
-      padding: const EdgeInsets.all(32),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(32)),
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0xFFF1F5F9), width: 1.5),
+      ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Text('PACKAGING MATERIAL CONSUMPTION', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 11, color: Colors.grey, letterSpacing: 1)),
-          const SizedBox(height: 24),
-          Row(
-            children: _packaging.entries.map((e) => Expanded(
-              child: _buildPackagingCounter(e.key, e.value),
-            )).toList(),
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Icon(icon, color: NexusTheme.slate700, size: 28),
           ),
+          const SizedBox(height: 20),
+          Text(title, textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: NexusTheme.slate900, letterSpacing: -0.3)),
+          const SizedBox(height: 6),
+          Text(subtitle, textAlign: TextAlign.center, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: NexusTheme.slate400, letterSpacing: 0.8)),
         ],
       ),
     );
   }
 
-  Widget _buildPackagingCounter(String label, int count) {
+  Widget _buildStorageBar(String label, double value, String percentage) {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
-        const SizedBox(height: 8),
         Row(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            InkWell(
-              onTap: () => setState(() => _packaging[label] = (count > 0 ? count - 1 : 0)),
-              child: const Icon(Icons.remove_circle_outline, size: 20, color: Colors.red),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12.0),
-              child: Text('$count', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18)),
-            ),
-            InkWell(
-              onTap: () => setState(() => _packaging[label] = count + 1),
-              child: const Icon(Icons.add_circle_outline, size: 20, color: Colors.green),
-            ),
+            Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: NexusTheme.slate700)),
+            Text(percentage, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: NexusTheme.primaryBlue)),
           ],
+        ),
+        const SizedBox(height: 16),
+        Container(
+          width: double.infinity,
+          height: 12,
+          decoration: BoxDecoration(
+            color: const Color(0xFFF1F5F9),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: FractionallySizedBox(
+            alignment: Alignment.centerLeft,
+            widthFactor: value,
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [NexusTheme.primaryBlue, Color(0xFF3B82F6)],
+                ),
+                borderRadius: BorderRadius.circular(6),
+              ),
+            ),
+          ),
         ),
       ],
     );
   }
 
-  Widget _buildOperationSummary(Order order) {
-    final bool allBatched = order.items.every((i) => _itemBatches.containsKey(i.skuCode));
-    
-    return Container(
-      padding: const EdgeInsets.all(32),
-      decoration: BoxDecoration(color: const Color(0xFF0F172A), borderRadius: BorderRadius.circular(32)),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
+  Widget _buildSystemLog(String title, String meta, String id, Color bgColor, Color iconColor, IconData icon) {
+    return Row(
+      children: [
+        Container(
+          width: 48,
+          height: 48,
+          decoration: BoxDecoration(
+            color: bgColor,
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, color: iconColor, size: 20),
+        ),
+        const SizedBox(width: 20),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(LucideIcons.shieldCheck, color: Color(0xFF10B981), size: 20),
-              SizedBox(width: 12),
-              Text('WMS SUMMARY', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900)),
+              Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: NexusTheme.slate900, letterSpacing: -0.2)),
+              const SizedBox(height: 4),
+              Text(meta, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: NexusTheme.slate400)),
             ],
           ),
-          const SizedBox(height: 24),
-          _buildSummaryRow('Line Items Cleared', '${_itemBatches.length}/${order.items.length}'),
-          _buildSummaryRow('Bin Locations Sync', 'ACTIVE'),
-          _buildSummaryRow('Temp Controlled', 'YES (-18°C)'),
-          const SizedBox(height: 32),
-          const Divider(color: Color(0xFF334155)),
-          const SizedBox(height: 32),
-          SizedBox(
-            width: double.infinity,
-            height: 60,
-            child: ElevatedButton(
-              onPressed: allBatched ? () => _finalizePacking(order) : null,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF10B981),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-              ),
-              child: const Text('FINALIZE MISSION PACKING', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1)),
-            ),
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: const Color(0xFFF1F5F9)),
           ),
-          if (!allBatched)
-            const Padding(
-              padding: EdgeInsets.only(top: 16.0),
-              child: Text('Please select batches for ALL items to proceed.', style: TextStyle(color: Color(0xFFFDA4AF), fontSize: 10, fontWeight: FontWeight.bold)),
-            ),
-        ],
-      ),
+          child: Text(id, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: NexusTheme.slate400, letterSpacing: 1)),
+        ),
+      ],
     );
-  }
-
-  Widget _buildSummaryRow(String label, String val) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 11)),
-          Text(val, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 11)),
-        ],
-      ),
-    );
-  }
-
-  void _finalizePacking(Order order) async {
-    final provider = Provider.of<NexusProvider>(context, listen: false);
-    final auth = Provider.of<AuthProvider>(context, listen: false);
-    final success = await provider.updateOrderStatus(order.id, 'Packed', token: auth.token);
-    if (success && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Mission packed and batches committed to inventory!'), backgroundColor: Color(0xFF10B981)));
-      setState(() => selectedOrder = null);
-    }
   }
 }

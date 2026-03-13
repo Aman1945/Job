@@ -138,6 +138,69 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
+  /// Send OTP to mobile
+  Future<void> sendOtp(String phone) async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/auth/send-otp'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'phone': phone}),
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Failed to send OTP. Please try again.');
+      }
+      debugPrint('✅ OTP sent to $phone');
+    } catch (e) {
+      debugPrint('❌ Send OTP error: $e');
+      rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  /// Verify OTP and login
+  Future<bool> verifyOtp(String phone, String otp) async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/auth/verify-otp'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'phone': phone, 'otp': otp}),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        _token = data['token'];
+        _currentUser = User.fromJson(data['user']);
+        _isAuthenticated = true;
+
+        await _secureStorage.write(key: 'jwt_token', value: _token);
+        await _secureStorage.write(
+          key: 'user_data',
+          value: jsonEncode(_currentUser!.toJson()),
+        );
+
+        debugPrint('✅ OTP verified, login successful');
+        return true;
+      } else {
+        throw Exception('Invalid OTP. Please try again.');
+      }
+    } catch (e) {
+      debugPrint('❌ Verify OTP error: $e');
+      rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
   /// Logout and clear session
   Future<void> logout() async {
     _currentUser = null;
