@@ -24,10 +24,11 @@ import 'executive_pulse_screen.dart';
 import 'live_missions_screen.dart';
 import 'pms_screen.dart';
 import 'add_product_screen.dart';
-import 'admin_user_management_screen.dart';
 import 'step_assignment_screen.dart';
 import 'team_hierarchy_screen.dart';
 import 'sales_org_map_screen.dart';
+import 'user_credentials_screen.dart';
+import 'attendance_screen.dart';
 
 // ─────────────────────── COLOUR PALETTE ───────────────────────
 const _bgPage   = Color(0xFFEDF2F8);  // light blue-gray page bg
@@ -391,7 +392,7 @@ class _LifecycleGrid extends StatelessWidget {
         'roles': ['Admin', 'Sales', 'RSM', 'ASM', 'NSM', 'Logistics Lead'],
       },
       {
-        'stage': 'STAGE 3',  'label': 'Credit Approv.',
+        'stage': 'STAGE 3',  'label': 'Credit Approval',
         'icon': Icons.verified_rounded,
         'color': _orange,
         'screen': const CreditControlScreen(),
@@ -419,7 +420,7 @@ class _LifecycleGrid extends StatelessWidget {
         'roles': ['Admin', 'QC Head', 'RSM', 'ASM', 'NSM'],
       },
       {
-        'stage': 'STAGE 7',  'label': 'Logistic Cost',
+        'stage': 'STAGE 7',  'label': 'Logistics Cost',
         'icon': Icons.currency_rupee_rounded,
         'color': _purple,
         'screen': const LogisticsOpsScreen(),
@@ -596,8 +597,9 @@ class _UtilityGrid extends StatelessWidget {
       {'l': 'INTELLIGENCE',    'i': Icons.insights_rounded,          's': const AnalyticsScreen(),            'roles': ['Admin', 'Sales', 'RSM', 'ASM', 'NSM', 'Credit Control', 'Logistics Lead']},
       {'l': 'CREDIT ALERTS',   'i': Icons.warning_amber_rounded,     's': const CreditRiskScreen(),           'roles': ['Credit Control', 'Admin', 'RSM', 'NSM']},
       {'l': 'PROCUREMENT',     'i': Icons.shopping_bag_outlined,     's': const ProcurementScreen(),          'roles': ['Admin', 'RSM', 'NSM']},
-      {'l': 'USER MANAGEMENT', 'i': Icons.manage_accounts_rounded,   's': const AdminUserManagementScreen(),  'roles': ['Admin']},
-      {'l': 'STEP ASSIGNMENT', 'i': Icons.assignment_ind_rounded,    's': const StepAssignmentScreen(),       'roles': ['Admin']},
+      {'l': 'USER CREDENTIALS',  'i': Icons.key_rounded,                  's': const UserCredentialsScreen(),      'roles': ['Admin']},
+      {'l': 'STEP ASSIGNMENT',   'i': Icons.assignment_ind_rounded,       's': const StepAssignmentScreen(),       'roles': ['Admin']},
+      {'l': 'ATTENDANCE',         'i': Icons.fingerprint_rounded,           's': const AttendanceScreen(),            'roles': ['Admin', 'Sales', 'RSM', 'ASM', 'NSM', 'Logistics Lead', 'Hub Lead', 'Delivery Team', 'Warehouse', 'QC Head', 'Credit Control', 'Billing', 'ATL Executive']},
       {'l': 'MASTER DATA',     'i': Icons.storage_rounded,           's': const MasterDataScreen(),           'roles': ['Admin']},
       {'l': 'TEAM HIERARCHY',  'i': Icons.account_tree_rounded,      's': const TeamHierarchyScreen(),        'roles': ['Admin', 'RSM', 'ASM', 'NSM', 'Logistics Lead', 'Hub Lead']},
       {'l': 'SALES ORG MAP',   'i': Icons.corporate_fare_rounded,   's': const SalesOrgMapScreen(),          'roles': ['Admin', 'NSM', 'RSM']},

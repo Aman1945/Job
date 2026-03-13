@@ -175,8 +175,11 @@ class User {
   final String zone;
   final List<String> permissions;
   final Map<String, String> stepAccess; // 3-level: 'full', 'view', 'no'
-  final String? managerId; // RSM/ASM hierarchy: ID of the manager this user reports to
-  final List<String> orgPositions; // Org map slot keys e.g. ['rsm_north_retail', 'asm_south_horeca']
+  final String? managerId;
+  final List<String> orgPositions;
+  // Credentials fields
+  final String? email;
+  final String? employeeId;
 
   User({
     required this.id,
@@ -193,6 +196,8 @@ class User {
     this.stepAccess = const {},
     this.managerId,
     this.orgPositions = const [],
+    this.email,
+    this.employeeId,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -217,6 +222,8 @@ class User {
       orgPositions: json['orgPositions'] is List 
           ? (json['orgPositions'] as List).map((e) => e.toString()).toList() 
           : (json['orgPosition'] != null ? [json['orgPosition'].toString()] : []),
+      email:      json['email'] as String?,
+      employeeId: json['employeeId'] as String?,
     );
   }
 
@@ -236,6 +243,8 @@ class User {
       if (password != null) 'password': password,
       if (managerId != null) 'managerId': managerId,
       'orgPositions': orgPositions,
+      if (email != null) 'email': email,
+      if (employeeId != null) 'employeeId': employeeId,
     };
   }
 }

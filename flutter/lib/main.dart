@@ -14,12 +14,11 @@ import 'screens/customer_master_screen.dart';
 import 'screens/od_master_screen.dart';
 import 'screens/user_master_screen.dart';
 import 'screens/delivery_master_screen.dart';
-
+import 'screens/user_credentials_screen.dart';
+import 'screens/attendance_screen.dart';
 import 'utils/theme.dart';
-
 import 'package:hive_flutter/hive_flutter.dart';
 import 'controllers/testdrive/drive_state_manager.dart';
-
 import 'services/downloader_service.dart';
 
 
@@ -96,6 +95,8 @@ class _NexusAppState extends State<NexusApp> {
         '/od-master': (context) => const OdMasterScreen(),
         '/user-master': (context) => const UserMasterScreen(),
         '/delivery-master': (context) => const DeliveryMasterScreen(),
+        '/user-credentials': (context) => const UserCredentialsScreen(),
+        '/attendance': (context) => const AttendanceScreen(),
 
       },
       home: Consumer<AuthProvider>(

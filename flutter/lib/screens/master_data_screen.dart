@@ -93,8 +93,7 @@ class _MasterDataScreenState extends State<MasterDataScreen> {
                       color: NexusTheme.slate900,
                     ),
                   ),
-                  const Text(
-                    'ENTERPRISE MASTER REGISTRY & DATA MANAGEMENT TERMINAL',
+                  const Text('ENTERPRISE MASTER REGISTRY & DATA MANAGEMENT TERMINAL',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 10,

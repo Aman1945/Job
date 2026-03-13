@@ -138,7 +138,7 @@ class _DistributorPriceScreenState extends State<DistributorPriceScreen> {
         distMarginOnCost: d.distMarginOnCost,
         distMarginOnMrp: d.distMarginOnMrp,
         billingRate: d.billingRate,
-      )).toList();
+        )).toList();
     }
 
     // Fallback: derive from products with mrp data

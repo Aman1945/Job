@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'dart:ui';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
@@ -20,18 +20,16 @@ class _StepAssignmentScreenState extends State<StepAssignmentScreen> {
   bool _isLoading = true;
 
   final List<Map<String, dynamic>> _workflowSteps = [
-    {'label': 'Master Creation', 'icon': Icons.app_registration_rounded, 'color': const Color(0xFF6366F1)},
-    {'label': 'Placed Order', 'icon': Icons.shopping_cart_checkout_rounded, 'color': const Color(0xFF0EA5E9)},
-    {'label': 'Sales Alignment', 'icon': Icons.group_add_rounded, 'color': const Color(0xFF14B8A6)},
-    {'label': 'Credit Approv.', 'icon': Icons.verified_rounded, 'color': const Color(0xFFF97316)},
-    {'label': 'Warehouse', 'icon': Icons.inventory_2_rounded, 'color': const Color(0xFF78716C)},
-    {'label': 'Packing', 'icon': Icons.inventory_rounded, 'color': const Color(0xFFEAB308)},
-    {'label': 'QC', 'icon': Icons.verified_user_rounded, 'color': const Color(0xFF22C55E)},
-    {'label': 'Logistic Cost', 'icon': Icons.currency_rupee_rounded, 'color': const Color(0xFF8B5CF6)},
-    {'label': 'Invoice', 'icon': Icons.receipt_long_rounded, 'color': const Color(0xFF3B82F6)},
-    {'label': 'DA Assignment', 'icon': Icons.assignment_turned_in_rounded, 'color': const Color(0xFF64748B)},
-    {'label': 'Loading', 'icon': Icons.local_shipping_rounded, 'color': const Color(0xFFA855F7)},
-    {'label': 'Delivery Ack', 'icon': Icons.task_alt_rounded, 'color': const Color(0xFFEF4444)},
+    {'label': 'Creation',       'icon': Icons.person_add_alt_1_rounded,       'color': const Color(0xFF1ABFA1)},
+    {'label': 'Placed Order',   'icon': Icons.shopping_cart_checkout_rounded,  'color': const Color(0xFF5C6BE8)},
+    {'label': 'Credit Approval','icon': Icons.verified_rounded,                'color': const Color(0xFFFF8C3A)},
+    {'label': 'Warehouse',      'icon': Icons.inventory_2_rounded,             'color': const Color(0xFF78716C)},
+    {'label': 'Packing',        'icon': Icons.inventory_rounded,               'color': const Color(0xFFEAB308)},
+    {'label': 'QC',             'icon': Icons.verified_user_rounded,           'color': const Color(0xFF22C55E)},
+    {'label': 'Logistics Cost', 'icon': Icons.currency_rupee_rounded,          'color': const Color(0xFF9B6DE3)},
+    {'label': 'Invoice',        'icon': Icons.receipt_long_rounded,            'color': const Color(0xFF3B82F6)},
+    {'label': 'Dispatch & Load','icon': Icons.local_shipping_rounded,          'color': const Color(0xFF0EA5E9)},
+    {'label': 'Delivery Ack',   'icon': Icons.task_alt_rounded,                'color': const Color(0xFFEF4444)},
   ];
 
   @override
