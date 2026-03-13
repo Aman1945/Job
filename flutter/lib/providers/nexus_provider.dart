@@ -24,7 +24,8 @@ class NexusProvider with ChangeNotifier {
   List<ProcurementItem> _procurementItems = [];
   List<DistributorPrice> _distributorPrices = [];
   bool _isLoading = false;
-  String? _token; // Auth token stored here so all fetch methods use it automatically
+  String? _token; 
+  int _currentNavigationIndex = 0;
 
   User? get currentUser => _currentUser;
   List<Order> get orders => _orders;
@@ -34,6 +35,7 @@ class NexusProvider with ChangeNotifier {
   List<ProcurementItem> get procurementItems => _procurementItems;
   List<DistributorPrice> get distributorPrices => _distributorPrices;
   bool get isLoading => _isLoading;
+  int get currentNavigationIndex => _currentNavigationIndex;
 
   /// Returns orders visible to [user] based on sales hierarchy:
   /// Admin → all | RSM → team (ASM + their Sales) | ASM → their Sales | Sales → own
@@ -930,6 +932,11 @@ class NexusProvider with ChangeNotifier {
       url: url,
       fileName: "Material_Master_Template.xlsx",
     );
+  }
+
+  void setIndex(int index) {
+    _currentNavigationIndex = index;
+    notifyListeners();
   }
 }
 

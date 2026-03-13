@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/nexus_provider.dart';
 import '../utils/theme.dart';
 import 'dashboard_screen.dart';
 import 'live_missions_screen.dart';
@@ -13,20 +15,22 @@ class MainNavigationScreen extends StatefulWidget {
 }
 
 class _MainNavigationScreenState extends State<MainNavigationScreen> {
-  int _currentIndex = 0;
-
   final List<Widget> _screens = [
     const DashboardScreen(),
     const LiveMissionsScreen(),
+    const DashboardScreen(),
     const WarehouseInventoryScreen(),
     const SettingsScreen(),
   ];
 
   @override
   Widget build(BuildContext context) {
+    final nexusProvider = Provider.of<NexusProvider>(context);
+    final int currentIndex = nexusProvider.currentNavigationIndex;
+
     return Scaffold(
       body: IndexedStack(
-        index: _currentIndex,
+        index: currentIndex,
         children: _screens,
       ),
       bottomNavigationBar: Container(
@@ -41,8 +45,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           ],
         ),
         child: BottomNavigationBar(
-          currentIndex: _currentIndex,
-          onTap: (index) => setState(() => _currentIndex = index),
+          currentIndex: currentIndex,
+          onTap: (index) => nexusProvider.setIndex(index),
           type: BottomNavigationBarType.fixed,
           backgroundColor: Colors.white,
           selectedItemColor: NexusTheme.primaryBlue,
