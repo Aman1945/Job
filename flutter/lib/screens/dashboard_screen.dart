@@ -41,16 +41,10 @@ class DashboardScreen extends StatelessWidget {
           ],
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.search_rounded, color: NexusTheme.slate700),
-            onPressed: () {},
-          ),
+          IconButton(icon: const Icon(Icons.search_rounded, color: NexusTheme.slate700), onPressed: () {}),
           Stack(
             children: [
-              IconButton(
-                icon: const Icon(Icons.notifications_none_rounded, color: NexusTheme.slate700),
-                onPressed: () {},
-              ),
+              IconButton(icon: const Icon(Icons.notifications_none_rounded, color: NexusTheme.slate700), onPressed: () {}),
               Positioned(
                 right: 8,
                 top: 8,
@@ -100,7 +94,7 @@ class DashboardScreen extends StatelessWidget {
                         'Operational',
                         style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w900),
                       ),
-                      Icon(Icons.insights_rounded, color: NexusTheme.slate700, size: 32),
+                      const Icon(Icons.insights_rounded, color: NexusTheme.blue600, size: 32),
                     ],
                   ),
                   const SizedBox(height: 24),
@@ -117,10 +111,37 @@ class DashboardScreen extends StatelessWidget {
             ),
             
             const SizedBox(height: 40),
+
+            // SCM Technical Timeline (Added as requested)
+            const Text(
+              'SUPPLY CHAIN TECHNICAL TIMELINE',
+              style: TextStyle(color: NexusTheme.slate900, fontSize: 11, fontWeight: FontWeight.w900, letterSpacing: 1.2),
+            ),
+            const SizedBox(height: 24),
+            Container(
+              padding: const EdgeInsets.all(28),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(32),
+                border: Border.all(color: NexusTheme.slate100, width: 1.5),
+              ),
+              child: Column(
+                children: [
+                  _buildTimelineStep(1, 'Order Initialization', 'System handoff & ID generation', true),
+                  _buildTimelineStep(2, 'Customer Compliance', 'Credit and validation check', true),
+                  _buildTimelineStep(3, 'Logistics Planning', 'Route optimization & node selection', true),
+                  _buildTimelineStep(4, 'Inventory Reservation', 'Stock allocation at JED-04', true, isCurrent: true),
+                  _buildTimelineStep(5, 'Quality Engineering', 'Post-picking technical audit', false),
+                  _buildTimelineStep(10, 'Reverse Logistics', 'Return flow & circular SCM', false, isLast: true),
+                ],
+              ),
+            ),
+            
+            const SizedBox(height: 48),
             
             const Text(
               'EXECUTIVE UTILITIES',
-              style: TextStyle(color: NexusTheme.slate900, fontSize: 12, fontWeight: FontWeight.w900, letterSpacing: 1),
+              style: TextStyle(color: NexusTheme.slate900, fontSize: 11, fontWeight: FontWeight.w900, letterSpacing: 1.2),
             ),
             const SizedBox(height: 20),
             
@@ -130,7 +151,7 @@ class DashboardScreen extends StatelessWidget {
               physics: const NeverScrollableScrollPhysics(),
               mainAxisSpacing: 16,
               crossAxisSpacing: 16,
-              childAspectRatio: 1.1,
+              childAspectRatio: 1.15,
               children: [
                 _buildUtilityCard(
                   Icons.insert_chart_outlined_rounded,
@@ -142,7 +163,7 @@ class DashboardScreen extends StatelessWidget {
                   Icons.rocket_launch_rounded,
                   'Live Missions',
                   'Active deployments',
-                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LiveMissionsScreen())),
+                  onTap: () => nexusProvider.setIndex(1),
                 ),
                 _buildUtilityCard(
                   Icons.swap_horiz_rounded,
@@ -156,18 +177,6 @@ class DashboardScreen extends StatelessWidget {
                   'Stock optimization',
                   onTap: () => nexusProvider.setIndex(2),
                 ),
-                _buildUtilityCard(
-                  Icons.article_outlined,
-                  'Orders',
-                  'Process automation',
-                  onTap: () => nexusProvider.setIndex(1),
-                ),
-                _buildUtilityCard(
-                  Icons.query_stats_rounded,
-                  'Analytics',
-                  'Deep-dive reporting',
-                  onTap: () {},
-                ),
               ],
             ),
             
@@ -175,7 +184,7 @@ class DashboardScreen extends StatelessWidget {
             
             const Text(
               'SECURITY & LOGS',
-              style: TextStyle(color: NexusTheme.slate900, fontSize: 12, fontWeight: FontWeight.w900, letterSpacing: 1),
+              style: TextStyle(color: NexusTheme.slate900, fontSize: 11, fontWeight: FontWeight.w900, letterSpacing: 1),
             ),
             const SizedBox(height: 16),
             
@@ -210,7 +219,7 @@ class DashboardScreen extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 48),
           ],
         ),
       ),
@@ -224,6 +233,26 @@ class DashboardScreen extends StatelessWidget {
         Text(label, style: const TextStyle(color: NexusTheme.slate500, fontSize: 11, fontWeight: FontWeight.bold)),
         const SizedBox(height: 4),
         Text(value, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w900)),
+      ],
+    );
+  }
+
+  Widget _buildTimelineStep(int step, String title, String subtitle, bool isDone, {bool isCurrent = false, bool isLast = false}) {
+    Color pointColor = isDone ? NexusTheme.success : (isCurrent ? NexusTheme.blue600 : NexusTheme.slate200);
+    return Row(
+      children: [
+        Container(
+          width: 20,
+          height: 20,
+          decoration: BoxDecoration(color: pointColor.withOpacity(0.1), shape: BoxShape.circle, border: Border.all(color: pointColor, width: 1.5)),
+          child: Center(child: isDone ? const Icon(Icons.check, size: 10, color: NexusTheme.success) : Text('$step', style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: pointColor))),
+        ),
+        const SizedBox(width: 12),
+        Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(title, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: isCurrent || isDone ? NexusTheme.slate900 : NexusTheme.slate400)),
+        ]),
+        const Spacer(),
+        if (isCurrent) Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2), decoration: BoxDecoration(color: NexusTheme.blue50, borderRadius: BorderRadius.circular(4)), child: const Text('ACTIVE', style: TextStyle(color: NexusTheme.blue600, fontSize: 8, fontWeight: FontWeight.w900))),
       ],
     );
   }
@@ -245,10 +274,10 @@ class DashboardScreen extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: NexusTheme.slate900,
+                color: NexusTheme.blue50,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(icon, color: Colors.white, size: 20),
+              child: Icon(icon, color: NexusTheme.blue600, size: 20),
             ),
             const Spacer(),
             Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: NexusTheme.slate900)),

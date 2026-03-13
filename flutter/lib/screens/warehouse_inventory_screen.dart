@@ -52,7 +52,7 @@ class _WarehouseInventoryScreenState extends State<WarehouseInventoryScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Global System Status (Consolidated from Hub)
+            // Global Supply Chain Status (System Hub same style)
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(24),
@@ -89,8 +89,8 @@ class _WarehouseInventoryScreenState extends State<WarehouseInventoryScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      _buildStatusMetric('Uptime', '99.99%', Colors.white),
-                      _buildStatusMetric('Avg Latency', '18ms', Colors.white),
+                      _buildStatusMetric('SCM Uptime', '99.99%', Colors.white),
+                      _buildStatusMetric('Node Latency', '18ms', Colors.white),
                       _buildStatusMetric('Active Hubs', '04', Colors.white),
                     ],
                   ),
@@ -99,27 +99,8 @@ class _WarehouseInventoryScreenState extends State<WarehouseInventoryScreen> {
             ),
             
             const SizedBox(height: 40),
-            
-            // Executive Metrics
-            Row(
-              children: [
-                Expanded(child: _buildMetricMiniCard('TOTAL SKUs', '12,480', Icons.inventory_2_outlined, NexusTheme.blue600)),
-                const SizedBox(width: 16),
-                Expanded(child: _buildMetricMiniCard('LOW STOCK', '142', Icons.warning_amber_rounded, const Color(0xFFF59E0B))),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(child: _buildMetricMiniCard('TRANSFERS', '28', Icons.swap_horiz_rounded, const Color(0xFF8B5CF6))),
-                const SizedBox(width: 16),
-                Expanded(child: _buildMetricMiniCard('MTD OUTPUT', 'SR 4.2M', Icons.analytics_outlined, NexusTheme.success)),
-              ],
-            ),
-            
-            const SizedBox(height: 48),
 
-            // Technical SCM Lifecycle (1-10 Steps)
+            // SCM Technical Timeline (Full 1-10 Steps)
             const Text(
               'SUPPLY CHAIN TECHNICAL TIMELINE',
               style: TextStyle(color: NexusTheme.slate900, fontSize: 11, fontWeight: FontWeight.w900, letterSpacing: 1.2),
@@ -137,8 +118,8 @@ class _WarehouseInventoryScreenState extends State<WarehouseInventoryScreen> {
                   _buildTimelineStep(1, 'Order Initialization', 'System handoff & ID generation', true),
                   _buildTimelineStep(2, 'Customer Compliance', 'Credit and validation check', true),
                   _buildTimelineStep(3, 'Logistics Planning', 'Route optimization & node selection', true),
-                  _buildTimelineStep(4, 'Inventory Reservation', 'Stock allocation at JED-04', true, isCurrent: true),
-                  _buildTimelineStep(5, 'Quality Engineering', 'Post-picking technical audit', false),
+                  _buildTimelineStep(4, 'Inventory Reservation', 'Stock allocation at JED-04', true),
+                  _buildTimelineStep(5, 'Quality Engineering', 'Post-picking technical audit', true, isCurrent: true),
                   _buildTimelineStep(6, 'Smart Packaging', 'Dimensional weight optimization', false),
                   _buildTimelineStep(7, 'Manifest Generation', 'Digital invoicing & documentation', false),
                   _buildTimelineStep(8, 'Global Dispatch', 'Carrier handoff & tracking start', false),
@@ -150,7 +131,7 @@ class _WarehouseInventoryScreenState extends State<WarehouseInventoryScreen> {
             
             const SizedBox(height: 48),
 
-            // Executive Utilities Grid
+            // Executive Utilities Grid (Same as System Hub)
             const Text(
               'EXECUTIVE UTILITIES',
               style: TextStyle(color: NexusTheme.slate900, fontSize: 11, fontWeight: FontWeight.w900, letterSpacing: 1.2),
@@ -164,10 +145,12 @@ class _WarehouseInventoryScreenState extends State<WarehouseInventoryScreen> {
               crossAxisSpacing: 16,
               childAspectRatio: 1.15,
               children: [
+                _buildUtilityCard(Icons.insert_chart_outlined_rounded, 'Executive Pulse', 'Real-time KPI flow'),
                 _buildUtilityCard(Icons.compare_arrows_rounded, 'Stock Transfer', 'Internal movements'),
                 _buildUtilityCard(Icons.assignment_outlined, 'SKU Master', 'Catalog management'),
                 _buildUtilityCard(Icons.verified_outlined, 'Safety Audit', 'Compliance checks'),
                 _buildUtilityCard(Icons.location_on_outlined, 'Zone Mapping', 'Hub layout control'),
+                _buildUtilityCard(Icons.sync_alt_rounded, 'Supplier Sync', 'External API bridge'),
               ],
             ),
             
@@ -213,80 +196,23 @@ class _WarehouseInventoryScreenState extends State<WarehouseInventoryScreen> {
     );
   }
 
-  Widget _buildMetricMiniCard(String label, String value, IconData icon, Color color) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: NexusTheme.slate100, width: 1.5),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icon, color: color, size: 16),
-              const SizedBox(width: 8),
-              Text(label, style: const TextStyle(color: NexusTheme.slate500, fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(value, style: const TextStyle(color: NexusTheme.slate900, fontSize: 18, fontWeight: FontWeight.w900)),
-        ],
-      ),
-    );
-  }
-
   Widget _buildTimelineStep(int step, String title, String subtitle, bool isDone, {bool isCurrent = false, bool isLast = false}) {
     Color pointColor = isDone ? NexusTheme.success : (isCurrent ? NexusTheme.blue600 : NexusTheme.slate200);
-    
-    return IntrinsicHeight(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Column(
-            children: [
-              Container(
-                width: 24,
-                height: 24,
-                decoration: BoxDecoration(
-                  color: pointColor.withOpacity(0.1),
-                  shape: BoxShape.circle,
-                  border: Border.all(color: pointColor, width: 2),
-                ),
-                child: Center(
-                  child: isDone 
-                    ? const Icon(Icons.check, size: 12, color: NexusTheme.success)
-                    : Text('$step', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: pointColor)),
-                ),
-              ),
-              if (!isLast)
-                Expanded(
-                  child: Container(
-                    width: 2,
-                    margin: const EdgeInsets.symmetric(vertical: 4),
-                    color: pointColor.withOpacity(0.2),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Padding(
-              padding: EdgeInsets.only(bottom: isLast ? 0 : 20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: isCurrent || isDone ? NexusTheme.slate900 : NexusTheme.slate400)),
-                  if (subtitle.isNotEmpty)
-                    Text(subtitle, style: TextStyle(fontSize: 11, color: NexusTheme.slate400, fontWeight: FontWeight.w500)),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
+    return Row(
+      children: [
+        Container(
+          width: 20,
+          height: 20,
+          decoration: BoxDecoration(color: pointColor.withOpacity(0.1), shape: BoxShape.circle, border: Border.all(color: pointColor, width: 1.5)),
+          child: Center(child: isDone ? const Icon(Icons.check, size: 10, color: NexusTheme.success) : Text('$step', style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: pointColor))),
+        ),
+        const SizedBox(width: 12),
+        Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(title, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: isCurrent || isDone ? NexusTheme.slate900 : NexusTheme.slate400)),
+        ]),
+        const Spacer(),
+        if (isCurrent) Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2), decoration: BoxDecoration(color: NexusTheme.blue50, borderRadius: BorderRadius.circular(4)), child: const Text('ACTIVE', style: TextStyle(color: NexusTheme.blue600, fontSize: 8, fontWeight: FontWeight.w900))),
+      ],
     );
   }
 
@@ -303,17 +229,17 @@ class _WarehouseInventoryScreenState extends State<WarehouseInventoryScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            padding: const EdgeInsets.all(10),
+            padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: NexusTheme.blue50,
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(icon, color: NexusTheme.blue600, size: 20),
           ),
           const Spacer(),
-          Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: NexusTheme.slate900)),
-          const SizedBox(height: 2),
-          Text(subtitle, style: const TextStyle(fontSize: 9, color: NexusTheme.slate400, fontWeight: FontWeight.w600)),
+          Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: NexusTheme.slate900)),
+          const SizedBox(height: 4),
+          Text(subtitle, style: const TextStyle(fontSize: 10, color: NexusTheme.slate500, fontWeight: FontWeight.w600)),
         ],
       ),
     );
