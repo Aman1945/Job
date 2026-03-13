@@ -26,7 +26,7 @@ class OrderLifecycleScreen extends StatelessWidget {
           ],
         ),
         actions: [
-          IconButton(icon: const Icon(Icons.search, color: NexusTheme.slate700), onPressed: () {}),
+          IconButton(icon: const Icon(Icons.search_rounded, color: NexusTheme.slate700), onPressed: () {}),
         ],
       ),
       body: SingleChildScrollView(
@@ -42,10 +42,10 @@ class OrderLifecycleScreen extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFEFF6FF),
+                      color: NexusTheme.blue50,
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: const Text('ACTIVE SHIPMENT', style: TextStyle(color: NexusTheme.primaryBlue, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
+                    child: const Text('ACTIVE SHIPMENT', style: TextStyle(color: NexusTheme.blue600, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
                   ),
                   const Text('Updated 2m ago', style: TextStyle(color: NexusTheme.slate400, fontSize: 11, fontWeight: FontWeight.w600)),
                 ],
@@ -66,11 +66,11 @@ class OrderLifecycleScreen extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Row(
                 children: [
-                  _buildStatCard('TOTAL UNITS', '1,240', '0%', NexusTheme.primaryBlue),
+                  _buildStatCard('TOTAL UNITS', '1,240', '0%', NexusTheme.blue600),
                   const SizedBox(width: 16),
-                  _buildStatCard('CURRENT STAGE', 'Dispatch', '60%', NexusTheme.primaryBlue, isProgress: true),
+                  _buildStatCard('CURRENT STAGE', 'Dispatch', '60%', NexusTheme.blue600, isProgress: true),
                   const SizedBox(width: 16),
-                  _buildStatCard('SLA STATUS', 'On Track', '+2%', const Color(0xFF10B981), isStatus: true),
+                  _buildStatCard('SLA STATUS', 'On Track', '+2%', NexusTheme.success, isStatus: true),
                 ],
               ),
             ),
@@ -84,7 +84,7 @@ class OrderLifecycleScreen extends StatelessWidget {
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(32),
-                border: Border.all(color: const Color(0xFFF1F5F9), width: 1.5),
+                border: Border.all(color: NexusTheme.slate100, width: 1.5),
                 boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.01), blurRadius: 40, offset: const Offset(0, 10))],
               ),
               child: Column(
@@ -180,21 +180,21 @@ class OrderLifecycleScreen extends StatelessWidget {
       width: 140,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
+        color: NexusTheme.slate50,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFFF1F5F9)),
+        border: Border.all(color: NexusTheme.slate100),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: NexusTheme.primaryBlue, letterSpacing: 0.5)),
+          Text(label, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: NexusTheme.blue600, letterSpacing: 0.5)),
           const SizedBox(height: 12),
           Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: NexusTheme.slate900, letterSpacing: -0.5)),
           const SizedBox(height: 12),
           if (isProgress)
             Stack(
               children: [
-                Container(height: 4, decoration: BoxDecoration(color: const Color(0xFFE2E8F0), borderRadius: BorderRadius.circular(2))),
+                Container(height: 4, decoration: BoxDecoration(color: NexusTheme.slate200, borderRadius: BorderRadius.circular(2))),
                 FractionallySizedBox(widthFactor: 0.6, child: Container(height: 4, decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2)))),
               ],
             )
@@ -209,9 +209,9 @@ class OrderLifecycleScreen extends StatelessWidget {
           else
             Row(
               children: [
-                const Icon(Icons.trending_up, color: Color(0xFF10B981), size: 14),
+                const Icon(Icons.trending_up, color: NexusTheme.success, size: 14),
                 const SizedBox(width: 4),
-                Text(subValue, style: const TextStyle(color: Color(0xFF10B981), fontSize: 10, fontWeight: FontWeight.w900)),
+                Text(subValue, style: const TextStyle(color: NexusTheme.success, fontSize: 10, fontWeight: FontWeight.w900)),
               ],
             ),
         ],
@@ -223,23 +223,21 @@ class OrderLifecycleScreen extends StatelessWidget {
     Color iconColor;
     Color circleColor;
     Widget iconWidget;
-    bool hasCheck = false;
 
     switch (status) {
       case TimelineStatus.completed:
         iconColor = Colors.white;
-        circleColor = const Color(0xFF10B981);
+        circleColor = NexusTheme.success;
         iconWidget = const Icon(Icons.check, color: Colors.white, size: 14);
-        hasCheck = true;
         break;
       case TimelineStatus.processing:
         iconColor = Colors.white;
-        circleColor = const Color(0xFF93C5FD);
+        circleColor = NexusTheme.blue300;
         iconWidget = Icon(icon ?? Icons.local_shipping_rounded, color: Colors.white, size: 14);
         break;
       case TimelineStatus.pending:
         iconColor = NexusTheme.slate400;
-        circleColor = const Color(0xFFF8FAFC);
+        circleColor = NexusTheme.slate50;
         iconWidget = Icon(icon ?? Icons.inventory_2_outlined, color: NexusTheme.slate400, size: 14);
         break;
       case TimelineStatus.inactive:
@@ -262,7 +260,7 @@ class OrderLifecycleScreen extends StatelessWidget {
                   color: circleColor,
                   shape: BoxShape.circle,
                   border: status == TimelineStatus.pending || status == TimelineStatus.inactive
-                      ? Border.all(color: const Color(0xFFF1F5F9), width: 1.5)
+                      ? Border.all(color: NexusTheme.slate100, width: 1.5)
                       : null,
                 ),
                 child: Center(child: iconWidget),
@@ -271,7 +269,7 @@ class OrderLifecycleScreen extends StatelessWidget {
                 Expanded(
                   child: Container(
                     width: 1.5,
-                    color: const Color(0xFFF1F5F9),
+                    color: NexusTheme.slate100,
                   ),
                 ),
             ],
@@ -288,11 +286,11 @@ class OrderLifecycleScreen extends StatelessWidget {
                     children: [
                       Text(title, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: status == TimelineStatus.inactive ? NexusTheme.slate300 : NexusTheme.slate900)),
                       if (status == TimelineStatus.completed)
-                        _buildTag('COMPLETED', const Color(0xFFDCFCE7), const Color(0xFF16A34A))
+                        _buildTag('COMPLETED', NexusTheme.successLight, NexusTheme.success)
                       else if (status == TimelineStatus.processing)
-                        _buildTag('PROCESSING', const Color(0xFFEFF6FF), NexusTheme.primaryBlue)
+                        _buildTag('PROCESSING', NexusTheme.blue50, NexusTheme.blue600)
                       else if (status == TimelineStatus.pending)
-                        _buildTag('PENDING', const Color(0xFFF8FAFC), NexusTheme.slate400),
+                        _buildTag('PENDING', NexusTheme.slate50, NexusTheme.slate400),
                     ],
                   ),
                   if (meta.isNotEmpty)
@@ -312,9 +310,9 @@ class OrderLifecycleScreen extends StatelessWidget {
                             ),
                             child: Row(
                               children: [
-                                const Icon(Icons.local_shipping_rounded, color: NexusTheme.primaryBlue, size: 14),
+                                const Icon(Icons.local_shipping_rounded, color: NexusTheme.blue600, size: 14),
                                 const SizedBox(width: 8),
-                                Expanded(child: Text(subContent, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: NexusTheme.primaryBlue))),
+                                Expanded(child: Text(subContent, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: NexusTheme.blue600))),
                               ],
                             ),
                           )

@@ -53,22 +53,22 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           items: const [
             BottomNavigationBarItem(
               icon: Icon(Icons.grid_view_rounded),
-              activeIcon: Icon(Icons.grid_view_rounded),
               label: 'Dashboard',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.list_alt_rounded),
-              activeIcon: Icon(Icons.list_alt_rounded),
               label: 'Orders',
             ),
             BottomNavigationBarItem(
+              icon: Icon(Icons.hub_rounded),
+              label: 'Hub',
+            ),
+            BottomNavigationBarItem(
               icon: Icon(Icons.inventory_2_rounded),
-              activeIcon: Icon(Icons.inventory_2_rounded),
               label: 'Inventory',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.settings_rounded),
-              activeIcon: Icon(Icons.settings_rounded),
               label: 'Settings',
             ),
           ],

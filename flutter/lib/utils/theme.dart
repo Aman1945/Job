@@ -103,10 +103,13 @@ class NexusTheme {
   static const Color purple800 = Color(0xFF6B21A8);
   static const Color purple900 = Color(0xFF581C87);
 
-  // Status Colors (Named Aliases)
-  static const Color success = emerald500;
-  static const Color warning = amber500;
-  static const Color error = rose600;
+  // Status Colors
+  static const Color success = Color(0xFF10B981);
+  static const Color successLight = Color(0xFFDCFCE7);
+  static const Color warning = Color(0xFFF59E0B);
+  static const Color warningLight = Color(0xFFFEF3C7);
+  static const Color error = Color(0xFFEF4444);
+  static const Color errorLight = Color(0xFFFEE2E2);
   static const Color info = indigo500;
 
   // Surface Colors
