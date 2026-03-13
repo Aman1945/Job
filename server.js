@@ -543,6 +543,168 @@ app.patch('/api/users/:id/manager', async (req, res) => {
     }
 });
 
+// ── Admin: update user credentials (name, email, employeeId, password) ──
+app.patch('/api/users/:id/credentials', verifyToken, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { name, email, employeeId, password } = req.body;
+
+        const update = {};
+        if (name)       update.name       = name;
+        if (email)      update.email      = email;
+        if (employeeId) update.employeeId = employeeId;
+
+        if (password && password.length > 0) {
+            const bcrypt = require('bcryptjs');
+            update.password = await bcrypt.hash(password, 10);
+            console.log(`🔑 Password reset for user ${id}`);
+        }
+
+        const user = await User.findOneAndUpdate(
+            { id },
+            { $set: update },
+            { new: true }
+        ).select('-password');
+
+        if (user) return res.json(user);
+        res.status(404).json({ message: 'User not found' });
+    } catch (error) {
+        console.error('Error updating credentials:', error);
+        res.status(500).json({ message: 'Error updating credentials' });
+    }
+});
+
+// ==================== ATTENDANCE ====================
+const attendanceSchema = new mongoose.Schema({
+    userId:         { type: String, required: true },
+    userName:       String,
+    userRole:       String,
+    date:           { type: String, required: true }, // 'YYYY-MM-DD' local date key
+    checkInTime:    Date,
+    checkOutTime:   Date,
+    checkInLocation:  { lat: Number, lng: Number, note: String },
+    checkOutLocation: { lat: Number, lng: Number, note: String },
+}, { timestamps: true });
+
+attendanceSchema.index({ userId: 1, date: 1 }, { unique: true });
+const Attendance = mongoose.models.Attendance || mongoose.model('Attendance', attendanceSchema);
+
+// Helper – today's date string "YYYY-MM-DD" in IST
+function todayIST() {
+    const now = new Date();
+    const ist = new Date(now.getTime() + 5.5 * 60 * 60 * 1000);
+    return ist.toISOString().slice(0, 10);
+}
+
+// Check-in
+app.post('/api/attendance/check-in', verifyToken, async (req, res) => {
+    try {
+        const { userId, name: userName, role: userRole } = req.user;
+        const today = todayIST();
+        const location = req.body.location || {};
+
+        const userDoc = await User.findOne({ id: userId }).select('name role');
+
+        let record = await Attendance.findOne({ userId, date: today });
+        if (record && record.checkInTime) {
+            return res.status(400).json({ message: 'Already checked in today' });
+        }
+
+        record = await Attendance.findOneAndUpdate(
+            { userId, date: today },
+            {
+                $set: {
+                    userId,
+                    userName: userDoc?.name || userName || '',
+                    userRole: userDoc?.role || userRole || '',
+                    date: today,
+                    checkInTime: new Date(),
+                    checkInLocation: location,
+                }
+            },
+            { upsert: true, new: true }
+        );
+
+        console.log(`✅ Check-in: ${userId} at ${today}`);
+        res.json(record);
+    } catch (error) {
+        console.error('Check-in error:', error);
+        res.status(500).json({ message: 'Check-in failed' });
+    }
+});
+
+// Check-out
+app.post('/api/attendance/check-out', verifyToken, async (req, res) => {
+    try {
+        const { userId } = req.user;
+        const today = todayIST();
+        const location = req.body.location || {};
+
+        const record = await Attendance.findOne({ userId, date: today });
+        if (!record || !record.checkInTime) {
+            return res.status(400).json({ message: 'Not checked in yet' });
+        }
+        if (record.checkOutTime) {
+            return res.status(400).json({ message: 'Already checked out today' });
+        }
+
+        record.checkOutTime = new Date();
+        record.checkOutLocation = location;
+        await record.save();
+
+        console.log(`👋 Check-out: ${userId} at ${today}`);
+        res.json(record);
+    } catch (error) {
+        console.error('Check-out error:', error);
+        res.status(500).json({ message: 'Check-out failed' });
+    }
+});
+
+// Get my attendance for today (current user)
+app.get('/api/attendance/me', verifyToken, async (req, res) => {
+    try {
+        const { userId } = req.user;
+        const today = todayIST();
+        const record = await Attendance.findOne({ userId, date: today });
+        res.json(record || {});
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching attendance' });
+    }
+});
+
+// Admin: get all users attendance for today
+app.get('/api/attendance/today', verifyToken, async (req, res) => {
+    try {
+        const today = todayIST();
+        // Get all active users
+        const allUsers = await User.find().select('id name role');
+        // Get today's records
+        const records = await Attendance.find({ date: today });
+        const recordMap = {};
+        records.forEach(r => { recordMap[r.userId] = r; });
+
+        // Merge: one row per user, absent if no record
+        const merged = allUsers.map(u => {
+            const rec = recordMap[u.id];
+            return {
+                userId: u.id,
+                userName: u.name,
+                userRole: u.role,
+                date: today,
+                checkInTime:  rec?.checkInTime  || null,
+                checkOutTime: rec?.checkOutTime || null,
+                checkInLocation:  rec?.checkInLocation || null,
+                checkOutLocation: rec?.checkOutLocation || null,
+            };
+        });
+
+        res.json(merged);
+    } catch (error) {
+        console.error('Error fetching today attendance:', error);
+        res.status(500).json({ message: 'Error fetching attendance' });
+    }
+});
+
 // ==================== CUSTOMERS ====================
 app.get('/api/customers', verifyToken, async (req, res) => {
     try {
