@@ -13,10 +13,8 @@ class WarehouseInventoryScreen extends StatefulWidget {
 class _WarehouseInventoryScreenState extends State<WarehouseInventoryScreen> {
   @override
   Widget build(BuildContext context) {
-    final nexusProvider = Provider.of<NexusProvider>(context);
-
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFF3F7FA), // Light greyish-blue background from SS
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
@@ -48,225 +46,162 @@ class _WarehouseInventoryScreenState extends State<WarehouseInventoryScreen> {
         ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Global Supply Chain Status (System Hub same style)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: NexusTheme.slate900,
-                borderRadius: BorderRadius.circular(24),
-                boxShadow: [
-                  BoxShadow(
-                    color: NexusTheme.slate900.withOpacity(0.1),
-                    blurRadius: 20,
-                    offset: const Offset(0, 10),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'GLOBAL SUPPLY CHAIN STATUS',
-                    style: TextStyle(color: NexusTheme.slate400, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Operational',
-                        style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w900),
-                      ),
-                      const Icon(Icons.insights_rounded, color: NexusTheme.blue600, size: 32),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      _buildStatusMetric('SCM Uptime', '99.99%', Colors.white),
-                      _buildStatusMetric('Node Latency', '18ms', Colors.white),
-                      _buildStatusMetric('Active Hubs', '04', Colors.white),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            
-            const SizedBox(height: 40),
-
-            // SCM Technical Timeline (Full 1-10 Steps)
             const Text(
-              'SUPPLY CHAIN TECHNICAL TIMELINE',
-              style: TextStyle(color: NexusTheme.slate900, fontSize: 11, fontWeight: FontWeight.w900, letterSpacing: 1.2),
-            ),
-            const SizedBox(height: 24),
-            Container(
-              padding: const EdgeInsets.all(28),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(32),
-                border: Border.all(color: NexusTheme.slate100, width: 1.5),
-              ),
-              child: Column(
-                children: [
-                  _buildTimelineStep(1, 'Order Initialization', 'System handoff & ID generation', true),
-                  _buildTimelineStep(2, 'Customer Compliance', 'Credit and validation check', true),
-                  _buildTimelineStep(3, 'Logistics Planning', 'Route optimization & node selection', true),
-                  _buildTimelineStep(4, 'Inventory Reservation', 'Stock allocation at JED-04', true),
-                  _buildTimelineStep(5, 'Quality Engineering', 'Post-picking technical audit', true, isCurrent: true),
-                  _buildTimelineStep(6, 'Smart Packaging', 'Dimensional weight optimization', false),
-                  _buildTimelineStep(7, 'Manifest Generation', 'Digital invoicing & documentation', false),
-                  _buildTimelineStep(8, 'Global Dispatch', 'Carrier handoff & tracking start', false),
-                  _buildTimelineStep(9, 'Last-Mile Sync', 'Final delivery node activation', false),
-                  _buildTimelineStep(10, 'Reverse Logistics', 'Return flow & circular SCM', false, isLast: true),
-                ],
-              ),
-            ),
-            
-            const SizedBox(height: 48),
-
-            // Executive Utilities Grid (Same as System Hub)
-            const Text(
-              'EXECUTIVE UTILITIES',
-              style: TextStyle(color: NexusTheme.slate900, fontSize: 11, fontWeight: FontWeight.w900, letterSpacing: 1.2),
+              'SUPPLY CHAIN LIFECYCLE',
+              style: TextStyle(color: NexusTheme.slate400, fontSize: 11, fontWeight: FontWeight.w900, letterSpacing: 1.2),
             ),
             const SizedBox(height: 20),
+            
+            // 2-Column Lifecycle Grid (Stages 1-10)
             GridView.count(
               crossAxisCount: 2,
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              mainAxisSpacing: 16,
-              crossAxisSpacing: 16,
-              childAspectRatio: 1.15,
+              mainAxisSpacing: 12,
+              crossAxisSpacing: 12,
+              childAspectRatio: 2.1,
               children: [
-                _buildUtilityCard(Icons.insert_chart_outlined_rounded, 'Executive Pulse', 'Real-time KPI flow'),
-                _buildUtilityCard(Icons.compare_arrows_rounded, 'Stock Transfer', 'Internal movements'),
-                _buildUtilityCard(Icons.assignment_outlined, 'SKU Master', 'Catalog management'),
-                _buildUtilityCard(Icons.verified_outlined, 'Safety Audit', 'Compliance checks'),
-                _buildUtilityCard(Icons.location_on_outlined, 'Zone Mapping', 'Hub layout control'),
-                _buildUtilityCard(Icons.sync_alt_rounded, 'Supplier Sync', 'External API bridge'),
+                _buildLifecycleCard('STAGE 1', 'Creation', Icons.person_add_alt_1_rounded, const Color(0xFFE0F2F1), const Color(0xFF00897B)),
+                _buildLifecycleCard('STAGE 2', 'Placed Or...', Icons.shopping_cart_rounded, const Color(0xFFF3E5F5), const Color(0xFF8E24AA)),
+                _buildLifecycleCard('STAGE 3', 'Credit Ap...', Icons.check_circle_rounded, const Color(0xFFFFF3E0), const Color(0xFFFB8C00)),
+                _buildLifecycleCard('STAGE 4', 'Warehouse', Icons.inventory_2_rounded, const Color(0xFFEFEBE9), const Color(0xFF6D4C41)),
+                _buildLifecycleCard('STAGE 5', 'Packing', Icons.assignment_rounded, const Color(0xFFFFF9C4), const Color(0xFFFBC02D)),
+                _buildLifecycleCard('STAGE 6', 'QC', Icons.verified_user_rounded, const Color(0xFFE8F5E9), const Color(0xFF43A047)),
+                _buildLifecycleCard('STAGE 7', 'Logistics ...', Icons.currency_rupee_rounded, const Color(0xFFF3E5F5), const Color(0xFF7E57C2)),
+                _buildLifecycleCard('STAGE 8', 'Invoice', Icons.document_scanner_rounded, const Color(0xFFE3F2FD), const Color(0xFF1E88E5)),
+                _buildLifecycleCard('STAGE 9', 'Dispatch ...', Icons.local_shipping_rounded, const Color(0xFFE1F5FE), const Color(0xFF0288D1)),
+                _buildLifecycleCard('STAGE 10', 'Delivery A...', Icons.check_circle_outline_rounded, const Color(0xFFFFEBEE), const Color(0xFFE53935)),
               ],
             ),
             
-            const SizedBox(height: 48),
+            const SizedBox(height: 40),
 
-            // Storage Distribution
             const Text(
-              'STORAGE NODES DISTRIBUTION',
-              style: TextStyle(color: NexusTheme.slate900, fontSize: 11, fontWeight: FontWeight.w900, letterSpacing: 1.2),
+              'UTILITIES & SYSTEM HUB',
+              style: TextStyle(color: NexusTheme.slate400, fontSize: 11, fontWeight: FontWeight.w900, letterSpacing: 1.2),
             ),
-            const SizedBox(height: 24),
-            Container(
-              padding: const EdgeInsets.all(28),
-              decoration: BoxDecoration(
-                color: NexusTheme.slate50,
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: NexusTheme.slate100),
-              ),
-              child: Column(
-                children: [
-                  _buildStorageNode('Central Hub Alpha', 0.85, '85%'),
-                  const SizedBox(height: 20),
-                  _buildStorageNode('Regional Node Beta', 0.42, '42%'),
-                ],
-              ),
+            const SizedBox(height: 20),
+
+            // 2-Column Dark Utilities Grid
+            GridView.count(
+              crossAxisCount: 2,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              mainAxisSpacing: 10,
+              crossAxisSpacing: 10,
+              childAspectRatio: 2.3,
+              children: [
+                _buildDarkUtilityCard('EXECUTIVE PULSE', Icons.insights_rounded),
+                _buildDarkUtilityCard('LIVE MISSIONS', Icons.webhook_rounded),
+                _buildDarkUtilityCard('STOCK TRANSFER', Icons.swap_horiz_rounded),
+                _buildDarkUtilityCard('SKU MASTER', Icons.grid_view_rounded),
+                _buildDarkUtilityCard('ORDER ARCHIVE', Icons.history_rounded),
+                _buildDarkUtilityCard('P&S PERFORMANCE', Icons.donut_large_rounded),
+                _buildDarkUtilityCard('INTELLIGENCE', Icons.auto_graph_rounded),
+                _buildDarkUtilityCard('CREDIT ALERTS', Icons.warning_amber_rounded),
+                _buildDarkUtilityCard('PROCUREMENT', Icons.shopping_bag_outlined),
+                _buildDarkUtilityCard('USER CREDENTIALS', Icons.vpn_key_outlined),
+                _buildDarkUtilityCard('STEP ASSIGNMENT', Icons.person_search_outlined),
+                _buildDarkUtilityCard('ATTENDANCE', Icons.fingerprint_rounded),
+                _buildDarkUtilityCard('MASTER DATA', Icons.list_alt_rounded),
+                _buildDarkUtilityCard('TEAM HIERARCHY', Icons.account_tree_outlined),
+                _buildDarkUtilityCard('SALES ORG MAP', Icons.home_work_outlined),
+              ],
             ),
             
-            const SizedBox(height: 40),
+            const SizedBox(height: 60),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildStatusMetric(String label, String value, Color color) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: const TextStyle(color: NexusTheme.slate500, fontSize: 11, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 4),
-        Text(value, style: TextStyle(color: color, fontSize: 16, fontWeight: FontWeight.w900)),
-      ],
-    );
-  }
-
-  Widget _buildTimelineStep(int step, String title, String subtitle, bool isDone, {bool isCurrent = false, bool isLast = false}) {
-    Color pointColor = isDone ? NexusTheme.success : (isCurrent ? NexusTheme.blue600 : NexusTheme.slate200);
-    return Row(
-      children: [
-        Container(
-          width: 20,
-          height: 20,
-          decoration: BoxDecoration(color: pointColor.withOpacity(0.1), shape: BoxShape.circle, border: Border.all(color: pointColor, width: 1.5)),
-          child: Center(child: isDone ? const Icon(Icons.check, size: 10, color: NexusTheme.success) : Text('$step', style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: pointColor))),
-        ),
-        const SizedBox(width: 12),
-        Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(title, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: isCurrent || isDone ? NexusTheme.slate900 : NexusTheme.slate400)),
-        ]),
-        const Spacer(),
-        if (isCurrent) Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2), decoration: BoxDecoration(color: NexusTheme.blue50, borderRadius: BorderRadius.circular(4)), child: const Text('ACTIVE', style: TextStyle(color: NexusTheme.blue600, fontSize: 8, fontWeight: FontWeight.w900))),
-      ],
-    );
-  }
-
-  Widget _buildUtilityCard(IconData icon, String title, String subtitle) {
+  Widget _buildLifecycleCard(String stage, String title, IconData icon, Color bgColor, Color iconColor) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: NexusTheme.slate100, width: 1.5),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
+      child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: NexusTheme.blue50,
-              borderRadius: BorderRadius.circular(12),
+              color: bgColor,
+              borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(icon, color: NexusTheme.blue600, size: 20),
+            child: Icon(icon, color: iconColor, size: 18),
           ),
-          const Spacer(),
-          Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: NexusTheme.slate900)),
-          const SizedBox(height: 4),
-          Text(subtitle, style: const TextStyle(fontSize: 10, color: NexusTheme.slate500, fontWeight: FontWeight.w600)),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  stage,
+                  style: TextStyle(
+                    fontSize: 8,
+                    fontWeight: FontWeight.w900,
+                    color: iconColor.withOpacity(0.8),
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w900,
+                    color: NexusTheme.slate900,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          Icon(Icons.chevron_right_rounded, color: NexusTheme.slate200, size: 16),
         ],
       ),
     );
   }
 
-  Widget _buildStorageNode(String name, double percent, String label) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: NexusTheme.slate800)),
-            Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: NexusTheme.blue600)),
-          ],
-        ),
-        const SizedBox(height: 12),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(6),
-          child: LinearProgressIndicator(
-            value: percent,
-            backgroundColor: NexusTheme.slate200,
-            valueColor: const AlwaysStoppedAnimation<Color>(NexusTheme.blue600),
-            minHeight: 8,
+  Widget _buildDarkUtilityCard(String title, IconData icon) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F172A), // Slate-900 like deep dark
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: const Color(0xFF2DD4BF), size: 16), // Teal accent
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              title,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 9,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 0.5,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
