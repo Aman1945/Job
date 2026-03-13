@@ -411,6 +411,35 @@ class _UserCredentialsScreenState extends State<UserCredentialsScreen> {
             const SizedBox(height: 28),
             _sectionLabel('PROFILE INFO'),
             const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFE0F2FE),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFFBAE6FD)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.info_outline_rounded, size: 16, color: Color(0xFF0369A1)),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('CURRENT LOGIN ID', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: Color(0xFF0369A1), letterSpacing: 0.5)),
+                        const SizedBox(height: 2),
+                        Text(
+                          (u.email?.isNotEmpty == true ? u.email : (u.employeeId?.isNotEmpty == true ? u.employeeId : u.id))!,
+                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: Color(0xFF0C4A6E)),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
             _inputField('Full Name', _nameCtrl, icon: Icons.person_outline_rounded),
             const SizedBox(height: 12),
             _inputField('Email Address', _emailCtrl, icon: Icons.email_outlined, keyboard: TextInputType.emailAddress),
