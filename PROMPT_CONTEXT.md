@@ -189,6 +189,23 @@
     - **Master Terminal Integration**: Updated `master_data_screen.dart` to navigate to the new dedicated screens when tapping "USER MASTER" and "DELIVERY PERSON" tabs.
     - **Bug Fix**: Fixed `RangeError` crash caused by empty `_selectedTab` default. Changed default to `''` (empty) and added safety check in title formatting to display "Master Terminal" when no tab is selected.
 
+## 📊 Enterprise Core Gap Analysis (Mission Lifecycle)
+
+Based on the audit of the **Animesh-OMS Enterprise Core** scope, the following functional gaps are identified for implementation in this branch:
+
+### 🏗️ Pillar Gaps
+- **Commercial**: Automated **Horeca vs. Retail** price list engine and **STN (Stock Transfer)** flows.
+- **Finance**: **Automatic Credit Locking** for overdue clients and aging penalty logic.
+- **Fulfillment**: **BOM (Bill of Materials)** for production and **Packaging Inventory** (Boxes/Ice) tracking.
+- **Logistics**: **AI Route Optimization** for mission clustering and **Driver GPS/Map** integration.
+
+### 🔄 10-Stage Mission Gaps
+- **Stage 1 (Demand)**: WhatsApp confirmation triggers.
+- **Stage 3 (WH Assignment)**: Proximity-based auto-warehouse selection.
+- **Stage 7 (Routing)**: AI clustering of orders into vehicle loads.
+- **Stage 9 (Reconciliation)**: **RTV (Return to Vendor)** flow and damaged/usable inventory sorting.
+- **Stage 10 (Analytics)**: **Order-to-Cash (O2C)** cycle time dashboards.
+
 ## 🏁 Next Steps / Remaining Tasks
 - [x] Implement Bulk Dispatch API for Logistics Hub.
 - [x] Refactor Book Order UI (Hierarchy removal + Photo slot enhancements).
