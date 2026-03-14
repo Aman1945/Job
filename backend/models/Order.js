@@ -12,7 +12,12 @@ const orderSchema = new mongoose.Schema({
         price: { type: Number },
         barcode: { type: String },
         unit: { type: String },
-        baseRate: { type: Number }
+        baseRate: { type: Number },
+        allocatedBatches: [{
+            batchNumber: String,
+            qty: Number,
+            expiry: Date
+        }]
     }],
     status: { type: String, default: 'Pending' },
     total: { type: Number, default: 0 },
