@@ -17,11 +17,12 @@ class QualityControlScreen extends StatefulWidget {
 class _QualityControlScreenState extends State<QualityControlScreen> {
   Order? _selectedOrder;
   final Map<String, bool> _inspectionPoints = {
-    'TEMPERATURE STANDARD\nFrozen: -18°C / Fresh: 0-4°C': false,
-    'PACKAGING INTEGRITY\nNo leaks, damage or dents': false,
-    'NET WEIGHT VERIFIED\nMatch vs Packing Slip': false,
-    'LABEL & BATCH CLARITY\nLegible expiry & barcode': false,
-    'INVOICE / DC ATTACHED\nPhysical copies with load': false,
+    '🌡️ TEMPERATURE STANDARD\nFrozen: -18°C / Fresh: 0-4°C': false,
+    '📦 PACKAGING INTEGRITY\nNo leaks, damage or dents': false,
+    '⚖️ NET WEIGHT VERIFIED\nMatch vs Packing Slip': false,
+    '🏷️ LABEL & BATCH CLARITY\nLegible expiry & barcode': false,
+    '📄 INVOICE / DC ATTACHED\nPhysical copies with load': false,
+    '📸 PHOTO DOCUMENTATION\nVisual proof of mission load': false,
   };
   File? _proofImage;
   bool _isUploading = false;
@@ -294,7 +295,16 @@ class _QualityControlScreenState extends State<QualityControlScreen> {
   Future<void> _pickImage() async {
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(source: ImageSource.camera, imageQuality: 70);
-    if (pickedFile != null) setState(() => _proofImage = File(pickedFile.path));
+    if (pickedFile != null) {
+      setState(() {
+        _proofImage = File(pickedFile.path);
+        // Automatically check the photo documentation point
+        _inspectionPoints.updateAll((key, value) {
+          if (key.contains('PHOTO DOCUMENTATION')) return true;
+          return value;
+        });
+      });
+    }
   }
 
   void _approveInspection(Order order) async {

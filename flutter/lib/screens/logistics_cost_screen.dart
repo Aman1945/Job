@@ -16,16 +16,18 @@ class LogisticsCostScreen extends StatefulWidget {
 
 class _LogisticsCostScreenState extends State<LogisticsCostScreen> {
   Order? selectedOrder;
-  final TextEditingController _freightController = TextEditingController();
-  final TextEditingController _loadingController = TextEditingController();
-  final TextEditingController _insuranceController = TextEditingController();
+  final TextEditingController _kmController = TextEditingController(text: '30');
+  final TextEditingController _iceController = TextEditingController(text: '5');
+  final TextEditingController _boxController = TextEditingController(text: '2');
+  final TextEditingController _otherController = TextEditingController(text: '0');
   bool isProcessing = false;
 
   @override
   void dispose() {
-    _freightController.dispose();
-    _loadingController.dispose();
-    _insuranceController.dispose();
+    _kmController.dispose();
+    _iceController.dispose();
+    _boxController.dispose();
+    _otherController.dispose();
     super.dispose();
   }
 
@@ -113,10 +115,13 @@ class _LogisticsCostScreenState extends State<LogisticsCostScreen> {
   }
 
   Widget _buildFreightTerminal(Order order) {
-    double f = double.tryParse(_freightController.text) ?? 0;
-    double l = double.tryParse(_loadingController.text) ?? 0;
-    double i = double.tryParse(_insuranceController.text) ?? 0;
-    double totalFreight = f + l + i;
+    double km = double.tryParse(_kmController.text) ?? 0;
+    double ice = double.tryParse(_iceController.text) ?? 0;
+    double boxes = double.tryParse(_boxController.text) ?? 0;
+    double other = double.tryParse(_otherController.text) ?? 0;
+
+    // Formula: (KM * 35) + (Ice * 45) + (Boxes * 120) + Other
+    double totalFreight = (km * 35) + (ice * 45) + (boxes * 120) + other;
     double percentage = order.total > 0 ? (totalFreight / order.total) * 100 : 0;
     bool isHighCost = percentage > 15;
 
@@ -187,15 +192,16 @@ class _LogisticsCostScreenState extends State<LogisticsCostScreen> {
         children: [
           const Text('GRANULAR FREIGHT BREAKDOWN', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 11, color: Colors.grey, letterSpacing: 1)),
           const SizedBox(height: 24),
-          _buildInputRow('Base Freight (Distance Based)', _freightController),
-          _buildInputRow('Loading & Handling Charges', _loadingController),
-          _buildInputRow('In-Transit Insurance (Premium)', _insuranceController),
+          _buildInputRow('Distance (KM) - Rate: ₹35/km', _kmController, prefix: 'KM '),
+          _buildInputRow('Dry Ice (KG) - Rate: ₹45/kg', _iceController, prefix: 'KG '),
+          _buildInputRow('Thermacol Boxes - Rate: ₹120/box', _boxController, prefix: 'QTY '),
+          _buildInputRow('Other Misc Charges', _otherController, prefix: '₹ '),
         ],
       ),
     );
   }
 
-  Widget _buildInputRow(String label, TextEditingController controller) {
+  Widget _buildInputRow(String label, TextEditingController controller, {String prefix = '₹ '}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16.0),
       child: Column(
@@ -209,7 +215,7 @@ class _LogisticsCostScreenState extends State<LogisticsCostScreen> {
             style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
             onChanged: (v) => setState(() {}),
             decoration: InputDecoration(
-              prefixText: '₹ ',
+              prefixText: prefix,
               filled: true,
               fillColor: const Color(0xFFF8FAFC),
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
