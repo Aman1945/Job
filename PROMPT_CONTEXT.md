@@ -206,6 +206,27 @@ Based on the audit of the **Animesh-OMS Enterprise Core** scope, the following f
 - **Stage 9 (Reconciliation)**: **RTV (Return to Vendor)** flow and damaged/usable inventory sorting.
 - **Stage 10 (Analytics)**: **Order-to-Cash (O2C)** cycle time dashboards.
 
+## 📐 Technical Specs from Website Audit (Source Capture)
+These specific formulas and protocols must be migrated to the Flutter app:
+
+### 1. 🚛 Logistics Cost Formula
+- **KM Charge**: `Distance × Rate (₹/KM)` (Vehicle specific).
+- **Dry Ice**: ₹45.00 per KG.
+- **Thermacol Boxes**: ₹120.00 per Box.
+
+### 2. 🔬 6-Point QC Protocol
+Mandatory checklist for **Stage 5**:
+1. 🌡️ Temperature Check (Validated)
+2. 📦 Packaging Integrity
+3. ⚖️ Weight Verification
+4. 🏷️ Label Verification
+5. 📄 Invoice/DC Present
+6. 📸 Photo Documentation
+
+### 3. 🏭 WH Capacity Monitoring
+- Warehouse assignment must track `Utilized` vs `Total Capacity`.
+- UI should show progress bars for warehouse load before assignment.
+
 ## 🏁 Next Steps / Remaining Tasks
 - [x] Implement Bulk Dispatch API for Logistics Hub.
 - [x] Refactor Book Order UI (Hierarchy removal + Photo slot enhancements).
