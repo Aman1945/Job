@@ -145,6 +145,8 @@ const Product = require('./models/Product');
 const Order = require('./models/Order');
 const Procurement = require('./models/Procurement');
 const DistributorPrice = require('./models/DistributorPrice');
+const InventoryService = require('./services/inventoryService');
+const Warehouse = require('./models/Warehouse');
 
 // Middleware
 const { verifyToken } = require('./middleware/auth');
@@ -1345,6 +1347,22 @@ app.patch('/api/orders/:id', verifyToken, logUpdate('ORDER'), async (req, res) =
                 updateData.statusHistory = [];
             }
             updateData.statusHistory.push({ status: updateData.status, timestamp });
+            
+            // --- INVENTORY HARDENING: Restore stock on Cancellation ---
+            if (updateData.status === 'Cancelled' && req.originalData.sourceWarehouse) {
+                const session = await mongoose.startSession();
+                session.startTransaction();
+                try {
+                    await InventoryService.restoreStock(req.originalData.sourceWarehouse, req.originalData.items, session);
+                    await session.commitTransaction();
+                    console.log(`♻️ Stock restored for cancelled order: ${id}`);
+                } catch (err) {
+                    await session.abortTransaction();
+                    console.error('❌ Restoration failed:', err);
+                } finally {
+                    session.endSession();
+                }
+            }
         }
 
         const updateObj = { ...updateData };
@@ -2368,6 +2386,10 @@ newFeaturesRoutes(app);
 // Audit Log Routes (A.8.16 - Monitoring Activities)
 const auditRoutes = require('./routes/auditRoutes');
 auditRoutes(app);
+
+// Warehouse & Inventory Routes
+const warehouseRouter = require('./routes/warehouseRoutes');
+app.use('/api/warehouse', warehouseRouter);
 
 // GDPR Compliance Routes (A.8.10 - Information Deletion)
 const gdprRoutes = require('./routes/gdprRoutes');
