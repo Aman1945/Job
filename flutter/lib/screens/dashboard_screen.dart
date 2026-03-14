@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'warehouse_selection_screen.dart';
 import 'package:provider/provider.dart';
 import '../providers/nexus_provider.dart';
 import '../providers/auth_provider.dart';
@@ -402,14 +403,14 @@ class _LifecycleGrid extends StatelessWidget {
         'stage': 'STAGE 4',  'label': 'Warehouse',
         'icon': Icons.inventory_2_rounded,
         'color': const Color(0xFF8B7355),
-        'screen': const WarehouseOpsScreen(),
+        'screen': const WarehouseSelectionScreen(),
         'roles': ['Admin', 'Warehouse', 'WH Manager', 'RSM', 'ASM', 'NSM'],
       },
       {
         'stage': 'STAGE 5',  'label': 'Packing',
         'icon': Icons.inventory_rounded,
         'color': const Color(0xFFE8A020),
-        'screen': const WarehouseOpsScreen(),
+        'screen': const WarehousePackingScreen(),
         'roles': ['Admin', 'Warehouse', 'RSM', 'ASM', 'NSM'],
       },
       {

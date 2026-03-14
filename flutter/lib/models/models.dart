@@ -160,6 +160,12 @@ class Customer {
       if (chequePhotoUrl != null) 'chequePhotoUrl': chequePhotoUrl,
     };
   }
+
+  @override
+  bool operator ==(Object other) => identical(this, other) || (other is Customer && runtimeType == other.runtimeType && id == other.id);
+
+  @override
+  int get hashCode => id.hashCode;
 }
 
 class User {
@@ -251,6 +257,12 @@ class User {
       if (address != null) 'address': address,
     };
   }
+
+  @override
+  bool operator ==(Object other) => identical(this, other) || (other is User && runtimeType == other.runtimeType && id == other.id);
+
+  @override
+  int get hashCode => id.hashCode;
 }
 
 class Product {
@@ -347,6 +359,12 @@ class Product {
       if (processingCharges != null) 'processingCharges': processingCharges,
     };
   }
+
+  @override
+  bool operator ==(Object other) => identical(this, other) || (other is Product && runtimeType == other.runtimeType && id == other.id);
+
+  @override
+  int get hashCode => id.hashCode;
 }
 
 // Distributor Price List model (maps to /api/distributor-prices)
@@ -424,6 +442,32 @@ class DistributorPrice {
   };
 }
 
+class AllocatedBatch {
+  final String batchNumber;
+  final double qty;
+  final DateTime expiry;
+
+  AllocatedBatch({
+    required this.batchNumber,
+    required this.qty,
+    required this.expiry,
+  });
+
+  factory AllocatedBatch.fromJson(Map<String, dynamic> json) {
+    return AllocatedBatch(
+      batchNumber: json['batchNumber'] ?? '',
+      qty: (json['qty'] ?? 0).toDouble(),
+      expiry: json['expiry'] != null ? DateTime.parse(json['expiry']) : DateTime.now(),
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'batchNumber': batchNumber,
+    'qty': qty,
+    'expiry': expiry.toIso8601String(),
+  };
+}
+
 class OrderItem {
   final String skuCode;
   final String name;
@@ -434,6 +478,7 @@ class OrderItem {
   final DateTime? expiryDate;
   final DateTime? mfgDate;
   final String? binLocation;
+  final List<AllocatedBatch> allocatedBatches;
 
   OrderItem({
     required this.skuCode,
@@ -445,6 +490,7 @@ class OrderItem {
     this.expiryDate,
     this.mfgDate,
     this.binLocation,
+    this.allocatedBatches = const [],
   });
 
   factory OrderItem.fromJson(Map<String, dynamic> json) {
@@ -458,6 +504,7 @@ class OrderItem {
       expiryDate: json['expiryDate'] != null ? DateTime.parse(json['expiryDate']) : null,
       mfgDate: json['mfgDate'] != null ? DateTime.parse(json['mfgDate']) : null,
       binLocation: json['binLocation'],
+      allocatedBatches: (json['allocatedBatches'] as List?)?.map((e) => AllocatedBatch.fromJson(e)).toList() ?? [],
     );
   }
 
@@ -472,6 +519,7 @@ class OrderItem {
       if (expiryDate != null) 'expiryDate': expiryDate!.toIso8601String(),
       if (mfgDate != null) 'mfgDate': mfgDate!.toIso8601String(),
       if (binLocation != null) 'binLocation': binLocation,
+      'allocatedBatches': allocatedBatches.map((e) => e.toJson()).toList(),
     };
   }
 }
@@ -798,4 +846,52 @@ class ProcurementItem {
       if (approvedBy != null) 'approvedBy': approvedBy,
     };
   }
+}
+
+class Warehouse {
+  final String id;
+  final String name;
+  final String location;
+  final String tempRange;
+  final double capacityUsed;
+  final double capacityMax;
+  final String manager;
+
+  Warehouse({
+    required this.id,
+    required this.name,
+    required this.location,
+    required this.tempRange,
+    required this.capacityUsed,
+    required this.capacityMax,
+    required this.manager,
+  });
+
+  factory Warehouse.fromJson(Map<String, dynamic> json) {
+    return Warehouse(
+      id: json['id'] ?? json['_id'] ?? '',
+      name: json['name'] ?? '',
+      location: json['location'] ?? '',
+      tempRange: json['tempRange'] ?? 'Standard',
+      capacityUsed: (json['capacityUsed'] ?? 0).toDouble(),
+      capacityMax: (json['capacityMax'] ?? 100).toDouble(),
+      manager: json['manager'] ?? 'Not Assigned',
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'name': name,
+    'location': location,
+    'tempRange': tempRange,
+    'capacityUsed': capacityUsed,
+    'capacityMax': capacityMax,
+    'manager': manager,
+  };
+
+  @override
+  bool operator ==(Object other) => identical(this, other) || (other is Warehouse && runtimeType == other.runtimeType && id == other.id);
+
+  @override
+  int get hashCode => id.hashCode;
 }

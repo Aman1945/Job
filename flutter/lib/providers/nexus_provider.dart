@@ -23,6 +23,7 @@ class NexusProvider with ChangeNotifier {
   List<User> _users = [];
   List<ProcurementItem> _procurementItems = [];
   List<DistributorPrice> _distributorPrices = [];
+  List<Warehouse> _warehouses = [];
   bool _isLoading = false;
   String? _token; // Auth token stored here so all fetch methods use it automatically
 
@@ -33,6 +34,7 @@ class NexusProvider with ChangeNotifier {
   List<User> get users => _users;
   List<ProcurementItem> get procurementItems => _procurementItems;
   List<DistributorPrice> get distributorPrices => _distributorPrices;
+  List<Warehouse> get warehouses => _warehouses;
   bool get isLoading => _isLoading;
 
   /// Returns orders visible to [user] based on sales hierarchy:
@@ -102,6 +104,7 @@ class NexusProvider with ChangeNotifier {
       fetchOrders(),
       fetchProcurementItems(),
       fetchDistributorPrices(),
+      fetchWarehouses(),
     ]);
     notifyListeners();
   }
@@ -930,6 +933,54 @@ class NexusProvider with ChangeNotifier {
       url: url,
       fileName: "Material_Master_Template.xlsx",
     );
+  }
+
+  Future<void> fetchWarehouses({String? token}) async {
+    try {
+      final effectiveToken = token ?? _token;
+      debugPrint('🛰️ Fetching warehouses...');
+      final response = await http.get(
+        Uri.parse('$_baseUrl/warehouse/list'),
+        headers: {
+          if (effectiveToken != null) 'Authorization': 'Bearer $effectiveToken',
+        },
+      ).timeout(const Duration(seconds: 30));
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final List<dynamic> list = data['warehouses'] ?? [];
+        _warehouses = list.map((json) => Warehouse.fromJson(json)).toList();
+        debugPrint('✅ Fetched ${_warehouses.length} warehouses');
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('Error fetching warehouses: $e');
+    }
+  }
+
+  Future<bool> assignWarehouseToOrder(String orderId, String warehouseId, {String? token}) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/warehouse/assign-to-order'),
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'orderId': orderId,
+          'warehouseId': warehouseId,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        await fetchOrders(); // Refresh orders to get updated status and allocated batches
+        return true;
+      } else {
+        debugPrint('Failed to assign warehouse: ${response.statusCode}');
+      }
+    } catch (e) {
+      debugPrint('Error assigning warehouse: $e');
+    }
+    return false;
   }
 }
 
