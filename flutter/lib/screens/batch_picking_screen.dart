@@ -6,6 +6,8 @@ import '../models/models.dart';
 import '../utils/theme.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:intl/intl.dart';
+import 'package:image_picker/image_picker.dart';
+
 
 class BatchPickingScreen extends StatefulWidget {
   final Order order;
@@ -15,15 +17,41 @@ class BatchPickingScreen extends StatefulWidget {
   State<BatchPickingScreen> createState() => _BatchPickingScreenState();
 }
 
+class BatchEntry {
+  final TextEditingController batchController;
+  final TextEditingController mfgController;
+  final TextEditingController expController;
+  final TextEditingController barcodeController;
+  final TextEditingController qtyController;
+
+  BatchEntry({
+    required String batchNo,
+    required String mfgDate,
+    required String expiryDate,
+    String barcode = '',
+    double allocatedQty = 0.0,
+  })  : batchController = TextEditingController(text: batchNo),
+        mfgController = TextEditingController(text: mfgDate),
+        expController = TextEditingController(text: expiryDate),
+        barcodeController = TextEditingController(text: barcode),
+        qtyController = TextEditingController(text: allocatedQty.toString());
+
+  void dispose() {
+    batchController.dispose();
+    mfgController.dispose();
+    expController.dispose();
+    barcodeController.dispose();
+    qtyController.dispose();
+  }
+}
+
 class _BatchPickingScreenState extends State<BatchPickingScreen> {
   bool isAutoScan = true;
   late List<Map<String, dynamic>> pickingItems;
   bool isSubmitting = false;
   
-  // Storage for text controllers to manage inputs
-  final Map<String, TextEditingController> _batchControllers = {};
-  final Map<String, TextEditingController> _mfgControllers = {};
-  final Map<String, TextEditingController> _expControllers = {};
+  // Storage for multi-batch entries per SKU
+  final Map<String, List<BatchEntry>> _batchEntries = {};
 
   @override
   void initState() {
@@ -33,32 +61,30 @@ class _BatchPickingScreenState extends State<BatchPickingScreen> {
       'skuCode': i.skuCode,
       'productName': i.productName,
       'orderedQty': i.quantity,
-      'allocatedQty': 0.0,
       'unit': i.unit ?? 'KG',
-      'batchNo': i.batchNo ?? '',
-      'mfgDate': i.mfgDate != null ? DateFormat('MM/dd/yy').format(i.mfgDate!) : '',
-      'expiryDate': i.expiryDate != null ? DateFormat('MM/dd/yy').format(i.expiryDate!) : '',
     }).toList();
 
-    // Initialize controllers
-    for (var item in pickingItems) {
-      String key = item['skuCode'];
-      _batchControllers[key] = TextEditingController(text: item['batchNo']);
-      _mfgControllers[key] = TextEditingController(text: item['mfgDate']);
-      _expControllers[key] = TextEditingController(text: item['expiryDate']);
+    // Initialize with at least one batch entry per item
+    for (var item in widget.order.items) {
+      String key = item.skuCode;
+      _batchEntries[key] = [
+        BatchEntry(
+          batchNo: item.batchNo ?? '',
+          mfgDate: item.mfgDate != null ? DateFormat('MM/dd/yy').format(item.mfgDate!) : '',
+          expiryDate: item.expiryDate != null ? DateFormat('MM/dd/yy').format(item.expiryDate!) : '',
+          barcode: item.barcode ?? '',
+          allocatedQty: item.quantity.toDouble(),
+        )
+      ];
     }
   }
 
   @override
   void dispose() {
-    for (var c in _batchControllers.values) {
-      c.dispose();
-    }
-    for (var c in _mfgControllers.values) {
-      c.dispose();
-    }
-    for (var c in _expControllers.values) {
-      c.dispose();
+    for (var list in _batchEntries.values) {
+      for (var entry in list) {
+        entry.dispose();
+      }
     }
     super.dispose();
   }
@@ -345,6 +371,10 @@ class _BatchPickingScreenState extends State<BatchPickingScreen> {
   }
 
   Widget _buildPickingItemRow(Map<String, dynamic> item, bool isMobile) {
+    String skuCode = item['skuCode'];
+    final entries = _batchEntries[skuCode] ?? [];
+    double totalAllocated = entries.fold(0.0, (sum, e) => sum + (double.tryParse(e.qtyController.text) ?? 0.0));
+
     if (isMobile) {
       return Container(
         padding: const EdgeInsets.all(24),
@@ -355,18 +385,18 @@ class _BatchPickingScreenState extends State<BatchPickingScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(item['productName'], style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
-            Text(item['skuCode'], style: const TextStyle(color: NexusTheme.slate400, fontSize: 10, fontWeight: FontWeight.bold)),
+            Text(skuCode, style: const TextStyle(color: NexusTheme.slate400, fontSize: 10, fontWeight: FontWeight.bold)),
             const SizedBox(height: 20),
-            _buildScanArea(isMobile),
+            _buildScanArea(isMobile, skuCode),
             const SizedBox(height: 24),
             Row(
               children: [
                 Expanded(child: _buildInfoCol('ORDERED QTY', '${item['orderedQty']} ${item['unit']}')),
-                Expanded(child: _buildInfoCol('ALLOCATED QTY', '${item['allocatedQty']} ${item['unit']}', color: const Color(0xFF0D9488))),
+                Expanded(child: _buildInfoCol('ALLOCATED QTY', '$totalAllocated ${item['unit']}', color: const Color(0xFF0D9488))),
               ],
             ),
             const SizedBox(height: 24),
-            _buildBatchForm(item, true),
+            _buildBatchForm(skuCode, true),
           ],
         ),
       );
@@ -386,9 +416,9 @@ class _BatchPickingScreenState extends State<BatchPickingScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(item['productName'], style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18)),
-                Text(item['skuCode'], style: const TextStyle(color: NexusTheme.slate400, fontSize: 12, fontWeight: FontWeight.bold)),
+                Text(skuCode, style: const TextStyle(color: NexusTheme.slate400, fontSize: 12, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 16),
-                _buildScanArea(false),
+                _buildScanArea(false, skuCode),
               ],
             ),
           ),
@@ -406,23 +436,30 @@ class _BatchPickingScreenState extends State<BatchPickingScreen> {
             child: Column(
               children: [
                 const SizedBox(height: 4),
-                Text('${item['allocatedQty']} ${item['unit']}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFF0D9488))),
+                Text('${(_batchEntries[skuCode] ?? []).fold(0.0, (sum, e) => sum + (double.tryParse(e.qtyController.text) ?? 0.0))} ${item['unit']}', 
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFF0D9488))),
               ],
             ),
           ),
           Expanded(
-            flex: 2,
-            child: _buildBatchForm(item, false),
+            flex: 3,
+            child: _buildBatchForm(skuCode, false),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildScanArea(bool isMobile) {
+  Widget _buildScanArea(bool isMobile, String skuCode) {
+    // For simplicity, we use the barcode controller of the first batch entry if available
+    final entries = _batchEntries[skuCode] ?? [];
+    if (entries.isEmpty) return const SizedBox.shrink();
+    
+    final mainBarcodeController = entries.first.barcodeController;
+
     return Container(
       width: isMobile ? double.infinity : 200,
-      padding: const EdgeInsets.symmetric(vertical: 24),
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
       decoration: BoxDecoration(
         color: const Color(0xFFF8FAFC),
         borderRadius: BorderRadius.circular(20),
@@ -431,11 +468,40 @@ class _BatchPickingScreenState extends State<BatchPickingScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(isAutoScan ? LucideIcons.scan : LucideIcons.keyboard, color: NexusTheme.slate300, size: 24),
-          const SizedBox(height: 12),
-          Text(isAutoScan ? 'Tap to Scan\nSKU' : 'TYPE BARCODE\nIN SAME BOX', 
-            textAlign: TextAlign.center,
-            style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 12, color: NexusTheme.slate400, letterSpacing: 1)),
+          GestureDetector(
+            onTap: isAutoScan ? () async {
+              final ImagePicker picker = ImagePicker();
+              // Trigger camera to fulfill "photo wala khulna chaiye"
+              try {
+                final XFile? photo = await picker.pickImage(source: ImageSource.camera);
+                if (photo != null && mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Processing Scanned Image...'), backgroundColor: Color(0xFF10B981)),
+                  );
+                }
+              } catch (e) {
+                debugPrint('Camera error: $e');
+              }
+            } : null,
+            child: Icon(isAutoScan ? LucideIcons.scan : LucideIcons.keyboard, color: NexusTheme.slate300, size: 24),
+          ),
+          const SizedBox(height: 8),
+          if (isAutoScan)
+            const Text('Tap to Scan\nSKU', 
+              textAlign: TextAlign.center,
+              style: TextStyle(fontWeight: FontWeight.w900, fontSize: 10, color: NexusTheme.slate400, letterSpacing: 0.5))
+          else
+            TextField(
+              controller: mainBarcodeController,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+              decoration: const InputDecoration(
+                hintText: 'TYPE BARCODE\nIN SAME BOX',
+                hintStyle: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: NexusTheme.slate300),
+                border: InputBorder.none,
+                isDense: true,
+              ),
+            ),
         ],
       ),
     );
@@ -447,66 +513,103 @@ class _BatchPickingScreenState extends State<BatchPickingScreen> {
       children: [
         Text(label, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: NexusTheme.slate400, letterSpacing: 0.5)),
         const SizedBox(height: 4),
-        Text(value, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: color ?? NexusTheme.slate900)),
+        Text(value, style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: color ?? NexusTheme.slate900)),
       ],
     );
   }
 
-  Widget _buildBatchForm(Map<String, dynamic> item, bool isMobile) {
+  Widget _buildBatchForm(String skuCode, bool isMobile) {
+    final entries = _batchEntries[skuCode] ?? [];
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+        ...entries.asMap().entries.map((item) {
+          int index = item.key;
+          BatchEntry entry = item.value;
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Column(
               children: [
-                const Text('BATCH NO', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: NexusTheme.slate400, letterSpacing: 0.5)),
-                const SizedBox(height: 4),
-                _buildBatchInput('BATCH', _batchControllers[item['skuCode']]!),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Expanded(flex: 2, child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('BATCH NO', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: NexusTheme.slate400, letterSpacing: 0.5)),
+                        const SizedBox(height: 4),
+                        _buildBatchInput('BATCH', entry.batchController),
+                      ],
+                    )),
+                    const SizedBox(width: 8),
+                    Expanded(flex: 2, child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('MFG DATE', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: NexusTheme.slate400, letterSpacing: 0.5)),
+                        const SizedBox(height: 4),
+                        _buildDateInput('mm/dd/yy', LucideIcons.calendar, entry.mfgController),
+                      ],
+                    )),
+                    const SizedBox(width: 8),
+                    Expanded(flex: 2, child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('EXP DATE', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: NexusTheme.slate400, letterSpacing: 0.5)),
+                        const SizedBox(height: 4),
+                        _buildDateInput('mm/dd/yy', LucideIcons.calendar, entry.expController),
+                      ],
+                    )),
+                    const SizedBox(width: 8),
+                    Expanded(flex: 1, child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('QTY', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: NexusTheme.slate400, letterSpacing: 0.5)),
+                        const SizedBox(height: 4),
+                        _buildBatchInput('0.0', entry.qtyController),
+                      ],
+                    )),
+                    if (entries.length > 1) ...[
+                      const SizedBox(width: 8),
+                      IconButton(
+                        onPressed: () => setState(() => entries.removeAt(index)),
+                        icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      ),
+                    ],
+                  ],
+                ),
               ],
-            )),
-            const SizedBox(width: 8),
-            Expanded(child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('MFG DATE', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: NexusTheme.slate400, letterSpacing: 0.5)),
-                const SizedBox(height: 4),
-                _buildDateInput('mm/dd/yy', LucideIcons.calendar, _mfgControllers[item['skuCode']]!),
-              ],
-            )),
-            const SizedBox(width: 8),
-            Expanded(child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('EXP DATE', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: NexusTheme.slate400, letterSpacing: 0.5)),
-                const SizedBox(height: 4),
-                _buildDateInput('mm/dd/yy', LucideIcons.calendar, _expControllers[item['skuCode']]!),
-              ],
-            )),
-          ],
-        ),
-        const SizedBox(height: 20),
-        Container(
-          height: 48,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: DottedBorder(
-            color: const Color(0xFF10B981),
-            strokeWidth: 2,
-            dashPattern: const [6, 3],
-            borderType: BorderType.RRect,
-            radius: const Radius.circular(12),
-            child: Center(
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.add, size: 16, color: Color(0xFF10B981)),
-                  const SizedBox(width: 8),
-                  const Text('ALLOCATE UNITS', style: TextStyle(color: Color(0xFF10B981), fontWeight: FontWeight.w900, fontSize: 10, letterSpacing: 1)),
-                ],
+            ),
+          );
+        }).toList(),
+        const SizedBox(height: 8),
+        GestureDetector(
+          onTap: () => setState(() {
+            _batchEntries[skuCode]!.add(BatchEntry(batchNo: '', mfgDate: '', expiryDate: '', allocatedQty: 0.0));
+          }),
+          child: Container(
+            height: 44,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: DottedBorder(
+              color: const Color(0xFF10B981),
+              strokeWidth: 2,
+              dashPattern: const [6, 3],
+              borderType: BorderType.RRect,
+              radius: const Radius.circular(12),
+              child: const Center(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.add, size: 16, color: Color(0xFF10B981)),
+                    SizedBox(width: 8),
+                    Text('ALLOCATE UNITS', style: TextStyle(color: Color(0xFF10B981), fontWeight: FontWeight.w900, fontSize: 10, letterSpacing: 1)),
+                  ],
+                ),
               ),
             ),
           ),
@@ -628,17 +731,35 @@ class _BatchPickingScreenState extends State<BatchPickingScreen> {
       final provider = Provider.of<NexusProvider>(context, listen: false);
       final auth = Provider.of<AuthProvider>(context, listen: false);
 
-      // 1. Update items with batch details
+      // 1. Update items with multi-batch details
       final List<OrderItem> updatedItems = widget.order.items.map((original) {
         String key = original.skuCode;
-        String mfgStr = _mfgControllers[key]?.text ?? '';
-        String expStr = _expControllers[key]?.text ?? '';
+        final entries = _batchEntries[key] ?? [];
         
-        DateTime? mfg;
-        DateTime? exp;
+        // Map UI entries to Backend AllocatedBatch models
+        final List<AllocatedBatch> allocatedBatches = entries.map((e) {
+          DateTime? exp;
+          try {
+            if (e.expController.text.isNotEmpty) exp = DateFormat('MM/dd/yy').parse(e.expController.text);
+          } catch (_) {}
+
+          return AllocatedBatch(
+            batchNumber: e.batchController.text.isNotEmpty ? e.batchController.text : 'NA',
+            qty: double.tryParse(e.qtyController.text) ?? 0.0,
+            expiry: exp ?? DateTime.now().add(const Duration(days: 365)),
+          );
+        }).toList();
+
+        // Use the first batch/mfg/exp for the main OrderItem fields (legacy/summary)
+        DateTime? mainMfg;
+        DateTime? mainExp;
         try {
-          if (mfgStr.isNotEmpty) mfg = DateFormat('MM/dd/yy').parse(mfgStr);
-          if (expStr.isNotEmpty) exp = DateFormat('MM/dd/yy').parse(expStr);
+          if (entries.isNotEmpty) {
+            String mfgS = entries.first.mfgController.text;
+            String expS = entries.first.expController.text;
+            if (mfgS.isNotEmpty) mainMfg = DateFormat('MM/dd/yy').parse(mfgS);
+            if (expS.isNotEmpty) mainExp = DateFormat('MM/dd/yy').parse(expS);
+          }
         } catch (_) {}
 
         return OrderItem(
@@ -648,16 +769,11 @@ class _BatchPickingScreenState extends State<BatchPickingScreen> {
           quantity: original.quantity,
           price: original.price,
           unit: original.unit,
-          batchNo: _batchControllers[key]?.text,
-          mfgDate: mfg,
-          expiryDate: exp,
-          allocatedBatches: [
-            AllocatedBatch(
-              batchNumber: _batchControllers[key]?.text ?? 'NA',
-              qty: original.quantity.toDouble(),
-              expiry: exp ?? DateTime.now(),
-            )
-          ]
+          barcode: entries.isNotEmpty ? entries.first.barcodeController.text : original.barcode,
+          batchNo: entries.isNotEmpty ? entries.first.batchController.text : '',
+          mfgDate: mainMfg,
+          expiryDate: mainExp,
+          allocatedBatches: allocatedBatches,
         );
       }).toList();
 

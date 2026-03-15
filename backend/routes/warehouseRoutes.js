@@ -162,4 +162,20 @@ router.post('/assign-to-order', async (req, res) => {
     }
 });
 
+// Validate Barcode for Scanning
+router.post('/validate-barcode', async (req, res) => {
+    try {
+        const { warehouseId, barcode, skuCode } = req.body;
+        if (!warehouseId || !barcode || !skuCode) {
+            return res.status(400).json({ success: false, message: 'warehouseId, barcode, and skuCode are required' });
+        }
+
+        const result = await InventoryService.validateBarcode(warehouseId, barcode, skuCode);
+        res.json({ success: true, ...result });
+    } catch (error) {
+        console.error('Barcode validation error:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
 module.exports = router;

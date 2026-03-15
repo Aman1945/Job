@@ -1427,28 +1427,45 @@ app.patch('/api/orders/:id', verifyToken, logUpdate('ORDER'), async (req, res) =
 
 // Update order items (Edit Order functionality)
 app.patch('/api/orders/:id/items', verifyToken, logUpdate('ORDER'), async (req, res) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
     try {
         const { id } = req.params;
         const { items, total, subTotal, gstAmount } = req.body;
 
         if (!items || !Array.isArray(items)) {
+            await session.abortTransaction();
             return res.status(400).json({ message: 'items array is required' });
         }
 
-        // Fetch original data for audit log and history
-        const originalOrder = await Order.findOne({ id }).lean();
+        // Fetch original data
+        const originalOrder = await Order.findOne({ id }).session(session);
         if (!originalOrder) {
-            console.log(`❌ Order not found for items update: ${id}`);
+            await session.abortTransaction();
             return res.status(404).json({ message: 'Order not found' });
         }
-        req.originalData = originalOrder;
+        req.originalData = originalOrder.toObject();
 
-        // Perform atomic update
+        let finalItems = items;
+
+        // --- STOCK SYNC LOGIC ---
+        // If order already has a source warehouse, we must sync the stock deduction
+        if (originalOrder.sourceWarehouse) {
+            console.log(`🔄 Syncing stock for order ${id} in warehouse ${originalOrder.sourceWarehouse}`);
+            
+            // 1. Restore previous stock
+            await InventoryService.restoreStock(originalOrder.sourceWarehouse, originalOrder.items, session);
+            
+            // 2. Deduct new stock (InventoryService.allocateStock handles both manual and auto)
+            finalItems = await InventoryService.allocateStock(originalOrder.sourceWarehouse, items, id, session);
+        }
+
+        // Perform update
         const order = await Order.findOneAndUpdate(
             { id },
             { 
                 $set: { 
-                    items, 
+                    items: finalItems, 
                     total, 
                     subTotal, 
                     gstAmount 
@@ -1460,18 +1477,19 @@ app.patch('/api/orders/:id/items', verifyToken, logUpdate('ORDER'), async (req, 
                     } 
                 }
             },
-            { new: true }
+            { new: true, session }
         );
 
-        if (order) {
-            console.log(`✏️ Order items updated successfully: ${id} | Total: ${total}`);
-            return res.json({ success: true, data: order });
-        }
-        
-        res.status(404).json({ message: 'Order update failed' });
+        await session.commitTransaction();
+        console.log(`✏️ Order items updated & stock synced: ${id}`);
+        res.json({ success: true, data: order });
+
     } catch (error) {
+        await session.abortTransaction();
         console.error('Order items update error:', error);
         res.status(500).json({ message: 'Error updating order items', error: error.message });
+    } finally {
+        session.endSession();
     }
 });
 

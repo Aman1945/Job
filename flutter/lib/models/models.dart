@@ -483,6 +483,7 @@ class OrderItem {
   final String? imageUrl;
   final String? unit;
   final String? batchNo;
+  final String? barcode;
   final DateTime? expiryDate;
   final DateTime? mfgDate;
   final String? binLocation;
@@ -499,6 +500,7 @@ class OrderItem {
     this.imageUrl,
     this.unit,
     this.batchNo,
+    this.barcode,
     this.expiryDate,
     this.mfgDate,
     this.binLocation,
@@ -520,6 +522,7 @@ class OrderItem {
       imageUrl: json['imageUrl'],
       unit: json['unit'],
       batchNo: json['batchNo'],
+      barcode: json['barcode'],
       expiryDate: json['expiryDate'] != null ? DateTime.parse(json['expiryDate']) : null,
       mfgDate: json['mfgDate'] != null ? DateTime.parse(json['mfgDate']) : null,
       binLocation: json['binLocation'],
@@ -540,6 +543,7 @@ class OrderItem {
       if (imageUrl != null) 'imageUrl': imageUrl,
       if (unit != null) 'unit': unit,
       if (batchNo != null) 'batchNo': batchNo,
+      if (barcode != null) 'barcode': barcode,
       if (expiryDate != null) 'expiryDate': expiryDate!.toIso8601String(),
       if (mfgDate != null) 'mfgDate': mfgDate!.toIso8601String(),
       if (binLocation != null) 'binLocation': binLocation,

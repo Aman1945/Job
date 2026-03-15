@@ -1057,6 +1057,30 @@ class NexusProvider with ChangeNotifier {
     }
     return false;
   }
+
+  Future<Map<String, dynamic>> validateBarcode(String warehouseId, String barcode, String skuCode, {String? token}) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/warehouse/validate-barcode'),
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'warehouseId': warehouseId,
+          'barcode': barcode,
+          'skuCode': skuCode,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      }
+    } catch (e) {
+      debugPrint('Barcode validation error: $e');
+    }
+    return {'success': false, 'message': 'Validation failed'};
+  }
 }
 
 

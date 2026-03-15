@@ -12,6 +12,7 @@ const warehouseSchema = new mongoose.Schema({
     },
     inventory: [{
         skuCode: String,
+        barcode: String,
         name: String,
         qty: { type: Number, default: 0 },
         batches: [{
