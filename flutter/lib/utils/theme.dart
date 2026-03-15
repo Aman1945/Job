@@ -54,7 +54,8 @@ class NexusTheme {
   static const Color amber600 = Color(0xFFD97706);
   static const Color amber900 = Color(0xFF78350F);
 
-  static var amber50;
+  static const Color amber50 = Color(0xFFFFFBEB);
+  static const Color rose50 = Color(0xFFFFF1F2);
 
   static ThemeData get lightTheme {
     return ThemeData(

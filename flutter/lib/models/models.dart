@@ -286,6 +286,7 @@ class Product {
   final String? remarks;
   final double? yc70;
   final double? processingCharges;
+  final String? imageUrl;
 
   Product({
     required this.id,
@@ -308,6 +309,7 @@ class Product {
     this.remarks,
     this.yc70,
     this.processingCharges,
+    this.imageUrl,
   });
 
   factory Product.fromJson(Map<String, dynamic> json) {
@@ -332,6 +334,7 @@ class Product {
       remarks: json['remarks'],
       yc70: json['yc70'] != null ? double.tryParse(json['yc70'].toString()) : null,
       processingCharges: json['processingCharges'] != null ? double.tryParse(json['processingCharges'].toString()) : null,
+      imageUrl: json['imageUrl'],
     );
   }
 
@@ -357,6 +360,7 @@ class Product {
       if (remarks != null) 'remarks': remarks,
       if (yc70 != null) 'yc70': yc70,
       if (processingCharges != null) 'processingCharges': processingCharges,
+      if (imageUrl != null) 'imageUrl': imageUrl,
     };
   }
 
@@ -469,8 +473,9 @@ class AllocatedBatch {
 }
 
 class OrderItem {
+  final String? productId; // MongoDB _id or custom product ID
   final String skuCode;
-  final String name;
+  final String productName; // Use productName for backend consistency
   final int quantity;
   final double price;
   final double prevRate;
@@ -483,8 +488,9 @@ class OrderItem {
   final List<AllocatedBatch> allocatedBatches;
 
   OrderItem({
+    this.productId,
     required this.skuCode,
-    required this.name,
+    required this.productName,
     required this.quantity,
     required this.price,
     this.prevRate = 0,
@@ -497,10 +503,14 @@ class OrderItem {
     this.allocatedBatches = const [],
   });
 
+  // Getter for UI convenience
+  String get name => productName;
+
   factory OrderItem.fromJson(Map<String, dynamic> json) {
     return OrderItem(
+      productId: json['productId'] ?? json['_id'],
       skuCode: json['skuCode'] ?? '',
-      name: json['name'] ?? json['productName'] ?? '',
+      productName: json['productName'] ?? json['name'] ?? '',
       quantity: json['quantity'] ?? 0,
       price: (json['price'] ?? 0).toDouble(),
       prevRate: (json['prevRate'] ?? 0).toDouble(),
@@ -516,8 +526,10 @@ class OrderItem {
 
   Map<String, dynamic> toJson() {
     return {
+      if (productId != null) 'productId': productId,
       'skuCode': skuCode,
-      'name': name,
+      'productName': productName,
+      'name': productName, // Include both for compatibility
       'quantity': quantity,
       'price': price,
       'prevRate': prevRate,
@@ -559,6 +571,7 @@ class Order {
   final List<String> salesPhotos;
   final String? qcPhoto;
   final String? invoiceUrl;
+  final String? podUrl;
 
   Order({
     required this.id,
@@ -587,6 +600,7 @@ class Order {
     this.salesPhotos = const [],
     this.qcPhoto,
     this.invoiceUrl,
+    this.podUrl,
   });
 
   factory Order.fromJson(Map<String, dynamic> json) {
@@ -628,6 +642,7 @@ class Order {
       salesPhotos: json['salesPhotos'] != null ? List<String>.from(json['salesPhotos']) : [],
       qcPhoto: json['qcPhoto'],
       invoiceUrl: json['invoiceUrl'],
+      podUrl: json['podUrl'],
     );
   }
 
@@ -659,6 +674,7 @@ class Order {
       'salesPhotos': salesPhotos,
       if (qcPhoto != null) 'qcPhoto': qcPhoto,
       if (invoiceUrl != null) 'invoiceUrl': invoiceUrl,
+      if (podUrl != null) 'podUrl': podUrl,
     };
   }
 }

@@ -73,7 +73,7 @@ class RowDetailPanel extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: accent.withOpacity(0.3)),
+                        border: Border.all(color: accent.withValues(alpha: 0.3)),
                       ),
                       child: Icon(Icons.edit_outlined, size: 13, color: accent),
                     ),

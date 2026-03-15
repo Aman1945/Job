@@ -178,13 +178,14 @@ class NexusProvider with ChangeNotifier {
 
   // --- Fetching Data ---
 
-  Future<void> fetchOrders() async {
+  Future<void> fetchOrders({String? token}) async {
     try {
+      final effectiveToken = token ?? _token;
       debugPrint('🛰️ Fetching orders from: $_baseUrl/orders');
       final response = await http.get(
         Uri.parse('$_baseUrl/orders'),
         headers: {
-          if (_token != null) 'Authorization': 'Bearer $_token',
+          if (effectiveToken != null) 'Authorization': 'Bearer $effectiveToken',
         },
       ).timeout(const Duration(seconds: 30));
       if (response.statusCode == 200) {
@@ -354,7 +355,7 @@ class NexusProvider with ChangeNotifier {
       );
 
       if (response.statusCode == 200) {
-        await fetchOrders(); // Refresh local list
+        await fetchOrders(token: token); // Refresh local list
         return true;
       } else {
         debugPrint('Failed to update status: ${response.statusCode} - ${response.body}');
@@ -366,13 +367,41 @@ class NexusProvider with ChangeNotifier {
     }
   }
 
+  Future<double> fetchLastRate(String customerId, String skuCode, {String? token}) async {
+    try {
+        final Map<String, String> headers = {};
+        if (token != null) {
+            headers['Authorization'] = 'Bearer $token';
+        } else if (_token != null) {
+            headers['Authorization'] = 'Bearer $_token';
+        }
+
+        final response = await http.get(
+            Uri.parse('$_baseUrl/orders/last-rate/$customerId/$skuCode'),
+            headers: headers,
+        );
+        if (response.statusCode == 200) {
+            final data = jsonDecode(response.body);
+            return (data['rate'] ?? 0.0).toDouble();
+        }
+    } catch (e) {
+        debugPrint('Error fetching last rate: $e');
+    }
+    return 0.0;
+  }
+
   Future<Order?> fetchOrderById(String orderId, {String? token}) async {
     try {
+      final Map<String, String> headers = {};
+      if (token != null) {
+        headers['Authorization'] = 'Bearer $token';
+      } else if (_token != null) {
+        headers['Authorization'] = 'Bearer $_token';
+      }
+
       final response = await http.get(
         Uri.parse('$_baseUrl/orders/$orderId'),
-        headers: {
-          if (token != null) 'Authorization': 'Bearer $token',
-        },
+        headers: headers,
       );
       if (response.statusCode == 200) {
         return Order.fromJson(jsonDecode(response.body));
@@ -397,10 +426,10 @@ class NexusProvider with ChangeNotifier {
           if (subTotal != null) 'subTotal': subTotal,
           if (gstAmount != null) 'gstAmount': gstAmount,
         }),
-      );
+      ).timeout(const Duration(seconds: 15));
 
       if (response.statusCode == 200) {
-        await fetchOrders();
+        await fetchOrders(token: token);
         return true;
       }
     } catch (e) {
@@ -410,15 +439,18 @@ class NexusProvider with ChangeNotifier {
   }
 
   /// Patches specific fields on an order (e.g., qcPhoto, salesPhotos URLs).
-  Future<bool> patchOrderField(String orderId, Map<String, dynamic> fields) async {
+  Future<bool> patchOrderField(String orderId, Map<String, dynamic> fields, {String? token}) async {
     try {
       final response = await http.patch(
         Uri.parse('$_baseUrl/orders/$orderId'),
-        headers: {'Content-Type': 'application/json'},
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
         body: jsonEncode(fields),
       );
       if (response.statusCode == 200) {
-        await fetchOrders();
+        await fetchOrders(token: token);
         return true;
       }
     } catch (e) {
@@ -461,7 +493,7 @@ class NexusProvider with ChangeNotifier {
       'status': 'Pending Credit Approval',
       'total': total,
       'subTotal': subTotal,
-      'gstValue': subTotal * 0.18,
+      'gstAmount': subTotal * 0.18,
       'items': items,
       'salespersonId': _currentUser?.id,
       'createdAt': DateTime.now().toIso8601String(),

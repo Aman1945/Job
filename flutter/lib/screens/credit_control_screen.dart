@@ -369,12 +369,59 @@ class _CreditControlScreenState extends State<CreditControlScreen> {
   Widget _buildActionButtons(bool isMobile) {
     return Column(
       children: [
-        _buildOutlineButton('REJECT ORDER', const Color(0xFFE11D48), Icons.cancel_outlined, () => _handleAction('Rejected')),
+        Row(
+          children: [
+            Expanded(
+              child: _buildSmallActionButton(
+                'APPROVE MISSION',
+                NexusTheme.emerald500,
+                LucideIcons.checkCircle,
+                () => _handleAction('Credit Approved'),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildSmallActionButton(
+                'HOLD MISSION',
+                NexusTheme.amber500,
+                LucideIcons.pauseCircle,
+                () => _handleAction('Hold'),
+              ),
+            ),
+          ],
+        ),
         const SizedBox(height: 16),
-        _buildActionButton('EDIT ORDER', NexusTheme.blue600, Icons.edit_outlined, () => _showEditDialog()),
+        _buildActionButton(
+          'EDIT SUPPLY MISSION',
+          NexusTheme.indigo600,
+          LucideIcons.edit3,
+          () => _showEditDialog(),
+        ),
         const SizedBox(height: 16),
-        _buildOutlineButton('CANCEL ALL', Colors.red, Icons.delete_outline, () => _handleAction('Cancelled')),
+        _buildOutlineButton(
+          'REJECT / CANCEL MISSION',
+          NexusTheme.rose600,
+          LucideIcons.xCircle,
+          () => _handleAction('Cancelled'),
+        ),
       ],
+    );
+  }
+
+  Widget _buildSmallActionButton(String label, Color color, IconData icon, VoidCallback onPressed) {
+    return SizedBox(
+      height: 60,
+      child: ElevatedButton.icon(
+        onPressed: isSubmitting ? null : onPressed,
+        icon: Icon(icon, size: 18, color: Colors.white),
+        label: Text(label, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 10, letterSpacing: 0.5)),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: color,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        ),
+      ),
     );
   }
 
@@ -438,7 +485,12 @@ class _CreditControlScreenState extends State<CreditControlScreen> {
       builder: (context) => _EditOrderDialog(
         order: selectedOrder!,
         onSaved: (updatedOrder) {
-          setState(() => selectedOrder = updatedOrder);
+          setState(() {
+            selectedOrder = null; // Clear selection after save/approve
+            isSubmitting = false;
+          });
+          // Refresh list to be sure
+          Provider.of<NexusProvider>(context, listen: false).fetchOrders(token: Provider.of<AuthProvider>(context, listen: false).token);
         },
       ),
     );
@@ -455,84 +507,329 @@ class _EditOrderDialog extends StatefulWidget {
 }
 
 class _EditOrderDialogState extends State<_EditOrderDialog> {
-  late List<OrderItem> items;
+  late List<Map<String, dynamic>> items;
+  late List<TextEditingController> qtyControllers;
+  late List<TextEditingController> rateControllers;
   bool isSaving = false;
 
   @override
   void initState() {
     super.initState();
-    items = List.from(widget.order.items);
+    items = widget.order.items.map((i) => {
+      'productId': i.productId,
+      'skuCode': i.skuCode,
+      'name': i.productName,
+      'quantity': i.quantity,
+      'price': i.price,
+      'prevRate': i.prevRate, // Added prevRate from existing order item
+      'unit': i.unit ?? 'KG',
+    }).toList();
+
+    qtyControllers = items.map((i) => TextEditingController(text: i['quantity'].toString())).toList();
+    rateControllers = items.map((i) => TextEditingController(text: i['price'].toString())).toList();
+  }
+
+  @override
+  void dispose() {
+    for (var c in qtyControllers) {
+      c.dispose();
+    }
+    for (var c in rateControllers) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  double get _revisedTotal {
+    return items.fold(0, (sum, item) => sum + ((item['price'] as num) * (item['quantity'] as num)) * 1.18);
+  }
+
+  void _addNewLine() {
+    setState(() {
+      items.add({
+        'skuCode': '',
+        'name': 'Select SKU...',
+        'quantity': 1,
+        'price': 0.0,
+        'unit': 'KG',
+      });
+      qtyControllers.add(TextEditingController(text: '1'));
+      rateControllers.add(TextEditingController(text: '0.0'));
+    });
   }
 
   @override
   Widget build(BuildContext context) {
+    final provider = Provider.of<NexusProvider>(context, listen: false);
+    final products = provider.products;
+
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      child: Container(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('EDIT ORDER ITEMS', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
-            const SizedBox(height: 16),
-            Flexible(
-              child: ListView.separated(
-                shrinkWrap: true,
-                itemCount: items.length,
-                separatorBuilder: (_, __) => const Divider(),
-                itemBuilder: (context, i) {
-                  final item = items[i];
-                  return Row(
+      insetPadding: const EdgeInsets.all(20),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(32)),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return Container(
+            width: 1000,
+            padding: const EdgeInsets.all(32),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Expanded(child: Text(item.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
-                      IconButton(
-                        onPressed: () => setState(() => items[i] = _updateQty(item, -1)),
-                        icon: const Icon(Icons.remove_circle_outline, size: 20),
+                      const Row(
+                        children: [
+                          Icon(LucideIcons.edit3, color: NexusTheme.indigo600, size: 20),
+                          SizedBox(width: 12),
+                          Text('EDIT SUPPLY MISSION', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: NexusTheme.slate800)),
+                        ],
                       ),
-                      Text(item.quantity.toString(), style: const TextStyle(fontWeight: FontWeight.bold)),
                       IconButton(
-                        onPressed: () => setState(() => items[i] = _updateQty(item, 1)),
-                        icon: const Icon(Icons.add_circle_outline, size: 20),
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.close, color: NexusTheme.slate400),
                       ),
                     ],
-                  );
-                },
+                  ),
+                  const SizedBox(height: 32),
+                  const Divider(),
+                  const SizedBox(height: 24),
+                  // Header (Only show if not cramped)
+                  if (constraints.maxWidth > 600)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Row(
+                        children: [
+                          Expanded(flex: 4, child: Text('PRODUCT / SKU', style: _headerStyle)),
+                          Expanded(flex: 1, child: Text('QTY', style: _headerStyle, textAlign: TextAlign.center)),
+                          Expanded(flex: 1, child: Text('UNIT', style: _headerStyle, textAlign: TextAlign.center)),
+                          Expanded(flex: 2, child: Text('RATE', style: _headerStyle, textAlign: TextAlign.center)),
+                          Expanded(flex: 2, child: Text('TOTAL', style: _headerStyle, textAlign: TextAlign.right)),
+                          const SizedBox(width: 48),
+                        ],
+                      ),
+                    ),
+                  const SizedBox(height: 12),
+                  // Item List - Use Column since parent is scrollable
+                  Column(
+                    children: items.asMap().entries.map((entry) => _buildItemRow(entry.key, entry.value, products, constraints.maxWidth)).toList(),
+                  ),
+                  const SizedBox(height: 24),
+                  // Add New Item Button
+                  Center(
+                    child: GestureDetector(
+                      onTap: _addNewLine,
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: NexusTheme.slate200, style: BorderStyle.solid),
+                        ),
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.add, size: 16, color: NexusTheme.slate400),
+                            SizedBox(width: 8),
+                            Text('ADD NEW ITEM LINE', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 10, color: NexusTheme.slate400, letterSpacing: 1)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+                  const Divider(),
+                  const SizedBox(height: 32),
+                  // Footer
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('REVISED VALUATION', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 10, color: NexusTheme.slate400, letterSpacing: 1)),
+                          Text('₹${NumberFormat('#,##,###').format(_revisedTotal)}', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: NexusTheme.slate800)),
+                        ],
+                      ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          if (constraints.maxWidth > 500) ...[
+                            TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: const Text('DISCARD', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 11, color: NexusTheme.slate400)),
+                            ),
+                            const SizedBox(width: 12),
+                          ],
+                          ElevatedButton(
+                            onPressed: isSaving ? null : _saveChanges,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: NexusTheme.indigo600,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                            ),
+                            child: Text(isSaving ? '...' : 'COMMIT & APPROVE', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 10)),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ],
               ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  TextStyle get _headerStyle => const TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: NexusTheme.slate400, letterSpacing: 0.5);
+
+  Widget _buildItemRow(int index, Map<String, dynamic> item, List<Product> products, double maxWidth) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: NexusTheme.slate200),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4))
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  flex: 3,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('PRODUCT / SKU', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: NexusTheme.slate400)),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF1F5F9),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<Product>(
+                            isExpanded: true,
+                            hint: Text(item['name'], style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: NexusTheme.slate800)),
+                            items: products.map((p) => DropdownMenuItem(
+                              value: p,
+                              child: Text('${p.skuCode} - ${p.name}', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                            )).toList(),
+                            onChanged: (p) {
+                              if (p != null) {
+                                setState(() {
+                                  item['skuCode'] = p.skuCode;
+                                  item['name'] = p.name;
+                                  item['price'] = p.price > 0 ? p.price : (p.mrp ?? 0.0);
+                                  rateControllers[index].text = item['price'].toString();
+                                  
+                                  // Fetch last rate for new selection
+                                  final provider = Provider.of<NexusProvider>(context, listen: false);
+                                  final auth = Provider.of<AuthProvider>(context, listen: false);
+                                  provider.fetchLastRate(widget.order.customerId, p.skuCode, token: auth.token).then((rate) {
+                                    if (mounted) setState(() => item['prevRate'] = rate);
+                                  });
+                                });
+                              }
+                            },
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                IconButton(
+                  onPressed: () => setState(() {
+                    if (index < items.length) {
+                      items.removeAt(index);
+                      qtyControllers[index].dispose();
+                      rateControllers[index].dispose();
+                      qtyControllers.removeAt(index);
+                      rateControllers.removeAt(index);
+                    }
+                  }),
+                  icon: const Icon(LucideIcons.minusCircle, color: NexusTheme.rose600, size: 20),
+                ),
+              ],
             ),
             const SizedBox(height: 24),
             Row(
               children: [
+                _buildEditableField('QTY', qtyControllers[index], (val) {
+                  setState(() {
+                    item['quantity'] = int.tryParse(val) ?? item['quantity'];
+                  });
+                }),
+                const SizedBox(width: 12),
+                _buildEditableField('RATE', rateControllers[index], (val) {
+                  setState(() {
+                    item['price'] = double.tryParse(val) ?? item['price'];
+                  });
+                }),
+                const SizedBox(width: 12),
                 Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('CANCEL'),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('PREV. RATE', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: NexusTheme.indigo600)),
+                      const SizedBox(height: 6),
+                      Text('₹${(item['prevRate'] ?? 0.0).toStringAsFixed(2)}', 
+                        style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: NexusTheme.indigo600)),
+                    ],
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: ElevatedButton(
-                    onPressed: isSaving ? null : _saveChanges,
-                    child: isSaving ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('SAVE'),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      const Text('LINE TOTAL', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: NexusTheme.slate400)),
+                      Text('₹${((item['price'] as num) * (item['quantity'] as num)).toStringAsFixed(2)}', 
+                        style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: NexusTheme.indigo600)),
+                    ],
                   ),
                 ),
               ],
-            )
+            ),
           ],
         ),
       ),
     );
   }
 
-  OrderItem _updateQty(OrderItem item, int delta) {
-    int newQty = (item.quantity + delta).clamp(1, 999);
-    return OrderItem(
-      productId: item.productId,
-      name: item.name,
-      quantity: newQty,
-      price: item.price,
-      prevRate: item.prevRate,
-      imageUrl: item.imageUrl,
-      unit: item.unit,
+  Widget _buildEditableField(String label, TextEditingController controller, Function(String) onChanged) {
+    return Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: const TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: NexusTheme.slate400)),
+          const SizedBox(height: 4),
+          TextField(
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: InputDecoration(
+              isDense: true,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+              filled: true,
+              fillColor: const Color(0xFFF1F5F9),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+            ),
+            style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 12),
+            controller: controller,
+            onChanged: onChanged,
+          ),
+        ],
+      ),
     );
   }
 
@@ -541,27 +838,69 @@ class _EditOrderDialogState extends State<_EditOrderDialog> {
     final provider = Provider.of<NexusProvider>(context, listen: false);
     final auth = Provider.of<AuthProvider>(context, listen: false);
     
-    // Calculate new totals
-    double subTotal = items.fold(0, (sum, item) => sum + (item.price * item.quantity));
+    // Map back to OrderItem
+    final List<OrderItem> orderItems = items.map((i) => OrderItem(
+      productId: i['productId'],
+      skuCode: i['skuCode'],
+      productName: i['name'],
+      quantity: i['quantity'],
+      price: i['price'].toDouble(),
+      prevRate: (i['prevRate'] ?? 0.0).toDouble(),
+      unit: i['unit'],
+    )).toList();
+
+    double subTotal = orderItems.fold(0, (sum, item) => sum + (item.price * item.quantity));
     double gst = subTotal * 0.18;
     double total = subTotal + gst;
 
-    final success = await provider.updateOrderItems(
-      widget.order.id,
-      items,
-      total: total,
-      subTotal: subTotal,
-      gstAmount: gst,
-      token: auth.token,
-    );
+    try {
+      final success = await provider.updateOrderItems(
+        widget.order.id,
+        orderItems,
+        total: total,
+        subTotal: subTotal,
+        gstAmount: gst,
+        token: auth.token,
+      );
 
-    if (success && mounted) {
-      final updatedOrder = await provider.fetchOrderById(widget.order.id, token: auth.token);
-      if (updatedOrder != null) widget.onSaved(updatedOrder);
-      Navigator.pop(context);
-    } else {
-      if (mounted) setState(() => isSaving = false);
-    }
+      if (success && mounted) {
+        // User requested "commit should work like approve"
+        final approveSuccess = await provider.updateOrderStatus(widget.order.id, 'Credit Approved', token: auth.token);
+        
+        if (mounted) {
+          if (approveSuccess) {
+             ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+               content: Text('Mission ${widget.order.id} updated and approved'),
+               backgroundColor: NexusTheme.emerald500,
+             ));
+             widget.onSaved(widget.order);
+             Navigator.pop(context);
+          } else {
+             ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+               content: Text('Items updated but approval failed'),
+               backgroundColor: NexusTheme.amber500,
+             ));
+             Navigator.pop(context);
+          }
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Failed to update items. Check your connection.'),
+            backgroundColor: NexusTheme.rose600,
+          ));
+          setState(() => isSaving = false);
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Error: ${e.toString()}'),
+          backgroundColor: NexusTheme.rose600,
+        ));
+        setState(() => isSaving = false);
+      }
     }
   }
 }
+

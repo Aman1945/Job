@@ -57,8 +57,16 @@ class _BookOrderScreenState extends State<BookOrderScreen> {
     });
   }
 
-  void _updateLineItem(int index, Product product) {
+  void _updateLineItem(int index, Product product) async {
     final rate = product.price > 0 ? product.price : (product.mrp ?? 0.0);
+    final provider = Provider.of<NexusProvider>(context, listen: false);
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+
+    double prevRate = 0.0;
+    if (selectedCustomer != null) {
+      prevRate = await provider.fetchLastRate(selectedCustomer!.id, product.skuCode, token: auth.token);
+    }
+
     setState(() {
       cartItems[index] = {
         'productId': product.id,
@@ -66,7 +74,7 @@ class _BookOrderScreenState extends State<BookOrderScreen> {
         'skuCode': product.skuCode,
         'quantity': 1,
         'price': rate,
-        'prevRate': 0.0,
+        'prevRate': prevRate,
         'imageUrl': product.imageUrl ?? '',
         'mrp': product.mrp ?? rate,
         'gst': product.gst ?? 18.0,
@@ -640,8 +648,8 @@ class _BookOrderScreenState extends State<BookOrderScreen> {
         children: [
           Expanded(flex: 4, child: Text('PRODUCT / SKU', style: _tableHeaderStyle)),
           Expanded(flex: 1, child: Text('UNIT', style: _tableHeaderStyle)),
-          Expanded(flex: 1, child: Text('BASE RATE', style: _tableHeaderStyle)),
-          Expanded(flex: 1, child: Text('PREV. RATE', style: _tableHeaderStyle)),
+          Expanded(flex: 1, child: Text('APPLIED RATE', style: _tableHeaderStyle)),
+          Expanded(flex: 1, child: Text('PREV. RATE', style: _tableHeaderStyle.copyWith(color: NexusTheme.indigo600))),
           Expanded(flex: 1, child: Text('QTY', style: _tableHeaderStyle)),
           Expanded(flex: 2, child: Text('FINAL RATE', style: _tableHeaderStyle, textAlign: TextAlign.center)),
           const SizedBox(width: 48),
@@ -672,7 +680,11 @@ class _BookOrderScreenState extends State<BookOrderScreen> {
                   setState(() => cartItems[index]['quantity'] = int.tryParse(val) ?? 1);
                 })),
                 const SizedBox(width: 12),
-                Expanded(child: _buildValueBox('RATE', '₹${item['price']}')),
+                Expanded(child: _buildValueBox('RATE', item['price'].toString(), controller: true, onChanged: (val) {
+                  setState(() => cartItems[index]['price'] = double.tryParse(val) ?? 0.0);
+                })),
+                const SizedBox(width: 12),
+                Expanded(child: _buildValueBox('PREV. RATE', '₹${item['prevRate']}', color: NexusTheme.indigo600)),
                 const SizedBox(width: 12),
                 IconButton(onPressed: () => _removeLineItem(index), icon: const Icon(LucideIcons.trash2, color: Colors.redAccent, size: 20)),
               ],
@@ -696,9 +708,16 @@ class _BookOrderScreenState extends State<BookOrderScreen> {
           const SizedBox(width: 8),
           Expanded(flex: 1, child: _buildUnitBox('PCS')),
           const SizedBox(width: 8),
-          Expanded(flex: 1, child: Text('₹${item['price']}', textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.bold, color: NexusTheme.slate300, fontSize: 12))),
+          Expanded(flex: 1, child: _buildPriceInput(index, item['price'])),
           const SizedBox(width: 8),
-          Expanded(flex: 1, child: Text('₹${item['prevRate']}', textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.bold, color: NexusTheme.slate300, fontSize: 12))),
+          Expanded(flex: 1, child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.history_rounded, size: 10, color: NexusTheme.indigo600),
+              const SizedBox(width: 4),
+              Text('₹${item['prevRate']}', textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.bold, color: NexusTheme.indigo600, fontSize: 11)),
+            ],
+          )),
           const SizedBox(width: 8),
           Expanded(flex: 1, child: _buildQtyInput(index, item['quantity'])),
           const SizedBox(width: 8),
@@ -949,7 +968,7 @@ class _BookOrderScreenState extends State<BookOrderScreen> {
     );
   }
 
-  Widget _buildValueBox(String label, String value, {bool controller = false, Function(String)? onChanged}) {
+  Widget _buildValueBox(String label, String value, {bool controller = false, Function(String)? onChanged, Color? color}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -962,15 +981,44 @@ class _BookOrderScreenState extends State<BookOrderScreen> {
           alignment: Alignment.centerLeft,
           child: controller 
               ? TextFormField(
-                  initialValue: value,
-                  keyboardType: TextInputType.number,
+                  initialValue: value.replaceAll('₹', ''),
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   onChanged: onChanged,
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: color ?? NexusTheme.slate800),
                   decoration: const InputDecoration(border: InputBorder.none, isCollapsed: true),
                 )
-              : Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+              : Text(value, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: color ?? NexusTheme.slate800)),
         ),
       ],
+    );
+  }
+
+  Widget _buildPriceInput(int index, dynamic price) {
+    return Container(
+      height: 40,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: NexusTheme.indigo600.withOpacity(0.3)),
+      ),
+      child: TextFormField(
+        initialValue: price.toString(),
+        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        textAlign: TextAlign.center,
+        onChanged: (val) {
+          setState(() {
+            cartItems[index]['price'] = double.tryParse(val) ?? 0.0;
+          });
+        },
+        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: NexusTheme.slate800),
+        decoration: const InputDecoration(
+          border: InputBorder.none,
+          isDense: true,
+          contentPadding: EdgeInsets.symmetric(vertical: 12),
+          prefixText: '₹',
+          prefixStyle: TextStyle(color: NexusTheme.slate400, fontSize: 10),
+        ),
+      ),
     );
   }
 

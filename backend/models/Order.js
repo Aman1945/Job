@@ -23,6 +23,9 @@ const orderSchema = new mongoose.Schema({
     }],
     status: { type: String, default: 'Pending' },
     total: { type: Number, default: 0 },
+    subTotal: { type: Number, default: 0 },
+    gstAmount: { type: Number, default: 0 },
+
     salespersonId: { type: String },
     remarks: { type: String },
     sourceWarehouse: { type: String },

@@ -194,6 +194,27 @@ app.get('/api/health', async (req, res) => {
     }
 });
 
+// Get last rate for a customer and SKU
+app.get('/api/orders/last-rate/:customerId/:skuCode', verifyToken, async (req, res) => {
+    try {
+        const { customerId, skuCode } = req.params;
+        const lastOrder = await Order.findOne({
+            customerId,
+            'items.skuCode': skuCode,
+            status: { $ne: 'Cancelled' }
+        }).sort({ createdAt: -1 });
+
+        if (lastOrder) {
+            const item = lastOrder.items.find(i => i.skuCode === skuCode);
+            return res.json({ rate: item ? item.price : 0 });
+        }
+        res.json({ rate: 0 });
+    } catch (error) {
+        console.error('Error fetching last rate:', error);
+        res.status(500).json({ message: 'Error fetching last rate' });
+    }
+});
+
 
 // ==================== AUTHENTICATION ====================
 app.post('/api/login', loginLimiter, async (req, res) => {
@@ -1414,6 +1435,15 @@ app.patch('/api/orders/:id/items', verifyToken, logUpdate('ORDER'), async (req, 
             return res.status(400).json({ message: 'items array is required' });
         }
 
+        // Fetch original data for audit log and history
+        const originalOrder = await Order.findOne({ id }).lean();
+        if (!originalOrder) {
+            console.log(`❌ Order not found for items update: ${id}`);
+            return res.status(404).json({ message: 'Order not found' });
+        }
+        req.originalData = originalOrder;
+
+        // Perform atomic update
         const order = await Order.findOneAndUpdate(
             { id },
             { 
@@ -1422,19 +1452,26 @@ app.patch('/api/orders/:id/items', verifyToken, logUpdate('ORDER'), async (req, 
                     total, 
                     subTotal, 
                     gstAmount 
-                } 
+                },
+                $push: { 
+                    statusHistory: { 
+                        status: 'Items Edited', 
+                        timestamp: new Date().toISOString() 
+                    } 
+                }
             },
             { new: true }
         );
 
         if (order) {
-            console.log(`✏️ Order items updated: ${id}`);
+            console.log(`✏️ Order items updated successfully: ${id} | Total: ${total}`);
             return res.json({ success: true, data: order });
         }
-        res.status(404).json({ message: 'Order not found' });
+        
+        res.status(404).json({ message: 'Order update failed' });
     } catch (error) {
         console.error('Order items update error:', error);
-        res.status(500).json({ message: 'Error updating order items' });
+        res.status(500).json({ message: 'Error updating order items', error: error.message });
     }
 });
 
