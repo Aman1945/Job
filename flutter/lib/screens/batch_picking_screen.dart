@@ -168,43 +168,47 @@ class _BatchPickingScreenState extends State<BatchPickingScreen> {
 
   Widget _buildTerminalHeader(bool isMobile) {
     return Container(
-      padding: EdgeInsets.all(isMobile ? 20 : 32),
+      padding: EdgeInsets.all(isMobile ? 16 : 32),
       decoration: const BoxDecoration(
         color: Color(0xFF034A3E),
         borderRadius: BorderRadius.only(topLeft: Radius.circular(40), topRight: Radius.circular(40)),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  const Icon(LucideIcons.package, color: Color(0xFF10B981), size: 24),
-                  const SizedBox(width: 16),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('3. Batch Picking Terminal', 
-                        style: TextStyle(color: Colors.white, fontSize: isMobile ? 18 : 24, fontWeight: FontWeight.w900)),
-                      const Text('SOURCING FROM: IOPL KURLA', 
-                        style: TextStyle(color: Color(0xFF10B981), fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: 1)),
-                    ],
-                  ),
-                ],
+              const Icon(LucideIcons.package, color: Color(0xFF10B981), size: 24),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('3. Batch Picking Terminal', 
+                      style: TextStyle(color: Colors.white, fontSize: isMobile ? 16 : 24, fontWeight: FontWeight.w900)),
+                    const Text('SOURCING FROM: IOPL KURLA', 
+                      style: TextStyle(color: Color(0xFF10B981), fontSize: 8, fontWeight: FontWeight.w900, letterSpacing: 1)),
+                  ],
+                ),
               ),
-              if (!isMobile) _buildModeToggle(),
-              if (!isMobile) _buildLoadUnitsCounter(),
+              if (!isMobile) ...[
+                _buildModeToggle(),
+                const SizedBox(width: 12),
+                _buildLoadUnitsCounter(),
+              ],
             ],
           ),
           if (isMobile) ...[
-            const SizedBox(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                _buildModeToggle(),
-                _buildLoadUnitsCounter(),
-              ],
+            const SizedBox(height: 16),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  _buildModeToggle(),
+                  const SizedBox(width: 12),
+                  _buildLoadUnitsCounter(),
+                ],
+              ),
             ),
           ],
         ],
@@ -413,23 +417,44 @@ class _BatchPickingScreenState extends State<BatchPickingScreen> {
 
   Widget _buildBatchForm(Map<String, dynamic> item, bool isMobile) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.end,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(child: _buildBatchInput('BATCH')),
+            Expanded(child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('BATCH NO', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: NexusTheme.slate400, letterSpacing: 0.5)),
+                const SizedBox(height: 4),
+                _buildBatchInput('BATCH'),
+              ],
+            )),
             const SizedBox(width: 8),
-            Expanded(child: _buildDateInput('mm/dd/yyyy', LucideIcons.calendar)),
+            Expanded(child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('MFG DATE', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: NexusTheme.slate400, letterSpacing: 0.5)),
+                const SizedBox(height: 4),
+                _buildDateInput('mm/dd/yy', LucideIcons.calendar),
+              ],
+            )),
             const SizedBox(width: 8),
-            Expanded(child: _buildDateInput('mm/dd/yyyy', LucideIcons.calendar)),
+            Expanded(child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('EXP DATE', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: NexusTheme.slate400, letterSpacing: 0.5)),
+                const SizedBox(height: 4),
+                _buildDateInput('mm/dd/yy', LucideIcons.calendar),
+              ],
+            )),
           ],
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 20),
         Container(
           height: 48,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFF10B981), style: BorderStyle.none),
           ),
           child: DottedBorder(
             color: const Color(0xFF10B981),
