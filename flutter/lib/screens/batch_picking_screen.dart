@@ -528,7 +528,7 @@ class _BatchPickingScreenState extends State<BatchPickingScreen> {
           int index = item.key;
           BatchEntry entry = item.value;
           return Padding(
-            padding: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.only(bottom: 16),
             child: Column(
               children: [
                 Row(
@@ -548,7 +548,7 @@ class _BatchPickingScreenState extends State<BatchPickingScreen> {
                       children: [
                         const Text('MFG DATE', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: NexusTheme.slate400, letterSpacing: 0.5)),
                         const SizedBox(height: 4),
-                        _buildDateInput('mm/dd/yy', LucideIcons.calendar, entry.mfgController),
+                        _buildDateInput('MFG', entry.mfgController),
                       ],
                     )),
                     const SizedBox(width: 8),
@@ -557,11 +557,16 @@ class _BatchPickingScreenState extends State<BatchPickingScreen> {
                       children: [
                         const Text('EXP DATE', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: NexusTheme.slate400, letterSpacing: 0.5)),
                         const SizedBox(height: 4),
-                        _buildDateInput('mm/dd/yy', LucideIcons.calendar, entry.expController),
+                        _buildDateInput('EXP', entry.expController),
                       ],
                     )),
-                    const SizedBox(width: 8),
-                    Expanded(flex: 1, child: Column(
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Expanded(child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text('QTY', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: NexusTheme.slate400, letterSpacing: 0.5)),
@@ -570,16 +575,17 @@ class _BatchPickingScreenState extends State<BatchPickingScreen> {
                       ],
                     )),
                     if (entries.length > 1) ...[
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 12),
                       IconButton(
                         onPressed: () => setState(() => entries.removeAt(index)),
-                        icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),
+                        icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 24),
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(),
                       ),
                     ],
                   ],
                 ),
+                const Divider(height: 32, color: NexusTheme.slate100),
               ],
             ),
           );
@@ -639,31 +645,56 @@ class _BatchPickingScreenState extends State<BatchPickingScreen> {
     );
   }
 
-  Widget _buildDateInput(String hint, IconData icon, TextEditingController controller) {
-    return Container(
-      height: 44,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: NexusTheme.slate200),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: TextField(
-              controller: controller,
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-              decoration: InputDecoration(
-                hintText: hint,
-                hintStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: NexusTheme.slate300),
-                border: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+  Widget _buildDateInput(String label, TextEditingController controller) {
+    return GestureDetector(
+      onTap: () async {
+        DateTime? pickedDate = await showDatePicker(
+          context: context,
+          initialDate: DateTime.now(),
+          firstDate: DateTime(2000),
+          lastDate: DateTime(2101),
+          builder: (context, child) {
+            return Theme(
+              data: Theme.of(context).copyWith(
+                colorScheme: const ColorScheme.light(
+                  primary: Color(0xFF10B981),
+                  onPrimary: Colors.white,
+                  onSurface: Color(0xFF034A3E),
+                ),
+              ),
+              child: child!,
+            );
+          },
+        );
+        if (pickedDate != null) {
+          setState(() {
+            controller.text = DateFormat('MM/dd/yy').format(pickedDate);
+          });
+        }
+      },
+      child: Container(
+        height: 44,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: NexusTheme.slate200),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                controller.text.isEmpty ? 'mm/dd/yy' : controller.text,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: controller.text.isEmpty ? NexusTheme.slate300 : NexusTheme.slate900,
+                ),
               ),
             ),
-          ),
-          Icon(icon, size: 14, color: NexusTheme.slate400),
-          const SizedBox(width: 8),
-        ],
+            const Icon(LucideIcons.calendar, size: 14, color: NexusTheme.slate400),
+          ],
+        ),
       ),
     );
   }
