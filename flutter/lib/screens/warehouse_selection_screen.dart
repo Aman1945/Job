@@ -29,7 +29,32 @@ class _WarehouseSelectionScreenState extends State<WarehouseSelectionScreen> {
   Widget build(BuildContext context) {
     final provider = Provider.of<NexusProvider>(context);
     final orders = provider.orders.where((o) => o.status == 'Pending WH Selection').toList();
-    final warehouses = provider.warehouses;
+    
+    // --- MERGE REAL DATA WITH DEFAULTS ---
+    final List<Warehouse> displayWarehouses = [];
+    final mockNames = ['Kurla Cold Storage', 'DP World Nhava Sheva', 'Arihant Delhi', 'Jolly BNG'];
+    final mockLocs = ['Mumbai', 'Navi Mumbai', 'Delhi', 'Bangalore'];
+    final mockTemps = ['-18°C to 4°C', '-22°C to -18°C', '-19°C to -5°C', '-18°C to -4°C'];
+    
+    for (int i = 0; i < 4; i++) {
+      final name = mockNames[i];
+      // Find if we have a real one with this name
+      final realWh = provider.warehouses.where((w) => w.name.contains(name.split(' ')[0])).firstOrNull;
+      
+      if (realWh != null) {
+        displayWarehouses.add(realWh);
+      } else {
+        displayWarehouses.add(Warehouse(
+          id: 'W${i + 1}', 
+          name: name,
+          location: mockLocs[i],
+          tempRange: mockTemps[i],
+          capacityUsed: i == 0 ? 38.0 : i == 1 ? 52.0 : i == 2 ? 0.0 : 0.0,
+          capacityMax: i == 0 ? 50.0 : i == 1 ? 80.0 : 100.0,
+          manager: i == 0 ? 'Deepak More' : i == 1 ? 'Sanjay Bhat' : 'Not Assigned'
+        ));
+      }
+    }
 
     return Scaffold(
       backgroundColor: NexusTheme.slate50,
@@ -54,7 +79,7 @@ class _WarehouseSelectionScreenState extends State<WarehouseSelectionScreen> {
           
           // --- WAREHOUSE STATUS CARDS (HORIZONTAL) ---
           const SizedBox(height: 16),
-          _buildWarehouseScroll(warehouses, orders),
+          _buildWarehouseScroll(displayWarehouses, orders),
           
           const SizedBox(height: 24),
           
@@ -71,7 +96,7 @@ class _WarehouseSelectionScreenState extends State<WarehouseSelectionScreen> {
                 child: ListView.builder(
                   padding: const EdgeInsets.all(24),
                   itemCount: orders.length,
-                  itemBuilder: (context, index) => _buildTerminalCard(orders[index], warehouses),
+                  itemBuilder: (context, index) => _buildTerminalCard(orders[index], displayWarehouses),
                 ),
               ),
             ),
@@ -87,35 +112,14 @@ class _WarehouseSelectionScreenState extends State<WarehouseSelectionScreen> {
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 24),
-        itemCount: warehouses.isNotEmpty ? warehouses.length : 4, // Fallback for preview
-        itemBuilder: (context, index) {
-          if (warehouses.isEmpty) {
-            // Mock data if empty
-            final mockNames = ['Kurla Cold Storage', 'DP World Nhava Sheva', 'Arihant Delhi', 'Jolly BNG'];
-            final mockLocs = ['Mumbai', 'Navi Mumbai', 'Delhi', 'Bangalore'];
-            final mockTemps = ['-18°C to 4°C', '-22°C to -18°C', '-19°C to -5°C', '-18°C to -4°C'];
-            
-            return _buildWarehouseCard(
-              Warehouse(
-                id: 'W${index + 1}', 
-                name: mockNames[index],
-                location: mockLocs[index],
-                tempRange: mockTemps[index],
-                capacityUsed: index == 0 ? 38.0 : index == 1 ? 52.0 : index == 2 ? 15.0 : 22.0,
-                capacityMax: index == 0 ? 50.0 : index == 1 ? 80.0 : index == 2 ? 60.0 : 45.0,
-                manager: index == 0 ? 'Deepak More' : index == 1 ? 'Sanjay Bhat' : index == 2 ? 'Amit Kumar' : 'Rajesh Reddy'
-              ),
-              orders.isNotEmpty ? orders.first : null
-            );
-          }
-          return _buildWarehouseCard(warehouses[index], orders.isNotEmpty ? orders.first : null);
-        },
+        itemCount: warehouses.length,
+        itemBuilder: (context, index) => _buildWarehouseCard(warehouses[index], orders.isNotEmpty ? orders.first : null),
       ),
     );
   }
 
   Widget _buildWarehouseCard(Warehouse wh, Order? pendingOrder) {
-    final progress = wh.capacityUsed / wh.capacityMax;
+    final progress = wh.capacityMax > 0 ? (wh.capacityUsed / wh.capacityMax) : 0.0;
     final color = progress > 0.8 ? NexusTheme.rose600 : NexusTheme.emerald500;
 
     return InkWell(
@@ -147,7 +151,7 @@ class _WarehouseSelectionScreenState extends State<WarehouseSelectionScreen> {
               ],
             ),
             const SizedBox(height: 4),
-            Text('${wh.location} • ${wh.tempRange}', style: const TextStyle(color: NexusTheme.slate500, fontSize: 11, fontWeight: FontWeight.w600)),
+            Text('${wh.location} • ${wh.tempRange ?? 'Standard'}', style: const TextStyle(color: NexusTheme.slate500, fontSize: 11, fontWeight: FontWeight.w600)),
             const Spacer(),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -168,7 +172,7 @@ class _WarehouseSelectionScreenState extends State<WarehouseSelectionScreen> {
               ),
             ),
             const SizedBox(height: 12),
-            Text('Manager: ${wh.manager}', style: const TextStyle(color: NexusTheme.slate400, fontSize: 10, fontWeight: FontWeight.w600)),
+            Text('Manager: ${wh.manager ?? 'Not Assigned'}', style: const TextStyle(color: NexusTheme.slate400, fontSize: 10, fontWeight: FontWeight.w600)),
           ],
         ),
       ),
@@ -235,12 +239,7 @@ class _WarehouseSelectionScreenState extends State<WarehouseSelectionScreen> {
           Wrap(
             spacing: 12,
             runSpacing: 12,
-            children: (warehouses.isNotEmpty ? warehouses : [
-              Warehouse(id: 'W1', name: 'Kurla Cold Storage', location: 'Mumbai', tempRange: '-18°C', capacityUsed: 38, capacityMax: 50, manager: ''),
-              Warehouse(id: 'W2', name: 'DP World Nhava Sheva', location: 'Navi Mumbai', tempRange: '-22°C', capacityUsed: 52, capacityMax: 80, manager: ''),
-              Warehouse(id: 'W3', name: 'Arihant Delhi', location: 'Delhi', tempRange: '-19°C', capacityUsed: 15, capacityMax: 60, manager: ''),
-              Warehouse(id: 'W4', name: 'Jolly BNG', location: 'Bangalore', tempRange: '-18°C', capacityUsed: 22, capacityMax: 45, manager: ''),
-            ]).map((wh) => _buildSelectionButton(order, wh)).toList(),
+            children: warehouses.map((wh) => _buildSelectionButton(order, wh)).toList(),
           ),
         ],
       ),
