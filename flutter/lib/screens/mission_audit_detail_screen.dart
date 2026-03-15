@@ -94,7 +94,7 @@ class _MissionAuditDetailScreenState extends State<MissionAuditDetailScreen> {
               const SizedBox(width: 12),
               _buildSmallIconButton(
                 label: 'CANCEL',
-                icon: LucideIcons.slash,
+                icon: LucideIcons.ban,
                 color: NexusTheme.rose600,
                 outline: true,
                 onPressed: () {},
@@ -551,7 +551,7 @@ class _MissionAuditDetailScreenState extends State<MissionAuditDetailScreen> {
   }
 
   Widget _buildEditorFooter() {
-    double revisedTotal = items.fold(0, (sum, i) => sum + (i['price'] * i['quantity'] * (i['boxCount'] ?? 1))) * 1.18;
+    double revisedTotal = items.fold(0.0, (sum, i) => sum + (i['price'] * i['quantity'] * (i['boxCount'] ?? 1))) * 1.18;
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
