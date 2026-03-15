@@ -6,6 +6,7 @@ import '../models/models.dart';
 import '../utils/theme.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:intl/intl.dart';
+import 'batch_picking_screen.dart';
 
 class MissionAuditDetailScreen extends StatefulWidget {
   final Order order;
@@ -101,6 +102,17 @@ class _MissionAuditDetailScreenState extends State<MissionAuditDetailScreen> {
                 color: NexusTheme.rose600,
                 outline: true,
                 onPressed: () {},
+                isMobile: isMobile,
+              ),
+              const SizedBox(width: 12),
+              _buildSmallIconButton(
+                label: 'PACK MISSION',
+                icon: LucideIcons.package,
+                color: const Color(0xFF10B981),
+                onPressed: () => Navigator.push(
+                  context, 
+                  MaterialPageRoute(builder: (context) => BatchPickingScreen(order: widget.order))
+                ),
                 isMobile: isMobile,
               ),
             ],
