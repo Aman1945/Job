@@ -199,17 +199,10 @@ class _BatchPickingScreenState extends State<BatchPickingScreen> {
             ],
           ),
           if (isMobile) ...[
+            const SizedBox(height: 20),
+            _buildModeToggle(),
             const SizedBox(height: 16),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  _buildModeToggle(),
-                  const SizedBox(width: 12),
-                  _buildLoadUnitsCounter(),
-                ],
-              ),
-            ),
+            _buildLoadUnitsCounter(),
           ],
         ],
       ),
@@ -238,17 +231,19 @@ class _BatchPickingScreenState extends State<BatchPickingScreen> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
+        height: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 16),
         decoration: BoxDecoration(
-          color: active ? Colors.white : Colors.transparent,
+          color: active ? const Color(0xFF10B981) : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
+          boxShadow: active ? [BoxShadow(color: const Color(0xFF10B981).withOpacity(0.3), blurRadius: 8)] : null,
         ),
         child: Row(
           children: [
-            Icon(icon, size: 14, color: active ? const Color(0xFF034A3E) : Colors.white60),
+            Icon(icon, size: 14, color: active ? Colors.white : Colors.white60),
             const SizedBox(width: 8),
             Text(label, style: TextStyle(
-              color: active ? const Color(0xFF034A3E) : Colors.white60,
+              color: active ? Colors.white : Colors.white60,
               fontSize: 10,
               fontWeight: FontWeight.w900,
               letterSpacing: 0.5
@@ -261,19 +256,21 @@ class _BatchPickingScreenState extends State<BatchPickingScreen> {
 
   Widget _buildLoadUnitsCounter() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+      height: 48,
+      padding: const EdgeInsets.symmetric(horizontal: 24),
       decoration: BoxDecoration(
         color: Colors.black.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
           const Icon(LucideIcons.box, color: Color(0xFF10B981), size: 16),
           const SizedBox(width: 12),
           const Text('13', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900)),
           const SizedBox(width: 12),
-          const Text('Load Units', style: TextStyle(color: Color(0xFF10B981), fontSize: 10, fontWeight: FontWeight.w900)),
+          const Text('LOAD UNITS', style: TextStyle(color: Color(0xFF10B981), fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
         ],
       ),
     );
@@ -360,7 +357,7 @@ class _BatchPickingScreenState extends State<BatchPickingScreen> {
             child: Column(
               children: [
                 const SizedBox(height: 4),
-                Text('${item['orderedQty']} ${item['unit']}', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: NexusTheme.slate400)),
+                Text('${item['orderedQty']} ${item['unit']}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: NexusTheme.slate400)),
               ],
             ),
           ),
@@ -369,7 +366,7 @@ class _BatchPickingScreenState extends State<BatchPickingScreen> {
             child: Column(
               children: [
                 const SizedBox(height: 4),
-                Text('${item['allocatedQty']} ${item['unit']}', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFF0D9488))),
+                Text('${item['allocatedQty']} ${item['unit']}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFF0D9488))),
               ],
             ),
           ),
