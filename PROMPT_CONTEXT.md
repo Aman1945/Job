@@ -189,6 +189,17 @@
     - **Master Terminal Integration**: Updated `master_data_screen.dart` to navigate to the new dedicated screens when tapping "USER MASTER" and "DELIVERY PERSON" tabs.
     - **Bug Fix**: Fixed `RangeError` crash caused by empty `_selectedTab` default. Changed default to `''` (empty) and added safety check in title formatting to display "Master Terminal" when no tab is selected.
 
+22. **Batch Picking & Inventory Hardening (15-16 Mar 2026)**:
+    - **Multi-Batch Architecture**: Refactored `Ordering` system to support picking from multiple batches per SKU. Updated `Order` model and Flutter `OrderItem` model with an `allocatedBatches` list.
+    - **Backend Stock Sync**: Enhanced `InventoryService` to deduction stock from specific manual batches. Added transactional integrity to ensure stock remains consistent during order updates.
+    - **Barcode Validation**: Implemented `POST /api/warehouse/validate-barcode` to verify scanned items against inventory data.
+    - **UI/UX Refinements**: 
+        - Restructured `BatchPickingScreen` for mobile with a QTY field on a separate row.
+        - Integrated **Calendar Date Pickers** for MFG and EXP dates.
+        - Enabled **Auto-Scan** camera triggers and manually typable barcode inputs.
+    - **Robustness**: Fixed `OrderItem` compilation errors and added runtime safety checks (`entries.isEmpty` handling) in `BatchPickingScreen`.
+    - **Dependencies**: Added `dotted_border` for premium UI container styling.
+
 ## 🏁 Next Steps / Remaining Tasks
 - [x] Implement Bulk Dispatch API for Logistics Hub.
 - [x] Refactor Book Order UI (Hierarchy removal + Photo slot enhancements).
@@ -199,11 +210,12 @@
 - [x] Material Master Upload Fix (robust header parsing + positional fallback).
 - [x] Excel Import Templates for all Master Data (Material, Customer/OD, Distributor Price).
 - [x] User Master & Delivery Person premium UI/UX screens.
+- [x] Implement **Batch Picking & Multi-Batch Support** with barcode validation.
 - [ ] Implement **Customer Edit/Update** functionality (specifically for updating Email Id like `testing@bigsams.in`).
 - [ ] Expansion of the Logistics Cost Calculator for remote areas.
 - [ ] Verify UAT restoration using the encoded MongoDB password.
-- [ ] Git push latest changes and deploy to VPS (User Master, Delivery Master, Templates, Material Master upload fix).
+- [x] Git push latest changes and deploy to VPS.
 
 ---
 
-**Current Status**: All Master Data screens now have premium UI/UX parity (Customer, Material, OD, Distributor Price, User, Delivery Person). Material Master bulk import is hardened with robust header detection and positional fallback. Standardized Excel templates are available for all import types. Pending: Git push & VPS deployment of latest changes.
+**Current Status**: Batch Picking is now fully operational with multi-batch support, calendar date pickers, and backend stock synchronization. The entire codebase (backend/frontend) is synced to GitHub. Barcode validation and auto-scanning are integrated.
