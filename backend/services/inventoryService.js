@@ -48,8 +48,18 @@ class InventoryService {
                 }
             }
 
+            if (!inventoryItem) {
+                console.error(`❌ Inventory item NOT found for ${productSku} even after virtual creation attempts.`);
+                throw new Error(`Inventory item NOT found for ${productSku}`);
+            }
+
             // FIFO: Sort batches by expiry date (oldest first)
-            inventoryItem.batches.sort((a, b) => new Date(a.expiry) - new Date(b.expiry));
+            if (inventoryItem.batches && inventoryItem.batches.length > 0) {
+                inventoryItem.batches.sort((a, b) => new Date(a.expiry) - new Date(b.expiry));
+            } else {
+                console.warn(`⚠️ No batches found for ${productSku}, skipping sort.`);
+                inventoryItem.batches = inventoryItem.batches || [];
+            }
 
             let remainingToAllocate = requiredQty;
             const allocatedBatches = [];

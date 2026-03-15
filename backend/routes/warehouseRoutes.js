@@ -132,7 +132,8 @@ router.post('/assign-to-order', async (req, res) => {
         res.json({ success: true, message: 'Order assigned to warehouse with FIFO allocation' });
     } catch (error) {
         await session.abortTransaction();
-        res.status(500).json({ success: false, message: error.message });
+        console.error('🔥 CRITICAL ERROR in assign-to-order:', error);
+        res.status(500).json({ success: false, message: error.message, stack: error.stack });
     } finally {
         session.endSession();
     }
