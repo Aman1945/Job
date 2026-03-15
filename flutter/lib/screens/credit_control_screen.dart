@@ -369,11 +369,11 @@ class _CreditControlScreenState extends State<CreditControlScreen> {
   Widget _buildActionButtons(bool isMobile) {
     return Column(
       children: [
-        _buildActionButton('APPROVE ORDER', const Color(0xFF059669), Icons.check_circle_outline, () => _handleAction('Credit Approved')),
-        const SizedBox(height: 16),
-        _buildActionButton('PLACE ON HOLD', const Color(0xFFF59E0B), Icons.pause_circle_outline, () => _handleAction('On Hold')),
-        const SizedBox(height: 16),
         _buildOutlineButton('REJECT ORDER', const Color(0xFFE11D48), Icons.cancel_outlined, () => _handleAction('Rejected')),
+        const SizedBox(height: 16),
+        _buildActionButton('EDIT ORDER', NexusTheme.blue600, Icons.edit_outlined, () => _showEditDialog()),
+        const SizedBox(height: 16),
+        _buildOutlineButton('CANCEL ALL', Colors.red, Icons.delete_outline, () => _handleAction('Cancelled')),
       ],
     );
   }
@@ -427,7 +427,141 @@ class _CreditControlScreenState extends State<CreditControlScreen> {
         _notesController.clear();
       });
     } else {
-      setState(() => isSubmitting = false);
+      if (mounted) setState(() => isSubmitting = false);
+    }
+  }
+
+  void _showEditDialog() {
+    if (selectedOrder == null) return;
+    showDialog(
+      context: context,
+      builder: (context) => _EditOrderDialog(
+        order: selectedOrder!,
+        onSaved: (updatedOrder) {
+          setState(() => selectedOrder = updatedOrder);
+        },
+      ),
+    );
+  }
+}
+
+class _EditOrderDialog extends StatefulWidget {
+  final Order order;
+  final Function(Order) onSaved;
+  const _EditOrderDialog({required this.order, required this.onSaved});
+
+  @override
+  State<_EditOrderDialog> createState() => _EditOrderDialogState();
+}
+
+class _EditOrderDialogState extends State<_EditOrderDialog> {
+  late List<OrderItem> items;
+  bool isSaving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    items = List.from(widget.order.items);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      child: Container(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('EDIT ORDER ITEMS', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+            const SizedBox(height: 16),
+            Flexible(
+              child: ListView.separated(
+                shrinkWrap: true,
+                itemCount: items.length,
+                separatorBuilder: (_, __) => const Divider(),
+                itemBuilder: (context, i) {
+                  final item = items[i];
+                  return Row(
+                    children: [
+                      Expanded(child: Text(item.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
+                      IconButton(
+                        onPressed: () => setState(() => items[i] = _updateQty(item, -1)),
+                        icon: const Icon(Icons.remove_circle_outline, size: 20),
+                      ),
+                      Text(item.quantity.toString(), style: const TextStyle(fontWeight: FontWeight.bold)),
+                      IconButton(
+                        onPressed: () => setState(() => items[i] = _updateQty(item, 1)),
+                        icon: const Icon(Icons.add_circle_outline, size: 20),
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('CANCEL'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: isSaving ? null : _saveChanges,
+                    child: isSaving ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('SAVE'),
+                  ),
+                ),
+              ],
+            )
+          ],
+        ),
+      ),
+    );
+  }
+
+  OrderItem _updateQty(OrderItem item, int delta) {
+    int newQty = (item.quantity + delta).clamp(1, 999);
+    return OrderItem(
+      productId: item.productId,
+      name: item.name,
+      quantity: newQty,
+      price: item.price,
+      prevRate: item.prevRate,
+      imageUrl: item.imageUrl,
+      unit: item.unit,
+    );
+  }
+
+  Future<void> _saveChanges() async {
+    setState(() => isSaving = true);
+    final provider = Provider.of<NexusProvider>(context, listen: false);
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    
+    // Calculate new totals
+    double subTotal = items.fold(0, (sum, item) => sum + (item.price * item.quantity));
+    double gst = subTotal * 0.18;
+    double total = subTotal + gst;
+
+    final success = await provider.updateOrderItems(
+      widget.order.id,
+      items,
+      total: total,
+      subTotal: subTotal,
+      gstAmount: gst,
+      token: auth.token,
+    );
+
+    if (success && mounted) {
+      final updatedOrder = await provider.fetchOrderById(widget.order.id, token: auth.token);
+      if (updatedOrder != null) widget.onSaved(updatedOrder);
+      Navigator.pop(context);
+    } else {
+      if (mounted) setState(() => isSaving = false);
+    }
     }
   }
 }

@@ -1404,6 +1404,40 @@ app.patch('/api/orders/:id', verifyToken, logUpdate('ORDER'), async (req, res) =
     }
 });
 
+// Update order items (Edit Order functionality)
+app.patch('/api/orders/:id/items', verifyToken, logUpdate('ORDER'), async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { items, total, subTotal, gstAmount } = req.body;
+
+        if (!items || !Array.isArray(items)) {
+            return res.status(400).json({ message: 'items array is required' });
+        }
+
+        const order = await Order.findOneAndUpdate(
+            { id },
+            { 
+                $set: { 
+                    items, 
+                    total, 
+                    subTotal, 
+                    gstAmount 
+                } 
+            },
+            { new: true }
+        );
+
+        if (order) {
+            console.log(`✏️ Order items updated: ${id}`);
+            return res.json({ success: true, data: order });
+        }
+        res.status(404).json({ message: 'Order not found' });
+    } catch (error) {
+        console.error('Order items update error:', error);
+        res.status(500).json({ message: 'Error updating order items' });
+    }
+});
+
 app.delete('/api/orders/:id', verifyToken, logDelete('ORDER'), async (req, res) => {
     try {
         const { id } = req.params;

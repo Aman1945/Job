@@ -366,6 +366,49 @@ class NexusProvider with ChangeNotifier {
     }
   }
 
+  Future<Order?> fetchOrderById(String orderId, {String? token}) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$_baseUrl/orders/$orderId'),
+        headers: {
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+      );
+      if (response.statusCode == 200) {
+        return Order.fromJson(jsonDecode(response.body));
+      }
+    } catch (e) {
+      debugPrint('Error fetching order by ID: $e');
+    }
+    return null;
+  }
+
+  Future<bool> updateOrderItems(String orderId, List<OrderItem> items, {double? total, double? subTotal, double? gstAmount, String? token}) async {
+    try {
+      final response = await http.patch(
+        Uri.parse('$_baseUrl/orders/$orderId/items'),
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'items': items.map((i) => i.toJson()).toList(),
+          if (total != null) 'total': total,
+          if (subTotal != null) 'subTotal': subTotal,
+          if (gstAmount != null) 'gstAmount': gstAmount,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        await fetchOrders();
+        return true;
+      }
+    } catch (e) {
+      debugPrint('Error updating order items: $e');
+    }
+    return false;
+  }
+
   /// Patches specific fields on an order (e.g., qcPhoto, salesPhotos URLs).
   Future<bool> patchOrderField(String orderId, Map<String, dynamic> fields) async {
     try {

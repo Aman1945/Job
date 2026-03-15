@@ -13,6 +13,8 @@ const orderSchema = new mongoose.Schema({
         barcode: { type: String },
         unit: { type: String },
         baseRate: { type: Number },
+        prevRate: { type: Number, default: 0 },
+        imageUrl: { type: String },
         allocatedBatches: [{
             batchNumber: String,
             qty: Number,
@@ -28,6 +30,7 @@ const orderSchema = new mongoose.Schema({
     partnerType: { type: String },
     intelligenceInsight: { type: String },
     podUrl: { type: String },
+    invoiceUrl: { type: String },
     statusHistory: [{
         status: { type: String },
         timestamp: { type: Date, default: Date.now }

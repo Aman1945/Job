@@ -113,7 +113,15 @@ class _WarehousePackingScreenState extends State<WarehousePackingScreen> {
                     color: NexusTheme.slate100,
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Text('WH: WH001', style: TextStyle(color: NexusTheme.slate500, fontSize: 10, fontWeight: FontWeight.w900)),
+                  child: Row(
+                    children: [
+                      _buildSmallActionButton(LucideIcons.edit3, NexusTheme.blue600, () => _editAssignment(order)),
+                      const SizedBox(width: 8),
+                      _buildSmallActionButton(LucideIcons.trash2, NexusTheme.rose600, () => _cancelAssignment(order)),
+                      const SizedBox(width: 12),
+                      const Text('WH: WH001', style: TextStyle(color: NexusTheme.slate500, fontSize: 10, fontWeight: FontWeight.w900)),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -225,6 +233,37 @@ class _WarehousePackingScreenState extends State<WarehousePackingScreen> {
       setState(() {
         _checkedItems.remove(order.id);
       });
+    }
+  }
+
+  Widget _buildSmallActionButton(IconData icon, Color color, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(6),
+        decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+        child: Icon(icon, size: 14, color: color),
+      ),
+    );
+  }
+
+  Future<void> _editAssignment(Order order) async {
+    final provider = Provider.of<NexusProvider>(context, listen: false);
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    // Move back to Pending WH Selection
+    final success = await provider.updateOrderStatus(order.id, 'Pending WH Selection', token: auth.token);
+    if (success && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Order ${order.id} moved back to Warehouse Selection')));
+    }
+  }
+
+  Future<void> _cancelAssignment(Order order) async {
+    final provider = Provider.of<NexusProvider>(context, listen: false);
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    // Cancel the order
+    final success = await provider.updateOrderStatus(order.id, 'Cancelled', token: auth.token);
+    if (success && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Order ${order.id} cancelled')));
     }
   }
 }

@@ -63,6 +63,62 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
     }
   }
 
+  Widget _buildOrderItemList(Order order) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: NexusTheme.slate200),
+      ),
+      child: ListView.separated(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: order.items.length,
+        separatorBuilder: (context, index) => const Divider(color: NexusTheme.slate100, height: 1),
+        itemBuilder: (context, index) {
+          final item = order.items[index];
+          return Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.network(
+                    item.imageUrl ?? '',
+                    width: 60,
+                    height: 60,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Container(
+                      width: 60, height: 60,
+                      color: NexusTheme.slate100,
+                      child: const Icon(Icons.shopping_bag_outlined, color: NexusTheme.slate400),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(item.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: NexusTheme.slate900)),
+                      const SizedBox(height: 4),
+                      Text('${item.quantity} ${item.unit ?? 'Units'} @ ₹${item.price}', 
+                        style: const TextStyle(color: NexusTheme.slate500, fontSize: 12, fontWeight: FontWeight.w600)),
+                    ],
+                  ),
+                ),
+                Text(
+                  '₹${NumberFormat('#,##,###').format(item.quantity * item.price)}',
+                  style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: NexusTheme.slate900),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<NexusProvider>(context);
@@ -98,6 +154,11 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildOrderHeader(widget.order),
+            const SizedBox(height: 24),
+
+            _buildSectionTitle('📦 1. Order Items', 'PRODUCT BREAKDOWN AND PHOTO VERIFICATION'),
+            const SizedBox(height: 16),
+            _buildOrderItemList(widget.order),
             const SizedBox(height: 24),
 
             if (widget.order.salesPhotos.isNotEmpty || widget.order.qcPhoto != null) ...[

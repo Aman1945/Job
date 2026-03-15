@@ -5,6 +5,9 @@ import '../providers/nexus_provider.dart';
 import '../providers/auth_provider.dart';
 import '../models/models.dart';
 import '../utils/theme.dart';
+import 'package:lucide_icons/lucide_icons.dart';
+import 'order_details_screen.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class OrderArchiveScreen extends StatefulWidget {
   const OrderArchiveScreen({super.key});
@@ -14,943 +17,233 @@ class OrderArchiveScreen extends StatefulWidget {
 }
 
 class _OrderArchiveScreenState extends State<OrderArchiveScreen> {
-  List<Map<String, dynamic>> _logs = [];
   bool _loading = true;
-
-  // Dropdown filter values
-  String _filterAction = 'ALL';
-  String _selectedRole = 'ALL';
-  String? _selectedUserId;
-  String? _selectedUserName;
-  DateTimeRange? _dateRange;
-
-  static const List<String> _actionOptions = [
-    'ALL', 'CREATE', 'UPDATE', 'STATUS_CHANGE', 'DELETE'
-  ];
-  static const List<String> _roleOptions = [
-    'ALL', 'Admin', 'NSM', 'RSM', 'ASM', 'Sales'
-  ];
+  String _searchQuery = '';
+  String _statusFilter = 'ALL';
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _loadLogs());
+    _refreshOrders();
   }
 
-  Future<void> _loadLogs() async {
-    final nexus = Provider.of<NexusProvider>(context, listen: false);
-    final auth = Provider.of<AuthProvider>(context, listen: false);
+  Future<void> _refreshOrders() async {
     setState(() => _loading = true);
-
-    final logs = await nexus.fetchAuditLogs(
-      entityType: 'ORDER',
-      limit: 200,
-      role: _selectedRole == 'ALL' ? null : _selectedRole,
-      userId: _selectedUserId,
-      fromDate: _dateRange?.start,
-      toDate: _dateRange?.end,
-      token: auth.token,
-    );
-
-    if (mounted) {
-      setState(() {
-        _logs = logs;
-        _loading = false;
-      });
-    }
-  }
-
-  List<Map<String, dynamic>> get _filteredLogs {
-    if (_filterAction == 'ALL') return _logs;
-    return _logs
-        .where((l) => (l['action'] ?? '').toString().toUpperCase() == _filterAction)
-        .toList();
-  }
-
-  void _resetAllFilters() {
-    setState(() {
-      _filterAction = 'ALL';
-      _selectedRole = 'ALL';
-      _selectedUserId = null;
-      _selectedUserName = null;
-      _dateRange = null;
-    });
-    _loadLogs();
-  }
-
-  Future<void> _pickDateRange() async {
-    final picked = await showDateRangePicker(
-      context: context,
-      firstDate: DateTime(2023),
-      lastDate: DateTime.now(),
-      initialDateRange: _dateRange,
-      builder: (context, child) => Theme(
-        data: NexusTheme.lightTheme.copyWith(
-          colorScheme: ColorScheme.fromSeed(
-            seedColor: NexusTheme.emerald600,
-            primary: NexusTheme.emerald600,
-          ),
-        ),
-        child: child!,
-      ),
-    );
-    if (picked != null) {
-      setState(() => _dateRange = picked);
-      _loadLogs();
-    }
+    final provider = Provider.of<NexusProvider>(context, listen: false);
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    await provider.fetchOrders();
+    if (mounted) setState(() => _loading = false);
   }
 
   @override
   Widget build(BuildContext context) {
+    final provider = Provider.of<NexusProvider>(context);
+    List<Order> orders = provider.orders;
+
+    // Filter orders
+    if (_statusFilter != 'ALL') {
+      orders = orders.where((o) => o.status == _statusFilter).toList();
+    }
+    if (_searchQuery.isNotEmpty) {
+      final q = _searchQuery.toLowerCase();
+      orders = orders.where((o) => 
+        o.id.toLowerCase().contains(q) || 
+        o.customerName.toLowerCase().contains(q)
+      ).toList();
+    }
+
     return Scaffold(
       backgroundColor: NexusTheme.slate50,
       appBar: AppBar(
-        title: const Text(
-          'ORDER MASTER ARCHIVE',
-          style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 0.5),
-        ),
+        title: const Text('ORDER MASTER ARCHIVE', 
+          style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 0.5)),
+        backgroundColor: Colors.white,
+        elevation: 0,
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh_rounded),
-            tooltip: 'Refresh',
-            onPressed: _loadLogs,
+            icon: const Icon(LucideIcons.refreshCw, size: 20),
+            onPressed: _refreshOrders,
           ),
         ],
       ),
       body: Column(
         children: [
-          _buildFilterPanel(),
-          _buildActiveFilterChips(),
+          _buildSearchAndFilter(),
+          _buildTableHeader(),
           Expanded(
-            child: _loading
-                ? const Center(child: CircularProgressIndicator(strokeWidth: 2))
-                : _filteredLogs.isEmpty
-                    ? _buildEmptyState()
-                    : _buildLogsList(),
+            child: _loading 
+              ? const Center(child: CircularProgressIndicator())
+              : orders.isEmpty 
+                ? _buildEmptyState()
+                : ListView.builder(
+                    padding: EdgeInsets.zero,
+                    itemCount: orders.length,
+                    itemBuilder: (context, index) => _buildOrderRow(orders[index]),
+                  ),
           ),
         ],
       ),
     );
   }
 
-  // ─── FILTER PANEL ─────────────────────────────────────────────────────────
-  Widget _buildFilterPanel() {
-    final nexus = Provider.of<NexusProvider>(context);
-    final filteredUsers = nexus.users.where((u) {
-      if (_selectedRole == 'ALL') return true;
-      return u.role.label == _selectedRole;
-    }).toList();
-
+  Widget _buildSearchAndFilter() {
     return Container(
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(bottom: BorderSide(color: NexusTheme.slate100)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      padding: const EdgeInsets.all(16),
+      color: Colors.white,
+      child: Row(
         children: [
-          Row(
-            children: [
-              // Action Dropdown
-              Expanded(
-                child: _buildDropdown<String>(
-                  icon: Icons.filter_alt_rounded,
-                  label: 'Action',
-                  value: _filterAction,
-                  items: _actionOptions,
-                  itemLabel: (a) => a.replaceAll('_', ' '),
-                  onChanged: (v) => setState(() => _filterAction = v ?? 'ALL'),
-                ),
+          Expanded(
+            child: TextField(
+              onChanged: (v) => setState(() => _searchQuery = v),
+              style: const TextStyle(fontSize: 14),
+              decoration: InputDecoration(
+                hintText: 'Search mission or customer...',
+                prefixIcon: const Icon(LucideIcons.search, size: 18),
+                filled: true,
+                fillColor: NexusTheme.slate50,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                contentPadding: const EdgeInsets.symmetric(vertical: 0),
               ),
-              const SizedBox(width: 8),
-              // Date Range Button
-              GestureDetector(
-                onTap: _pickDateRange,
-                child: Container(
-                  height: 44,
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(
-                    color: _dateRange != null ? NexusTheme.emerald50 : NexusTheme.slate50,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                      color: _dateRange != null ? NexusTheme.emerald300 : NexusTheme.slate200,
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.calendar_month_rounded,
-                        size: 16,
-                        color: _dateRange != null ? NexusTheme.emerald600 : NexusTheme.slate500,
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        _dateRange != null
-                            ? '${DateFormat('dd MMM').format(_dateRange!.start)} – ${DateFormat('dd MMM').format(_dateRange!.end)}'
-                            : 'Date',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: _dateRange != null ? NexusTheme.emerald700 : NexusTheme.slate500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              // Role Dropdown
-              Expanded(
-                child: _buildDropdown<String>(
-                  icon: Icons.badge_rounded,
-                  label: 'Role',
-                  value: _selectedRole,
-                  items: _roleOptions,
-                  itemLabel: (r) => r,
-                  onChanged: (v) {
-                    setState(() {
-                      _selectedRole = v ?? 'ALL';
-                      _selectedUserId = null;
-                      _selectedUserName = null;
-                    });
-                    _loadLogs();
-                  },
-                ),
+          const SizedBox(width: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              color: NexusTheme.slate50,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                value: _statusFilter,
+                style: const TextStyle(fontWeight: FontWeight.bold, color: NexusTheme.slate700, fontSize: 12),
+                items: ['ALL', 'Pending', 'Credit Approved', 'In Transit', 'Completed', 'Cancelled']
+                    .map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+                onChanged: (v) => setState(() => _statusFilter = v!),
               ),
-              const SizedBox(width: 8),
-              // User Dropdown
-              Expanded(
-                child: _buildDropdown<String>(
-                  icon: Icons.person_rounded,
-                  label: 'User',
-                  value: _selectedUserId,
-                  items: filteredUsers.map((u) => u.id).toList(),
-                  itemLabel: (id) {
-                    final u = filteredUsers.firstWhere((u) => u.id == id, orElse: () => filteredUsers.first);
-                    return '${u.name} (${u.role.label})';
-                  },
-                  nullLabel: 'All Users',
-                  onChanged: (v) {
-                    final u = filteredUsers.where((u) => u.id == v).firstOrNull;
-                    setState(() {
-                      _selectedUserId = v;
-                      _selectedUserName = u?.name;
-                    });
-                    _loadLogs();
-                  },
-                ),
-              ),
-            ],
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildDropdown<T>({
-    required IconData icon,
-    required String label,
-    required T? value,
-    required List<T> items,
-    required String Function(T) itemLabel,
-    String? nullLabel,
-    required void Function(T?) onChanged,
-  }) {
-    final bool isActive = value != null && value.toString() != 'ALL';
-
+  Widget _buildTableHeader() {
     return Container(
-      height: 44,
-      padding: const EdgeInsets.symmetric(horizontal: 10),
-      decoration: BoxDecoration(
-        color: isActive ? NexusTheme.emerald50 : NexusTheme.slate50,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: isActive ? NexusTheme.emerald300 : NexusTheme.slate200),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: const BoxDecoration(
+        color: NexusTheme.slate100,
+        border: Border(bottom: BorderSide(color: NexusTheme.slate200)),
       ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<T>(
-          value: value,
-          isExpanded: true,
-          icon: Icon(Icons.keyboard_arrow_down_rounded, size: 18,
-              color: isActive ? NexusTheme.emerald600 : NexusTheme.slate400),
-          style: const TextStyle(fontFamily: 'default'),
-          hint: Row(
-            children: [
-              Icon(icon, size: 14, color: NexusTheme.slate400),
-              const SizedBox(width: 6),
-              Text(nullLabel ?? label,
-                  style: const TextStyle(
-                      fontSize: 11, fontWeight: FontWeight.w700, color: NexusTheme.slate500)),
-            ],
-          ),
-          selectedItemBuilder: (context) {
-            final allItems = <T?>[];
-            if (nullLabel != null) allItems.add(null);
-            allItems.addAll(items);
+      child: Row(
+        children: const [
+          Expanded(flex: 3, child: Text('MISSION / CUSTOMER', style: _headerStyle)),
+          Expanded(flex: 2, child: Text('STATUS', style: _headerStyle)),
+          Expanded(flex: 2, child: Text('DOCS', style: _headerStyle)),
+          Expanded(flex: 2, child: Text('VALUE', style: _headerStyle, textAlign: TextAlign.right)),
+        ],
+      ),
+    );
+  }
 
-            return allItems.map((item) {
-              final displayText = item == null
-                  ? (nullLabel ?? label)
-                  : (item.toString() == 'ALL' ? label : itemLabel(item));
-              return Row(
+  static const _headerStyle = TextStyle(fontWeight: FontWeight.w900, fontSize: 10, color: NexusTheme.slate500, letterSpacing: 0.5);
+
+  Widget _buildOrderRow(Order order) {
+    return InkWell(
+      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => OrderDetailsScreen(orderId: order.id))),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          border: Border(bottom: BorderSide(color: NexusTheme.slate100)),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              flex: 3,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(icon, size: 14,
-                      color: isActive ? NexusTheme.emerald600 : NexusTheme.slate400),
-                  const SizedBox(width: 6),
-                  Flexible(
-                    child: Text(
-                      displayText,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w800,
-                        color: isActive ? NexusTheme.emerald700 : NexusTheme.slate600,
-                      ),
-                    ),
-                  ),
+                  Text(order.id, style: const TextStyle(fontWeight: FontWeight.w900, color: NexusTheme.emerald600, fontSize: 12)),
+                  const SizedBox(height: 4),
+                  Text(order.customerName, 
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: NexusTheme.slate900),
+                    maxLines: 1, overflow: TextOverflow.ellipsis),
                 ],
-              );
-            }).toList();
-          },
-          items: [
-            if (nullLabel != null)
-              DropdownMenuItem<T>(
-                value: null,
-                child: Text(nullLabel,
-                    style: const TextStyle(
-                        fontSize: 12, fontWeight: FontWeight.w700, color: NexusTheme.slate500)),
               ),
-            ...items.map((item) => DropdownMenuItem<T>(
-                  value: item,
-                  child: Text(itemLabel(item),
-                      style: const TextStyle(
-                          fontSize: 12, fontWeight: FontWeight.w600, color: NexusTheme.slate700),
-                      overflow: TextOverflow.ellipsis),
-                )),
+            ),
+            Expanded(
+              flex: 2,
+              child: _buildStatusPill(order.status),
+            ),
+            Expanded(
+              flex: 2,
+              child: Row(
+                children: [
+                  _buildIconLink(LucideIcons.fileText, order.invoiceUrl, 'Invoice'),
+                  const SizedBox(width: 8),
+                  _buildIconLink(LucideIcons.image, order.podUrl, 'POD'),
+                ],
+              ),
+            ),
+            Expanded(
+              flex: 2,
+              child: Text(
+                '₹${NumberFormat('#,##,###').format(order.total)}',
+                textAlign: TextAlign.right,
+                style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: NexusTheme.slate900),
+              ),
+            ),
           ],
-          onChanged: onChanged,
         ),
       ),
     );
   }
 
-  // ─── ACTIVE FILTER CHIPS ──────────────────────────────────────────────────
-  Widget _buildActiveFilterChips() {
-    final hasFilters = _dateRange != null ||
-        _selectedRole != 'ALL' ||
-        _selectedUserId != null ||
-        _filterAction != 'ALL';
+  Widget _buildStatusPill(String status) {
+    Color color = NexusTheme.slate500;
+    Color bg = NexusTheme.slate100;
+    
+    if (status == 'Completed') { color = NexusTheme.emerald600; bg = NexusTheme.emerald50; }
+    else if (status == 'In Transit') { color = NexusTheme.blue600; bg = NexusTheme.blue50; }
+    else if (status == 'Credit Approved') { color = NexusTheme.amber600; bg = NexusTheme.amber50; }
+    else if (status == 'Cancelled') { color = NexusTheme.rose600; bg = NexusTheme.rose50; }
 
-    if (!hasFilters) return const SizedBox.shrink();
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      color: NexusTheme.emerald50,
-      child: Row(
-        children: [
-          Expanded(
-            child: Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: [
-                if (_filterAction != 'ALL')
-                  _Chip(
-                    label: _filterAction.replaceAll('_', ' '),
-                    color: NexusTheme.blue600,
-                    onDelete: () => setState(() => _filterAction = 'ALL'),
-                  ),
-                if (_selectedRole != 'ALL')
-                  _Chip(
-                    label: 'Role: $_selectedRole',
-                    color: NexusTheme.amber600,
-                    onDelete: () {
-                      setState(() {
-                        _selectedRole = 'ALL';
-                        _selectedUserId = null;
-                        _selectedUserName = null;
-                      });
-                      _loadLogs();
-                    },
-                  ),
-                if (_selectedUserId != null)
-                  _Chip(
-                    label: _selectedUserName ?? _selectedUserId!,
-                    color: NexusTheme.emerald600,
-                    onDelete: () {
-                      setState(() {
-                        _selectedUserId = null;
-                        _selectedUserName = null;
-                      });
-                      _loadLogs();
-                    },
-                  ),
-                if (_dateRange != null)
-                  _Chip(
-                    label:
-                        '${DateFormat('dd MMM').format(_dateRange!.start)} – ${DateFormat('dd MMM').format(_dateRange!.end)}',
-                    color: NexusTheme.slate600,
-                    onDelete: () {
-                      setState(() => _dateRange = null);
-                      _loadLogs();
-                    },
-                  ),
-              ],
-            ),
-          ),
-          TextButton(
-            onPressed: _resetAllFilters,
-            style: TextButton.styleFrom(
-              foregroundColor: NexusTheme.emerald700,
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              minimumSize: Size.zero,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            ),
-            child: const Text('Reset',
-                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900)),
-          ),
-        ],
+    return UnconstrainedBox(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(6)),
+        child: Text(status.toUpperCase(), 
+          style: TextStyle(color: color, fontWeight: FontWeight.w900, fontSize: 8),
+        ),
       ),
     );
   }
 
-  // ─── EMPTY STATE ─────────────────────────────────────────────────────────
+  Widget _buildIconLink(IconData icon, String? url, String label) {
+    final bool hasUrl = url != null && url.isNotEmpty;
+    return GestureDetector(
+      onTap: hasUrl ? () => launchUrl(Uri.parse(url)) : null,
+      child: Container(
+        padding: const EdgeInsets.all(6),
+        decoration: BoxDecoration(
+          color: hasUrl ? NexusTheme.slate100 : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(icon, size: 16, color: hasUrl ? NexusTheme.slate700 : NexusTheme.slate200),
+      ),
+    );
+  }
+
   Widget _buildEmptyState() {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.history_toggle_off_rounded, size: 64, color: NexusTheme.slate200),
+          Icon(LucideIcons.package2, size: 64, color: NexusTheme.slate200),
           const SizedBox(height: 16),
-          const Text('No log entries match your filters',
-              style: TextStyle(
-                  color: NexusTheme.slate400, fontWeight: FontWeight.w600)),
-          const SizedBox(height: 4),
-          const Text('Try adjusting filters or refreshing',
-              style: TextStyle(
-                  color: NexusTheme.slate300, fontSize: 12, fontWeight: FontWeight.w500)),
-          const SizedBox(height: 24),
-          TextButton.icon(
-            onPressed: _resetAllFilters,
-            icon: const Icon(Icons.refresh_rounded),
-            label: const Text('Reset All Filters',
-                style: TextStyle(fontWeight: FontWeight.w900)),
-            style: TextButton.styleFrom(
-              foregroundColor: NexusTheme.emerald600,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ─── LOGS LIST ────────────────────────────────────────────────────────────
-  Widget _buildLogsList() {
-    final provider = Provider.of<NexusProvider>(context, listen: false);
-    final userRole = provider.currentUser?.role;
-    final canSeePhotos = userRole == UserRole.admin ||
-        userRole == UserRole.rsm ||
-        userRole == UserRole.asm;
-
-    return ListView.separated(
-      padding: const EdgeInsets.all(16),
-      itemCount: _filteredLogs.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 12),
-      itemBuilder: (context, i) {
-        final log = _filteredLogs[i];
-        final action = log['action'] ?? 'UNKNOWN';
-        final user = log['userName'] ?? 'System';
-        final tsStr = log['timestamp'] ?? '';
-        final ts = DateTime.tryParse(tsStr)?.toLocal() ?? DateTime.now();
-        final entityId = log['entityId'] ?? 'N/A';
-        final data = log['newData'] ?? log['oldData'];
-        final customerName = data?['customerName'] ?? data?['name'] ?? '';
-        final rawPhotos = data?['salesPhotos'];
-        final List<String> salesPhotos = rawPhotos is List
-            ? rawPhotos.whereType<String>().where((s) => s.startsWith('http')).toList()
-            : [];
-        final String? qcPhoto = data?['qcPhoto'];
-        final hasPhotos = canSeePhotos && (salesPhotos.isNotEmpty || qcPhoto != null);
-
-        Color color = NexusTheme.slate600;
-        IconData icon = Icons.info_outline_rounded;
-
-        if (action.contains('CREATE')) {
-          color = NexusTheme.emerald600;
-          icon = Icons.add_box_rounded;
-        } else if (action.contains('UPDATE')) {
-          color = NexusTheme.blue600;
-          icon = Icons.edit_square;
-        } else if (action.contains('STATUS')) {
-          color = NexusTheme.amber600;
-          icon = Icons.published_with_changes_rounded;
-        } else if (action.contains('DELETE')) {
-          color = NexusTheme.rose600;
-          icon = Icons.delete_forever_rounded;
-        }
-
-        return GestureDetector(
-          onTap: () => _showTimelineDialog(context, entityId),
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                  color: hasPhotos ? NexusTheme.emerald200 : NexusTheme.slate100),
-            ),
-            child: IntrinsicHeight(
-              child: Row(
-                children: [
-                Container(
-                  width: 40,
-                  child: Column(
-                    children: [
-                      Container(
-                        width: 2,
-                        height: 20,
-                        color: i == 0 ? Colors.transparent : NexusTheme.slate200,
-                      ),
-                      Container(
-                        width: 12,
-                        height: 12,
-                        decoration: BoxDecoration(
-                          color: color,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 2),
-                          boxShadow: [
-                            BoxShadow(
-                              color: color.withOpacity(0.3),
-                              blurRadius: 4,
-                              spreadRadius: 1,
-                            )
-                          ],
-                        ),
-                      ),
-                      Expanded(
-                        child: Container(
-                          width: 2,
-                          color: i == _filteredLogs.length - 1 ? Colors.transparent : NexusTheme.slate200,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Header row
-                        Row(
-                          children: [
-                            Icon(icon, size: 16, color: color),
-                            const SizedBox(width: 8),
-                            Text(
-                              action.toString().replaceAll('_', ' '),
-                              style: TextStyle(
-                                  fontWeight: FontWeight.w900,
-                                  fontSize: 10,
-                                  letterSpacing: 1,
-                                  color: color),
-                            ),
-                            const Spacer(),
-                            if (hasPhotos)
-                              Container(
-                                margin: const EdgeInsets.only(right: 8),
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: NexusTheme.emerald50,
-                                  borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(color: NexusTheme.emerald200),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(Icons.photo_camera_rounded,
-                                        size: 10, color: NexusTheme.emerald600),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      '${salesPhotos.length + (qcPhoto != null ? 1 : 0)} PHOTO${(salesPhotos.length + (qcPhoto != null ? 1 : 0)) > 1 ? 'S' : ''}',
-                                      style: const TextStyle(
-                                          fontSize: 9,
-                                          fontWeight: FontWeight.w900,
-                                          color: NexusTheme.emerald600),
-                                    ),
-                                    if (action == 'STATUS_CHANGE') ...[
-                                      const Icon(Icons.arrow_forward_rounded, size: 10, color:Colors.amber),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        'TO: ${data?['status'] ?? 'N/A'}',
-                                        style: const TextStyle(
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.w900,
-                                             color: Colors.amber,
-                                        ),
-                                      ),
-                                    ] else if (action == 'CREATE') ...[
-                                      const Icon(Icons.star_rounded, size: 12, color: NexusTheme.emerald600),
-                                      const SizedBox(width: 4),
-                                      const Text(
-                                        'MISSION STARTED',
-                                        style: TextStyle(
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.w900,
-                                            color: NexusTheme.emerald600),
-                                      ),
-                                    ]
-                                  ],
-                                ),
-                              ),
-                            Text(
-                              DateFormat('dd MMM, hh:mm a').format(ts),
-                              style: const TextStyle(
-                                  fontSize: 10,
-                                  color: NexusTheme.slate400,
-                                  fontWeight: FontWeight.w600),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        // Customer name
-                        if (customerName.isNotEmpty)
-                          Text(customerName,
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.w900,
-                                  fontSize: 14,
-                                  color: NexusTheme.slate900)),
-                        const SizedBox(height: 2),
-                        Text('Order ID: $entityId',
-                            style: const TextStyle(
-                                fontWeight: FontWeight.w600,
-                                fontSize: 11,
-                                color: NexusTheme.slate400)),
-                        const SizedBox(height: 6),
-                        Row(
-                          children: [
-                            const Icon(Icons.person_pin_rounded,
-                                size: 13, color: NexusTheme.slate400),
-                            const SizedBox(width: 4),
-                            Expanded(
-                              child: Text(
-                                '${action.contains('CREATE') ? 'Placed by' : 'Modified by'}: $user',
-                                style: const TextStyle(
-                                    fontSize: 11,
-                                    color: NexusTheme.slate500,
-                                    fontWeight: FontWeight.w600),
-                              ),
-                            ),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                Text(DateFormat('dd MMM yyyy').format(ts),
-                                    style: const TextStyle(
-                                        fontSize: 10,
-                                        color: NexusTheme.slate600,
-                                        fontWeight: FontWeight.w700)),
-                                Text(DateFormat('hh:mm:ss a').format(ts),
-                                    style: const TextStyle(
-                                        fontSize: 9,
-                                        color: NexusTheme.slate400,
-                                        fontWeight: FontWeight.w600)),
-                              ],
-                            ),
-                          ],
-                        ),
-                        if (log['newData'] != null &&
-                            log['newData']['status'] != null) ...[
-                          const SizedBox(height: 8),
-                          _buildStatusUpdate(
-                              log['oldData']?['status'], log['newData']['status']),
-                        ],
-                        if (hasPhotos) ...[
-                          const SizedBox(height: 12),
-                          if (salesPhotos.isNotEmpty) _buildPhotosRow('SALES PHOTOS', salesPhotos),
-                          if (qcPhoto != null) ...[
-                            if (salesPhotos.isNotEmpty) const SizedBox(height: 8),
-                            _buildPhotosRow('QC PROOF PHOTO', [qcPhoto!]),
-                          ],
-                        ],
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        );
-      },
-    );
-  }
-
-  // ─── PHOTOS ROW ───────────────────────────────────────────────────────────
-  Widget _buildPhotosRow(String title, List<String> photos) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(title,
-            style: const TextStyle(
-                fontSize: 9,
-                fontWeight: FontWeight.w900,
-                color: NexusTheme.slate400,
-                letterSpacing: 0.5)),
-        const SizedBox(height: 6),
-        SizedBox(
-          height: 80,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemCount: photos.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 8),
-            itemBuilder: (context, i) => GestureDetector(
-              onTap: () => _showFullPhoto(context, photos, i),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(10),
-                child: Image.network(
-                  photos[i],
-                  width: 80,
-                  height: 80,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(
-                    width: 80,
-                    height: 80,
-                    decoration: BoxDecoration(
-                        color: NexusTheme.slate100,
-                        borderRadius: BorderRadius.circular(10)),
-                    child: const Icon(Icons.broken_image_rounded,
-                        color: NexusTheme.slate400),
-                  ),
-                  loadingBuilder: (_, child, progress) => progress == null
-                      ? child
-                      : Container(
-                          width: 80,
-                          height: 80,
-                          decoration: BoxDecoration(
-                              color: NexusTheme.slate50,
-                              borderRadius: BorderRadius.circular(10)),
-                          child: const Center(
-                              child: CircularProgressIndicator(strokeWidth: 2)),
-                        ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  void _showFullPhoto(BuildContext context, List<String> photos, int initial) {
-    showDialog(
-      context: context,
-      barrierColor: Colors.black87,
-      builder: (_) => Dialog(
-        backgroundColor: Colors.transparent,
-        insetPadding: const EdgeInsets.all(12),
-        child: Stack(
-          children: [
-            PageView.builder(
-              controller: PageController(initialPage: initial),
-              itemCount: photos.length,
-              itemBuilder: (_, i) => ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: Image.network(photos[i], fit: BoxFit.contain),
-              ),
-            ),
-            Positioned(
-              top: 8,
-              right: 8,
-              child: GestureDetector(
-                onTap: () => Navigator.pop(context),
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration:
-                      const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
-                  child: const Icon(Icons.close_rounded, color: Colors.white, size: 20),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStatusUpdate(String? oldStatus, String newStatus) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-          color: NexusTheme.slate50, borderRadius: BorderRadius.circular(8)),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (oldStatus != null) ...[
-            Text(oldStatus,
-                style: const TextStyle(
-                    fontSize: 9,
-                    fontWeight: FontWeight.w600,
-                    color: NexusTheme.slate400)),
-            const SizedBox(width: 6),
-            const Icon(Icons.arrow_forward_rounded,
-                size: 10, color: NexusTheme.slate400),
-            const SizedBox(width: 6),
-          ],
-          Text(newStatus,
-              style: const TextStyle(
-                  fontSize: 9,
-                  fontWeight: FontWeight.w800,
-                  color: NexusTheme.emerald600)),
-        ],
-      ),
-    );
-  }
-
-  void _showTimelineDialog(BuildContext context, String orderId) {
-    if (orderId == 'N/A') return;
-    
-    final orderLogs = _logs.where((l) => l['entityId'] == orderId).toList();
-    orderLogs.sort((a, b) {
-      final ta = DateTime.tryParse(a['timestamp'] ?? '') ?? DateTime.now();
-      final tb = DateTime.tryParse(b['timestamp'] ?? '') ?? DateTime.now();
-      return ta.compareTo(tb);
-    });
-
-    showDialog(
-      context: context,
-      builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        child: Container(
-          width: MediaQuery.of(context).size.width * 0.9,
-          height: MediaQuery.of(context).size.height * 0.7,
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('MISSION TIMELINE', 
-                        style: TextStyle(fontWeight: FontWeight.w900, fontSize: 10, letterSpacing: 1, color: NexusTheme.slate400)),
-                      Text('ORDER $orderId', 
-                        style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: NexusTheme.slate900)),
-                    ],
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close_rounded),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                ],
-              ),
-              const Divider(height: 32),
-              Expanded(
-                child: orderLogs.isEmpty 
-                  ? const Center(child: Text('No details found for this mission.'))
-                  : ListView.builder(
-                    itemCount: orderLogs.length,
-                    itemBuilder: (context, index) {
-                      final log = orderLogs[index];
-                      final action = log['action'] ?? 'UNKNOWN';
-                      final user = log['userName'] ?? 'System';
-                      final ts = DateTime.tryParse(log['timestamp'] ?? '')?.toLocal() ?? DateTime.now();
-                      final data = (log['newData'] ?? log['oldData'] ?? {}) as Map<String, dynamic>;
-                      final status = data['status'] ?? 'N/A';
-                      
-                      Color color = NexusTheme.slate600;
-                      if (action == 'CREATE') color = NexusTheme.emerald600;
-                      else if (action == 'STATUS_CHANGE') color = NexusTheme.amber600;
-                      
-                      return IntrinsicHeight(
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Column(
-                              children: [
-                                Container(
-                                  width: 12, height: 12,
-                                  decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-                                ),
-                                if (index < orderLogs.length - 1)
-                                  Expanded(child: Container(width: 2, color: NexusTheme.slate200)),
-                              ],
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Padding(
-                                padding: const EdgeInsets.only(bottom: 24),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Text(action.toString().replaceAll('_', ' '),
-                                          style: TextStyle(fontWeight: FontWeight.w900, fontSize: 10, color: color)),
-                                        Text(DateFormat('hh:mm a').format(ts),
-                                          style: const TextStyle(fontSize: 10, color: NexusTheme.slate400)),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(action == 'CREATE' ? 'Mission Initialized' : 'Status: $status',
-                                      style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: NexusTheme.slate800)),
-                                    const SizedBox(height: 2),
-                                    Text('Action by $user • ${DateFormat('dd MMM').format(ts)}',
-                                      style: const TextStyle(fontSize: 11, color: NexusTheme.slate500)),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ─── CHIP WIDGET ───
-class _Chip extends StatelessWidget {
-  final String label;
-  final Color color;
-  final VoidCallback onDelete;
-
-  const _Chip(
-      {required this.label, required this.color, required this.onDelete});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.only(left: 10, right: 4, top: 4, bottom: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(label,
-              style: TextStyle(
-                  fontSize: 10, fontWeight: FontWeight.w800, color: color)),
-          const SizedBox(width: 4),
-          GestureDetector(
-            onTap: onDelete,
-            child: Icon(Icons.cancel_rounded, size: 16, color: color.withValues(alpha: 0.7)),
-          ),
+          const Text('No orders found', style: TextStyle(color: NexusTheme.slate400, fontWeight: FontWeight.bold)),
         ],
       ),
     );

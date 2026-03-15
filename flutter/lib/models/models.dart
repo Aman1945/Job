@@ -473,6 +473,8 @@ class OrderItem {
   final String name;
   final int quantity;
   final double price;
+  final double prevRate;
+  final String? imageUrl;
   final String? unit;
   final String? batchNo;
   final DateTime? expiryDate;
@@ -485,6 +487,8 @@ class OrderItem {
     required this.name,
     required this.quantity,
     required this.price,
+    this.prevRate = 0,
+    this.imageUrl,
     this.unit,
     this.batchNo,
     this.expiryDate,
@@ -499,6 +503,8 @@ class OrderItem {
       name: json['name'] ?? json['productName'] ?? '',
       quantity: json['quantity'] ?? 0,
       price: (json['price'] ?? 0).toDouble(),
+      prevRate: (json['prevRate'] ?? 0).toDouble(),
+      imageUrl: json['imageUrl'],
       unit: json['unit'],
       batchNo: json['batchNo'],
       expiryDate: json['expiryDate'] != null ? DateTime.parse(json['expiryDate']) : null,
@@ -514,6 +520,8 @@ class OrderItem {
       'name': name,
       'quantity': quantity,
       'price': price,
+      'prevRate': prevRate,
+      if (imageUrl != null) 'imageUrl': imageUrl,
       if (unit != null) 'unit': unit,
       if (batchNo != null) 'batchNo': batchNo,
       if (expiryDate != null) 'expiryDate': expiryDate!.toIso8601String(),
@@ -550,6 +558,7 @@ class Order {
   final double? grossWeight;
   final List<String> salesPhotos;
   final String? qcPhoto;
+  final String? invoiceUrl;
 
   Order({
     required this.id,
@@ -577,6 +586,7 @@ class Order {
     this.grossWeight,
     this.salesPhotos = const [],
     this.qcPhoto,
+    this.invoiceUrl,
   });
 
   factory Order.fromJson(Map<String, dynamic> json) {
@@ -617,6 +627,7 @@ class Order {
       grossWeight: (json['grossWeight'] as num?)?.toDouble(),
       salesPhotos: json['salesPhotos'] != null ? List<String>.from(json['salesPhotos']) : [],
       qcPhoto: json['qcPhoto'],
+      invoiceUrl: json['invoiceUrl'],
     );
   }
 
@@ -647,6 +658,7 @@ class Order {
       if (grossWeight != null) 'grossWeight': grossWeight,
       'salesPhotos': salesPhotos,
       if (qcPhoto != null) 'qcPhoto': qcPhoto,
+      if (invoiceUrl != null) 'invoiceUrl': invoiceUrl,
     };
   }
 }

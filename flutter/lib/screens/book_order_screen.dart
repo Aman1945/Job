@@ -52,6 +52,7 @@ class _BookOrderScreenState extends State<BookOrderScreen> {
         'quantity': 1,
         'price': 0.0,
         'prevRate': 0.0,
+        'imageUrl': '',
       });
     });
   }
@@ -66,6 +67,7 @@ class _BookOrderScreenState extends State<BookOrderScreen> {
         'quantity': 1,
         'price': rate,
         'prevRate': 0.0,
+        'imageUrl': product.imageUrl ?? '',
         'mrp': product.mrp ?? rate,
         'gst': product.gst ?? 18.0,
       };
@@ -641,7 +643,7 @@ class _BookOrderScreenState extends State<BookOrderScreen> {
           Expanded(flex: 1, child: Text('BASE RATE', style: _tableHeaderStyle)),
           Expanded(flex: 1, child: Text('PREV. RATE', style: _tableHeaderStyle)),
           Expanded(flex: 1, child: Text('QTY', style: _tableHeaderStyle)),
-          Expanded(flex: 1, child: Text('FINAL RATE', style: _tableHeaderStyle, textAlign: TextAlign.center)),
+          Expanded(flex: 2, child: Text('FINAL RATE', style: _tableHeaderStyle, textAlign: TextAlign.center)),
           const SizedBox(width: 48),
         ],
       ),
@@ -700,7 +702,7 @@ class _BookOrderScreenState extends State<BookOrderScreen> {
           const SizedBox(width: 8),
           Expanded(flex: 1, child: _buildQtyInput(index, item['quantity'])),
           const SizedBox(width: 8),
-          Expanded(flex: 1, child: _buildFinalRateDisplay((item['price'] as num) * (item['quantity'] as num))),
+          Expanded(flex: 2, child: _buildFinalRateDisplay((item['price'] as num) * (item['quantity'] as num))),
           const SizedBox(width: 16),
           IconButton(onPressed: () => _removeLineItem(index), icon: const Icon(LucideIcons.trash2, color: NexusTheme.slate200, size: 18)),
         ],
@@ -730,6 +732,11 @@ class _BookOrderScreenState extends State<BookOrderScreen> {
             border: Border.all(color: NexusTheme.indigo600.withOpacity(0.5)),
             color: Colors.white,
           ),
+        ),
+        dropdownStyleData: DropdownStyleData(
+          maxHeight: 400,
+          width: 400,
+          decoration: BoxDecoration(borderRadius: BorderRadius.circular(24)),
         ),
       ),
     );
