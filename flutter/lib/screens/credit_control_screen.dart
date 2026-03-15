@@ -486,11 +486,9 @@ class _CreditControlScreenState extends State<CreditControlScreen> {
         order: selectedOrder!,
         onSaved: (updatedOrder) {
           setState(() {
-            selectedOrder = null; // Clear selection after save/approve
+            selectedOrder = updatedOrder; // Update with fresh data instead of nulling
             isSubmitting = false;
           });
-          // Refresh list to be sure
-          Provider.of<NexusProvider>(context, listen: false).fetchOrders(token: Provider.of<AuthProvider>(context, listen: false).token);
         },
       ),
     );
@@ -737,7 +735,7 @@ class _EditOrderDialogState extends State<_EditOrderDialog> {
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
                             ),
                             child: Text(
-                              isSaving ? '...' : 'COMMIT & APPROVE',
+                              isSaving ? '...' : 'COMMIT CHANGES',
                               style: const TextStyle(
                                 fontWeight: FontWeight.w900,
                                 fontSize: 11,
@@ -978,24 +976,17 @@ class _EditOrderDialogState extends State<_EditOrderDialog> {
       );
 
       if (success && mounted) {
-        // User requested "commit should work like approve"
-        final approveSuccess = await provider.updateOrderStatus(widget.order.id, 'Credit Approved', token: auth.token);
+        // Fetch fresh order data to update the details terminal
+        await provider.fetchOrders(token: auth.token);
+        final freshOrder = provider.orders.firstWhere((o) => o.id == widget.order.id, orElse: () => widget.order);
         
         if (mounted) {
-          if (approveSuccess) {
-             ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-               content: Text('Mission ${widget.order.id} updated and approved'),
-               backgroundColor: NexusTheme.emerald500,
-             ));
-             widget.onSaved(widget.order);
-             Navigator.pop(context);
-          } else {
-             ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-               content: Text('Items updated but approval failed'),
-               backgroundColor: NexusTheme.amber500,
-             ));
-             Navigator.pop(context);
-          }
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('Mission ${widget.order.id} updated successfully'),
+            backgroundColor: NexusTheme.emerald500,
+          ));
+          widget.onSaved(freshOrder);
+          Navigator.pop(context);
         }
       } else {
         if (mounted) {
