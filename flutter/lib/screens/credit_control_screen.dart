@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:nexus_oms_mobile/providers/nexus_provider.dart';
+import 'package:nexus_oms_mobile/utils/theme.dart';
 import 'package:nexus_oms_mobile/widgets/nexus_components.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';

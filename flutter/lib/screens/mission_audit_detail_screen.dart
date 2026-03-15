@@ -37,25 +37,27 @@ class _MissionAuditDetailScreenState extends State<MissionAuditDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    bool isDesktop = MediaQuery.of(context).size.width > 1200;
+    double screenWidth = MediaQuery.of(context).size.width;
+    bool isDesktop = screenWidth > 1200;
+    bool isMobile = screenWidth < 768;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       body: SafeArea(
         child: Column(
           children: [
-            _buildCustomAppBar(),
+            _buildCustomAppBar(isMobile),
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.all(40),
+                padding: EdgeInsets.all(isMobile ? 16 : 40),
                 child: Column(
                   children: [
-                    _buildMainHeader(),
-                    const SizedBox(height: 32),
+                    _buildMainHeader(isMobile),
+                    SizedBox(height: isMobile ? 24 : 32),
                     if (isEditing)
-                      _buildEditView(isDesktop)
+                      _buildEditView(isDesktop, isMobile)
                     else
-                      _buildAuditView(isDesktop),
+                      _buildAuditView(isDesktop, isMobile),
                   ],
                 ),
               ),
@@ -66,9 +68,9 @@ class _MissionAuditDetailScreenState extends State<MissionAuditDetailScreen> {
     );
   }
 
-  Widget _buildCustomAppBar() {
+  Widget _buildCustomAppBar(bool isMobile) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 20),
+      padding: EdgeInsets.symmetric(horizontal: isMobile ? 16 : 40, vertical: 20),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -78,8 +80,8 @@ class _MissionAuditDetailScreenState extends State<MissionAuditDetailScreen> {
               children: [
                 const Icon(Icons.arrow_back, size: 16, color: NexusTheme.slate400),
                 const SizedBox(width: 8),
-                const Text('RETURN TO QUEUE', 
-                  style: TextStyle(fontWeight: FontWeight.w900, fontSize: 10, letterSpacing: 1.5, color: NexusTheme.slate400)),
+                Text('RETURN TO QUEUE', 
+                  style: TextStyle(fontWeight: FontWeight.w900, fontSize: isMobile ? 8 : 10, letterSpacing: 1.5, color: NexusTheme.slate400)),
               ],
             ),
           ),
@@ -90,6 +92,7 @@ class _MissionAuditDetailScreenState extends State<MissionAuditDetailScreen> {
                 icon: LucideIcons.edit2,
                 color: NexusTheme.slate900,
                 onPressed: () => setState(() => isEditing = true),
+                isMobile: isMobile,
               ),
               const SizedBox(width: 12),
               _buildSmallIconButton(
@@ -98,6 +101,7 @@ class _MissionAuditDetailScreenState extends State<MissionAuditDetailScreen> {
                 color: NexusTheme.rose600,
                 outline: true,
                 onPressed: () {},
+                isMobile: isMobile,
               ),
             ],
           ),
@@ -111,60 +115,80 @@ class _MissionAuditDetailScreenState extends State<MissionAuditDetailScreen> {
     required IconData icon, 
     required Color color, 
     bool outline = false,
-    required VoidCallback onPressed
+    required VoidCallback onPressed,
+    bool isMobile = false,
   }) {
     return SizedBox(
-      height: 36,
+      height: isMobile ? 32 : 36,
       child: OutlinedButton.icon(
         onPressed: onPressed,
-        icon: Icon(icon, size: 12, color: outline ? color : Colors.white),
-        label: Text(label, style: TextStyle(fontWeight: FontWeight.w900, fontSize: 9, letterSpacing: 1.2, color: outline ? color : Colors.white)),
+        icon: Icon(icon, size: isMobile ? 10 : 12, color: outline ? color : Colors.white),
+        label: Text(label, style: TextStyle(fontWeight: FontWeight.w900, fontSize: isMobile ? 8 : 9, letterSpacing: 1.2, color: outline ? color : Colors.white)),
         style: OutlinedButton.styleFrom(
           backgroundColor: outline ? Colors.transparent : color,
           side: outline ? BorderSide(color: color.withOpacity(0.2)) : BorderSide.none,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          padding: const EdgeInsets.symmetric(horizontal: 16),
+          padding: EdgeInsets.symmetric(horizontal: isMobile ? 10 : 16),
         ),
       ),
     );
   }
 
-  Widget _buildMainHeader() {
+  Widget _buildMainHeader(bool isMobile) {
     return Container(
-      padding: const EdgeInsets.all(48),
+      padding: EdgeInsets.all(isMobile ? 24 : 48),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(40),
+        borderRadius: BorderRadius.circular(isMobile ? 24 : 40),
         border: Border.all(color: NexusTheme.slate200.withOpacity(0.5)),
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 40, offset: const Offset(0, 10))],
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Column(
+      child: isMobile 
+        ? Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildStatusBadge(),
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
               Text(widget.order.id, 
-                style: const TextStyle(fontSize: 48, fontWeight: FontWeight.w900, letterSpacing: -1.5, color: NexusTheme.slate900)),
+                style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w900, letterSpacing: -1, color: NexusTheme.slate900)),
               const SizedBox(height: 4),
               Text('${widget.order.customerName} • Private Ltd', 
-                style: const TextStyle(color: NexusTheme.slate500, fontSize: 16, fontWeight: FontWeight.bold)),
-            ],
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
+                style: const TextStyle(color: NexusTheme.slate500, fontSize: 13, fontWeight: FontWeight.bold)),
+              const Divider(height: 32),
               const Text('ORDER BOOKING VALUE', 
-                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: NexusTheme.slate400, letterSpacing: 1.5)),
-              const SizedBox(height: 8),
+                style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: NexusTheme.slate400, letterSpacing: 1.5)),
+              const SizedBox(height: 4),
               Text('₹${NumberFormat('#,##,###').format(widget.order.total)}', 
-                style: const TextStyle(fontSize: 48, fontWeight: FontWeight.w900, color: NexusTheme.slate900)),
+                style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w900, color: NexusTheme.slate900)),
+            ],
+          )
+        : Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildStatusBadge(),
+                  const SizedBox(height: 20),
+                  Text(widget.order.id, 
+                    style: const TextStyle(fontSize: 48, fontWeight: FontWeight.w900, letterSpacing: -1.5, color: NexusTheme.slate900)),
+                  const SizedBox(height: 4),
+                  Text('${widget.order.customerName} • Private Ltd', 
+                    style: const TextStyle(color: NexusTheme.slate500, fontSize: 16, fontWeight: FontWeight.bold)),
+                ],
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  const Text('ORDER BOOKING VALUE', 
+                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: NexusTheme.slate400, letterSpacing: 1.5)),
+                  const SizedBox(height: 8),
+                  Text('₹${NumberFormat('#,##,###').format(widget.order.total)}', 
+                    style: const TextStyle(fontSize: 48, fontWeight: FontWeight.w900, color: NexusTheme.slate900)),
+                ],
+              ),
             ],
           ),
-        ],
-      ),
     );
   }
 
@@ -180,28 +204,37 @@ class _MissionAuditDetailScreenState extends State<MissionAuditDetailScreen> {
     );
   }
 
-  Widget _buildAuditView(bool isDesktop) {
+  Widget _buildAuditView(bool isDesktop, bool isMobile) {
+    if (isMobile) {
+      return Column(
+        children: [
+          _buildFulfillmentHistory(isMobile),
+          const SizedBox(height: 24),
+          _buildIntelligenceInsight(isMobile),
+        ],
+      );
+    }
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Expanded(
           flex: 2,
-          child: _buildFulfillmentHistory(),
+          child: _buildFulfillmentHistory(isMobile),
         ),
         const SizedBox(width: 40),
         Expanded(
-          child: _buildIntelligenceInsight(),
+          child: _buildIntelligenceInsight(isMobile),
         ),
       ],
     );
   }
 
-  Widget _buildFulfillmentHistory() {
+  Widget _buildFulfillmentHistory(bool isMobile) {
     return Container(
-      padding: const EdgeInsets.all(40),
+      padding: EdgeInsets.all(isMobile ? 24 : 40),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(32),
+        borderRadius: BorderRadius.circular(isMobile ? 24 : 32),
         border: Border.all(color: NexusTheme.slate200.withOpacity(0.5)),
       ),
       child: Column(
@@ -209,34 +242,38 @@ class _MissionAuditDetailScreenState extends State<MissionAuditDetailScreen> {
         children: [
           const Text('FULFILLMENT HISTORY', 
             style: TextStyle(fontWeight: FontWeight.w900, fontSize: 12, letterSpacing: 1, color: NexusTheme.slate900)),
-          const SizedBox(height: 32),
-          ...widget.order.items.map((item) => _buildFulfillmentItem(item)).toList(),
+          SizedBox(height: isMobile ? 24 : 32),
+          ...widget.order.items.map((item) => _buildFulfillmentItem(item, isMobile)).toList(),
         ],
       ),
     );
   }
 
-  Widget _buildFulfillmentItem(OrderItem item) {
+  Widget _buildFulfillmentItem(OrderItem item, bool isMobile) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 24),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(item.productName, 
-                style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: NexusTheme.slate900)),
-              const SizedBox(height: 4),
-              Text('STATUS: 0 / ${item.quantity} ${item.unit ?? "KG"} DELIVERED', 
-                style: const TextStyle(color: NexusTheme.slate400, fontSize: 10, fontWeight: FontWeight.bold)),
-            ],
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(item.productName, 
+                  maxLines: 2, overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontWeight: FontWeight.w900, fontSize: isMobile ? 14 : 16, color: NexusTheme.slate900)),
+                const SizedBox(height: 4),
+                Text('0 / ${item.quantity} ${item.unit ?? "KG"} DELIVERED', 
+                  style: const TextStyle(color: NexusTheme.slate400, fontSize: 10, fontWeight: FontWeight.bold)),
+              ],
+            ),
           ),
+          const SizedBox(width: 12),
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text('₹${NumberFormat('#,##,###').format(item.price * item.quantity)}', 
-                style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: NexusTheme.slate900)),
+                style: TextStyle(fontWeight: FontWeight.w900, fontSize: isMobile ? 14 : 16, color: NexusTheme.slate900)),
               const SizedBox(height: 4),
               Text('SHORT: ${item.quantity} UNITS', 
                 style: const TextStyle(color: NexusTheme.rose600, fontSize: 10, fontWeight: FontWeight.w900)),
@@ -247,12 +284,12 @@ class _MissionAuditDetailScreenState extends State<MissionAuditDetailScreen> {
     );
   }
 
-  Widget _buildIntelligenceInsight() {
+  Widget _buildIntelligenceInsight(bool isMobile) {
     return Container(
-      padding: const EdgeInsets.all(40),
+      padding: EdgeInsets.all(isMobile ? 24 : 40),
       decoration: BoxDecoration(
         color: const Color(0xFF0D9488),
-        borderRadius: BorderRadius.circular(40),
+        borderRadius: BorderRadius.circular(isMobile ? 32 : 40),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -265,17 +302,28 @@ class _MissionAuditDetailScreenState extends State<MissionAuditDetailScreen> {
                 style: TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1)),
             ],
           ),
-          const SizedBox(height: 24),
-          const Text(
+          SizedBox(height: isMobile ? 16 : 24),
+          Text(
             '"**Summary:** The customer has a significant overdue balance of ₹1,20,000 (31% of total outstanding) with a 60-day ageing, indicating poor payment history. While the current order value is minimal, the existing delinquency represents a high credit risk. **Recommendation:** **Flag** (Hold order until a partial payment is received against the overdue amount)."',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 18, height: 1.5),
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: isMobile ? 14 : 18, height: 1.5),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildEditView(bool isDesktop) {
+  Widget _buildEditView(bool isDesktop, bool isMobile) {
+    if (isMobile) {
+      return Column(
+        children: [
+          _buildTabularEditor(isMobile),
+          const SizedBox(height: 24),
+          _buildWorkflowTrace(isMobile),
+          const SizedBox(height: 24),
+          _buildIntelligenceInsight(isMobile),
+        ],
+      );
+    }
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -283,26 +331,26 @@ class _MissionAuditDetailScreenState extends State<MissionAuditDetailScreen> {
           flex: 2,
           child: Column(
             children: [
-              _buildTabularEditor(),
+              _buildTabularEditor(isMobile),
               const SizedBox(height: 40),
-              _buildIntelligenceInsight(), // Insight moves below editor in edit mode in the mock
+              _buildIntelligenceInsight(isMobile),
             ],
           ),
         ),
         const SizedBox(width: 40),
         Expanded(
-          child: _buildWorkflowTrace(),
+          child: _buildWorkflowTrace(isMobile),
         ),
       ],
     );
   }
 
-  Widget _buildTabularEditor() {
+  Widget _buildTabularEditor(bool isMobile) {
     return Container(
-      padding: const EdgeInsets.all(40),
+      padding: EdgeInsets.all(isMobile ? 24 : 40),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(32),
+        borderRadius: BorderRadius.circular(isMobile ? 24 : 32),
         border: Border.all(color: NexusTheme.slate200),
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 40)],
       ),
@@ -319,14 +367,14 @@ class _MissionAuditDetailScreenState extends State<MissionAuditDetailScreen> {
               IconButton(onPressed: () => setState(() => isEditing = false), icon: const Icon(Icons.close, size: 18)),
             ],
           ),
-          const SizedBox(height: 32),
-          _buildTableHeader(),
-          const Divider(height: 40),
-          ...items.asMap().entries.map((entry) => _buildEditorRow(entry.key, entry.value)).toList(),
+          SizedBox(height: isMobile ? 24 : 32),
+          if (!isMobile) _buildTableHeader(),
+          if (!isMobile) const Divider(height: 40),
+          ...items.asMap().entries.map((entry) => _buildEditorRow(entry.key, entry.value, isMobile)).toList(),
           const SizedBox(height: 20),
           _buildAddLineButton(),
-          const Divider(height: 60),
-          _buildEditorFooter(),
+          Divider(height: isMobile ? 40 : 60),
+          _buildEditorFooter(isMobile),
         ],
       ),
     );
@@ -423,8 +471,76 @@ class _MissionAuditDetailScreenState extends State<MissionAuditDetailScreen> {
     }
   }
 
-  Widget _buildEditorRow(int index, Map<String, dynamic> item) {
+  Widget _buildEditorRow(int index, Map<String, dynamic> item, bool isMobile) {
     final provider = Provider.of<NexusProvider>(context, listen: false);
+    
+    if (isMobile) {
+      return Container(
+        margin: const EdgeInsets.only(bottom: 24),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: NexusTheme.slate200.withOpacity(0.5)),
+        ),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                Expanded(child: _buildSkuDropdown(index, item, provider.products, isMobile)),
+                const SizedBox(width: 12),
+                IconButton(
+                  onPressed: () => setState(() => items.removeAt(index)), 
+                  icon: const Icon(LucideIcons.trash2, size: 18, color: NexusTheme.rose600)
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('QTY', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: NexusTheme.slate400)),
+                    _buildNumericField(item['quantity'].toString(), (val) {
+                      setState(() => item['quantity'] = int.tryParse(val) ?? item['quantity']);
+                    }),
+                  ],
+                )),
+                const SizedBox(width: 12),
+                Expanded(child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('UNIT', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: NexusTheme.slate400)),
+                    _buildUnitDropdown(index, item),
+                  ],
+                )),
+                const SizedBox(width: 12),
+                Expanded(child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('RATE', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: NexusTheme.slate400)),
+                    _buildNumericField(item['price'].toString(), (val) {
+                      setState(() => item['price'] = double.tryParse(val) ?? item['price']);
+                    }),
+                  ],
+                )),
+              ],
+            ),
+            const Divider(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('LINE TOTAL', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: NexusTheme.slate400)),
+                Text('₹${NumberFormat('#,##,###').format(item['price'] * item['quantity'] * (item['boxCount'] ?? 1))}', 
+                  style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: NexusTheme.slate900)),
+              ],
+            ),
+          ],
+        ),
+      );
+    }
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 20),
       child: Container(
@@ -433,7 +549,7 @@ class _MissionAuditDetailScreenState extends State<MissionAuditDetailScreen> {
           children: [
             Expanded(
               flex: 3,
-              child: _buildSkuDropdown(index, item, provider.products),
+              child: _buildSkuDropdown(index, item, provider.products, isMobile),
             ),
             const SizedBox(width: 16),
             Expanded(child: _buildNumericField(item['quantity'].toString(), (val) {
@@ -465,9 +581,9 @@ class _MissionAuditDetailScreenState extends State<MissionAuditDetailScreen> {
     );
   }
 
-  Widget _buildSkuDropdown(int index, Map<String, dynamic> item, List<Product> products) {
+  Widget _buildSkuDropdown(int index, Map<String, dynamic> item, List<Product> products, bool isMobile) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: EdgeInsets.symmetric(horizontal: isMobile ? 12 : 16),
       decoration: BoxDecoration(
         color: const Color(0xFFF1F5F9),
         borderRadius: BorderRadius.circular(12),
@@ -476,13 +592,13 @@ class _MissionAuditDetailScreenState extends State<MissionAuditDetailScreen> {
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: item['productId'].isEmpty ? null : item['productId'],
-          hint: const Text('SELECT SKU', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: NexusTheme.slate400)),
+          hint: Text('SELECT SKU', style: TextStyle(fontSize: isMobile ? 9 : 10, fontWeight: FontWeight.w900, color: NexusTheme.slate400)),
           isExpanded: true,
           icon: const Icon(Icons.keyboard_arrow_down, size: 18, color: NexusTheme.slate400),
           items: products.map((p) => DropdownMenuItem(
             value: p.id,
             child: Text('${p.skuCode} • ${p.name}', 
-              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 11, overflow: TextOverflow.ellipsis)),
+              style: TextStyle(fontWeight: FontWeight.w800, fontSize: isMobile ? 10 : 11, overflow: TextOverflow.ellipsis)),
           )).toList(),
           onChanged: (val) {
             if (val == null) return;
@@ -550,8 +666,48 @@ class _MissionAuditDetailScreenState extends State<MissionAuditDetailScreen> {
     );
   }
 
-  Widget _buildEditorFooter() {
+  Widget _buildEditorFooter(bool isMobile) {
     double revisedTotal = items.fold(0.0, (sum, i) => sum + (i['price'] * i['quantity'] * (i['boxCount'] ?? 1))) * 1.18;
+    
+    if (isMobile) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('REVISED VALUATION', 
+            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: NexusTheme.slate400, letterSpacing: 1)),
+          const SizedBox(height: 4),
+          Text('₹${NumberFormat('#,##,###').format(revisedTotal)}', 
+            style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: NexusTheme.slate900)),
+          const SizedBox(height: 24),
+          SizedBox(
+            width: double.infinity,
+            height: 56,
+            child: ElevatedButton.icon(
+              onPressed: isSaving ? null : _commitChanges,
+              icon: isSaving 
+                ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                : const Icon(LucideIcons.checkSquare, size: 18),
+              label: Text(isSaving ? 'UPLOADING...' : 'COMMIT & RESUBMIT', 
+                style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 11, letterSpacing: 1)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF6366F1),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Center(
+            child: TextButton(
+              onPressed: () => setState(() => isEditing = false),
+              child: const Text('DISCARD CHANGES', 
+                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 10, letterSpacing: 1, color: NexusTheme.slate400)),
+            ),
+          ),
+        ],
+      );
+    }
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -596,12 +752,12 @@ class _MissionAuditDetailScreenState extends State<MissionAuditDetailScreen> {
     );
   }
 
-  Widget _buildWorkflowTrace() {
+  Widget _buildWorkflowTrace(bool isMobile) {
     return Container(
-      padding: const EdgeInsets.all(32),
+      padding: EdgeInsets.all(isMobile ? 24 : 32),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(32),
+        borderRadius: BorderRadius.circular(isMobile ? 24 : 32),
         border: Border.all(color: NexusTheme.slate200.withOpacity(0.5)),
       ),
       child: Column(
@@ -621,38 +777,38 @@ class _MissionAuditDetailScreenState extends State<MissionAuditDetailScreen> {
             ],
           ),
           const SizedBox(height: 32),
-          _buildTraceStep('PENDING CREDIT APPROVAL', true, false),
+          _buildTraceStep('PENDING CREDIT APPROVAL', true, false, isMobile),
           _buildTraceLine(),
-          _buildTraceStep('ON HOLD', false, false),
+          _buildTraceStep('ON HOLD', false, false, isMobile),
           _buildTraceLine(),
-          _buildTraceStep('PENDING WH SELECTION', true, true), 
+          _buildTraceStep('PENDING WH SELECTION', true, true, isMobile), 
           _buildTraceLine(),
-          _buildTraceStep('PENDING PACKING', false, false),
+          _buildTraceStep('PENDING PACKING', false, false, isMobile),
           _buildTraceLine(),
-          _buildTraceStep('PART PACKED', false, false),
+          _buildTraceStep('PART PACKED', false, false, isMobile),
           _buildTraceLine(),
-          _buildTraceStep('PENDING QUALITY CONTROL', false, false),
+          _buildTraceStep('PENDING QUALITY CONTROL', false, false, isMobile),
           _buildTraceLine(),
-          _buildTraceStep('READY FOR BILLING', false, false),
+          _buildTraceStep('READY FOR BILLING', false, false, isMobile),
           _buildTraceLine(),
-          _buildTraceStep('PENDING LOGISTICS', false, false),
+          _buildTraceStep('PENDING LOGISTICS', false, false, isMobile),
           _buildTraceLine(),
-          _buildTraceStep('READY FOR DISPATCH', false, false),
+          _buildTraceStep('READY FOR DISPATCH', false, false, isMobile),
           _buildTraceLine(),
-          _buildTraceStep('DISPATCHED', false, false),
+          _buildTraceStep('DISPATCHED', false, false, isMobile),
           _buildTraceLine(),
-          _buildTraceStep('DELIVERED', false, false),
+          _buildTraceStep('DELIVERED', false, false, isMobile),
         ],
       ),
     );
   }
 
-  Widget _buildTraceStep(String label, bool completed, bool isActive) {
+  Widget _buildTraceStep(String label, bool completed, bool isActive, bool isMobile) {
     return Row(
       children: [
         Container(
-          width: 32,
-          height: 32,
+          width: isMobile ? 24 : 32,
+          height: isMobile ? 24 : 32,
           decoration: BoxDecoration(
             color: completed ? const Color(0xFFECFDF5) : (isActive ? const Color(0xFFEEF2FF) : Colors.white),
             shape: BoxShape.circle,
@@ -662,24 +818,26 @@ class _MissionAuditDetailScreenState extends State<MissionAuditDetailScreen> {
             ),
           ),
           child: completed 
-            ? const Icon(Icons.check, size: 16, color: Color(0xFF10B981))
+            ? Icon(Icons.check, size: isMobile ? 14 : 16, color: const Color(0xFF10B981))
             : (isActive ? Container(margin: const EdgeInsets.all(8), decoration: const BoxDecoration(color: Color(0xFF6366F1), shape: BoxShape.circle)) : null),
         ),
         const SizedBox(width: 16),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(label, 
-              style: TextStyle(
-                fontWeight: FontWeight.w900, 
-                fontSize: 10, 
-                letterSpacing: 0.5,
-                color: completed ? NexusTheme.slate900 : (isActive ? const Color(0xFF6366F1) : NexusTheme.slate300),
-              )),
-            if (isActive)
-              const Text('ACTIVE STAGE', 
-                style: TextStyle(color: Color(0xFF6366F1), fontWeight: FontWeight.w900, fontSize: 8)),
-          ],
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label, 
+                style: TextStyle(
+                  fontWeight: FontWeight.w900, 
+                  fontSize: isMobile ? 9 : 10, 
+                  letterSpacing: 0.5,
+                  color: completed ? NexusTheme.slate900 : (isActive ? const Color(0xFF6366F1) : NexusTheme.slate300),
+                )),
+              if (isActive)
+                const Text('ACTIVE STAGE', 
+                  style: TextStyle(color: Color(0xFF6366F1), fontWeight: FontWeight.w900, fontSize: 8)),
+            ],
+          ),
         ),
       ],
     );
