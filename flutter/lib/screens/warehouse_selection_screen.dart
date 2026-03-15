@@ -107,17 +107,11 @@ class _WarehouseSelectionScreenState extends State<WarehouseSelectionScreen> {
   }
 
   Widget _buildWarehouseScroll(List<Warehouse> warehouses, List<Order> orders) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: GridView.builder(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          crossAxisSpacing: 16,
-          mainAxisSpacing: 16,
-          childAspectRatio: 1.25,
-        ),
+    return SizedBox(
+      height: 160,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 24),
         itemCount: warehouses.length,
         itemBuilder: (context, index) => _buildWarehouseCard(warehouses[index], orders.isNotEmpty ? orders.first : null),
       ),
@@ -133,12 +127,14 @@ class _WarehouseSelectionScreenState extends State<WarehouseSelectionScreen> {
         debugPrint('Tapped Warehouse: ${wh.name} for Order: ${pendingOrder.id}');
         _assignFacility(pendingOrder, wh);
       } : null,
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(24),
       child: Container(
-        padding: const EdgeInsets.all(16),
+        width: 280,
+        margin: const EdgeInsets.only(right: 20),
+        padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(24),
           border: Border.all(color: NexusTheme.slate200),
           boxShadow: [
             BoxShadow(color: NexusTheme.slate900.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4))
@@ -146,52 +142,37 @@ class _WarehouseSelectionScreenState extends State<WarehouseSelectionScreen> {
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            Row(
               children: [
-                Row(
-                  children: [
-                    const Icon(LucideIcons.factory, color: NexusTheme.emerald600, size: 14),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        wh.name.replaceAll(' Cold Storage', '').replaceAll(' Nhava Sheva', '').replaceAll(' Delhi', '').replaceAll(' BNG', ''), 
-                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: NexusTheme.slate900, height: 1.1),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      )
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 2),
-                Text(wh.location, style: const TextStyle(color: NexusTheme.slate500, fontSize: 10, fontWeight: FontWeight.w600)),
+                const Icon(LucideIcons.factory, color: NexusTheme.emerald600, size: 18),
+                const SizedBox(width: 8),
+                Expanded(child: Text(wh.name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: NexusTheme.slate900))),
               ],
             ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            const SizedBox(height: 4),
+            Text('${wh.location} • ${wh.tempRange ?? 'Standard'}', style: const TextStyle(color: NexusTheme.slate500, fontSize: 11, fontWeight: FontWeight.w600)),
+            const Spacer(),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text('Capacity', style: TextStyle(color: NexusTheme.slate400, fontSize: 10, fontWeight: FontWeight.bold)),
-                    Text('${wh.capacityUsed.toInt()} / ${wh.capacityMax.toInt()}', 
-                      style: TextStyle(color: NexusTheme.slate900, fontSize: 10, fontWeight: FontWeight.w900)),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
-                  child: LinearProgressIndicator(
-                    value: progress,
-                    backgroundColor: NexusTheme.slate100,
-                    color: color,
-                    minHeight: 4,
-                  ),
-                ),
+                const Text('Capacity', style: TextStyle(color: NexusTheme.slate400, fontSize: 11, fontWeight: FontWeight.bold)),
+                Text('${wh.capacityUsed.toInt()} Ton / ${wh.capacityMax.toInt()} Ton', 
+                  style: TextStyle(color: NexusTheme.slate900, fontSize: 11, fontWeight: FontWeight.w900)),
               ],
             ),
+            const SizedBox(height: 8),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: progress,
+                backgroundColor: NexusTheme.slate100,
+                color: color,
+                minHeight: 6,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text('Manager: ${wh.manager ?? 'Not Assigned'}', style: const TextStyle(color: NexusTheme.slate400, fontSize: 10, fontWeight: FontWeight.w600)),
           ],
         ),
       ),
