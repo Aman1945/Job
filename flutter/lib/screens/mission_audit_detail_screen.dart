@@ -104,17 +104,6 @@ class _MissionAuditDetailScreenState extends State<MissionAuditDetailScreen> {
                 onPressed: () {},
                 isMobile: isMobile,
               ),
-              const SizedBox(width: 12),
-              _buildSmallIconButton(
-                label: 'PACK MISSION',
-                icon: LucideIcons.package,
-                color: const Color(0xFF10B981),
-                onPressed: () => Navigator.push(
-                  context, 
-                  MaterialPageRoute(builder: (context) => BatchPickingScreen(order: widget.order))
-                ),
-                isMobile: isMobile,
-              ),
             ],
           ),
         ],

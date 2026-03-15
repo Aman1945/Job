@@ -6,6 +6,7 @@ import '../models/models.dart';
 import '../utils/theme.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:intl/intl.dart';
+import 'batch_picking_screen.dart';
 
 class WarehousePackingScreen extends StatefulWidget {
   const WarehousePackingScreen({super.key});
@@ -96,43 +97,49 @@ class _WarehousePackingScreenState extends State<WarehousePackingScreen> {
           // Card Header
           Padding(
             padding: const EdgeInsets.all(24),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.start, // Align top
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(order.id, style: const TextStyle(color: NexusTheme.emerald600, fontWeight: FontWeight.w900, letterSpacing: 1, fontSize: 12)),
-                      const SizedBox(height: 8), // Increased space "niche lele thoda"
-                      Text(
-                        order.customerName, 
-                        style: const TextStyle(color: NexusTheme.slate900, fontSize: 18, fontWeight: FontWeight.w900, height: 1.2),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
+            child: InkWell(
+              onTap: () => Navigator.push(
+                context, 
+                MaterialPageRoute(builder: (context) => BatchPickingScreen(order: order))
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.start, // Align top
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(order.id, style: const TextStyle(color: NexusTheme.emerald600, fontWeight: FontWeight.w900, letterSpacing: 1, fontSize: 12)),
+                        const SizedBox(height: 8), 
+                        Text(
+                          order.customerName, 
+                          style: const TextStyle(color: NexusTheme.slate900, fontSize: 18, fontWeight: FontWeight.w900, height: 1.2),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(width: 16),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: NexusTheme.slate100,
-                    borderRadius: BorderRadius.circular(8),
+                  const SizedBox(width: 16),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: NexusTheme.slate100,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      children: [
+                        _buildSmallActionButton(LucideIcons.edit3, NexusTheme.blue600, () => _editAssignment(order)),
+                        const SizedBox(width: 8),
+                        _buildSmallActionButton(LucideIcons.trash2, NexusTheme.rose600, () => _cancelAssignment(order)),
+                        const SizedBox(width: 12),
+                        const Text('WH: WH001', style: TextStyle(color: NexusTheme.slate500, fontSize: 10, fontWeight: FontWeight.w900)),
+                      ],
+                    ),
                   ),
-                  child: Row(
-                    children: [
-                      _buildSmallActionButton(LucideIcons.edit3, NexusTheme.blue600, () => _editAssignment(order)),
-                      const SizedBox(width: 8),
-                      _buildSmallActionButton(LucideIcons.trash2, NexusTheme.rose600, () => _cancelAssignment(order)),
-                      const SizedBox(width: 12),
-                      const Text('WH: WH001', style: TextStyle(color: NexusTheme.slate500, fontSize: 10, fontWeight: FontWeight.w900)),
-                    ],
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
           
