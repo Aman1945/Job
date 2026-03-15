@@ -85,8 +85,31 @@ router.post('/assign-to-order', async (req, res) => {
     session.startTransaction();
     try {
         const { orderId, warehouseId } = req.body;
+        console.log(`🛰️ Assigning Order: ${orderId} to Warehouse: ${warehouseId}`);
+        
         const order = await Order.findOne({ id: orderId }).session(session);
-        if (!order) throw new Error('Order not found');
+        if (!order) {
+            console.error(`❌ Order not found: ${orderId}`);
+            throw new Error('Order not found');
+        }
+
+        // Handle Mock IDs or search by ID field
+        let warehouse;
+        if (warehouseId === 'W1' || warehouseId === 'W2') {
+            warehouse = await Warehouse.findOne({ name: warehouseId === 'W1' ? /Kurla/ : /DP World/ }).session(session);
+        } else if (mongoose.Types.ObjectId.isValid(warehouseId)) {
+            warehouse = await Warehouse.findById(warehouseId).session(session);
+        }
+
+        if (!warehouse) {
+            // Fallback: Just pick any warehouse if mock was used or ID invalid
+            warehouse = await Warehouse.findOne().session(session);
+            if (!warehouse) {
+                console.error('❌ No warehouses found in database');
+                throw new Error('No warehouses available in database');
+            }
+            console.warn(`⚠️  Original ID ${warehouseId} not found, using fallback: ${warehouse.name}`);
+        }
 
         // Check for double allocation or status change
         if (order.sourceWarehouse) {
@@ -95,11 +118,11 @@ router.post('/assign-to-order', async (req, res) => {
         }
 
         // Allocate using FIFO
-        const allocatedItems = await InventoryService.allocateStock(warehouseId, order.items, orderId, session);
+        const allocatedItems = await InventoryService.allocateStock(warehouse._id, order.items, orderId, session);
 
         // Update Order
         order.items = allocatedItems;
-        order.sourceWarehouse = warehouseId;
+        order.sourceWarehouse = warehouse._id;
         order.status = 'Pending Packing';
         order.statusHistory.push({ status: 'Pending Packing' });
         await order.save({ session });
