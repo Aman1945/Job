@@ -12,6 +12,7 @@ const orderSchema = new mongoose.Schema({
         price: { type: Number },
         barcode: { type: String },
         unit: { type: String },
+        boxCount: { type: Number, default: 0 },
         baseRate: { type: Number },
         prevRate: { type: Number, default: 0 },
         imageUrl: { type: String },

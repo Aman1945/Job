@@ -50,6 +50,8 @@ class _BookOrderScreenState extends State<BookOrderScreen> {
         'productName': 'Select SKU...',
         'skuCode': '',
         'quantity': 1,
+        'boxCount': 1,
+        'unit': 'KG',
         'price': 0.0,
         'prevRate': 0.0,
         'imageUrl': '',
@@ -73,6 +75,8 @@ class _BookOrderScreenState extends State<BookOrderScreen> {
         'productName': product.name,
         'skuCode': product.skuCode,
         'quantity': 1,
+        'boxCount': 1,
+        'unit': 'KG',
         'price': rate,
         'prevRate': prevRate,
         'imageUrl': product.imageUrl ?? '',
@@ -646,12 +650,19 @@ class _BookOrderScreenState extends State<BookOrderScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
         children: [
-          Expanded(flex: 4, child: Text('PRODUCT / SKU', style: _tableHeaderStyle)),
-          Expanded(flex: 1, child: Text('UNIT', style: _tableHeaderStyle)),
-          Expanded(flex: 1, child: Text('APPLIED RATE', style: _tableHeaderStyle)),
-          Expanded(flex: 1, child: Text('PREV. RATE', style: _tableHeaderStyle.copyWith(color: NexusTheme.indigo600))),
-          Expanded(flex: 1, child: Text('QTY', style: _tableHeaderStyle)),
-          Expanded(flex: 2, child: Text('FINAL RATE', style: _tableHeaderStyle, textAlign: TextAlign.center)),
+          Expanded(flex: 3, child: Text('PRODUCT / SKU', style: _tableHeaderStyle)),
+          const SizedBox(width: 8),
+          Expanded(flex: 1, child: Text('BOX', style: _tableHeaderStyle, textAlign: TextAlign.center)),
+          const SizedBox(width: 8),
+          Expanded(flex: 1, child: Text('QTY', style: _tableHeaderStyle, textAlign: TextAlign.center)),
+          const SizedBox(width: 8),
+          Expanded(flex: 1, child: Text('UNIT', style: _tableHeaderStyle, textAlign: TextAlign.center)),
+          const SizedBox(width: 8),
+          Expanded(flex: 1, child: Text('APPLIED RATE', style: _tableHeaderStyle, textAlign: TextAlign.center)),
+          const SizedBox(width: 8),
+          Expanded(flex: 1, child: Text('PREV. RATE', style: _tableHeaderStyle.copyWith(color: NexusTheme.indigo600), textAlign: TextAlign.center)),
+          const SizedBox(width: 8),
+          Expanded(flex: 2, child: Text('TOTAL', style: _tableHeaderStyle, textAlign: TextAlign.center)),
           const SizedBox(width: 48),
         ],
       ),
@@ -676,10 +687,27 @@ class _BookOrderScreenState extends State<BookOrderScreen> {
             const SizedBox(height: 12),
             Row(
               children: [
+                Expanded(child: _buildValueBox('BOX', item['boxCount'].toString(), controller: true, onChanged: (val) {
+                  setState(() => cartItems[index]['boxCount'] = int.tryParse(val) ?? 1);
+                })),
+                const SizedBox(width: 8),
                 Expanded(child: _buildValueBox('QTY', item['quantity'].toString(), controller: true, onChanged: (val) {
                   setState(() => cartItems[index]['quantity'] = int.tryParse(val) ?? 1);
                 })),
-                const SizedBox(width: 12),
+                const SizedBox(width: 8),
+                Expanded(child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('UNIT', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: NexusTheme.slate400)),
+                    const SizedBox(height: 4),
+                    _buildUnitDropdown(index, item['unit']),
+                  ],
+                )),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
                 Expanded(child: _buildValueBox('RATE', item['price'].toString(), controller: true, onChanged: (val) {
                   setState(() => cartItems[index]['price'] = double.tryParse(val) ?? 0.0);
                 })),
@@ -704,9 +732,13 @@ class _BookOrderScreenState extends State<BookOrderScreen> {
       ),
       child: Row(
         children: [
-          Expanded(flex: 4, child: _buildSKUDropdown(index, item, products)),
+          Expanded(flex: 3, child: _buildSKUDropdown(index, item, products)),
           const SizedBox(width: 8),
-          Expanded(flex: 1, child: _buildUnitBox('PCS')),
+          Expanded(flex: 1, child: _buildBoxInput(index, item['boxCount'])),
+          const SizedBox(width: 8),
+          Expanded(flex: 1, child: _buildQtyInput(index, item['quantity'])),
+          const SizedBox(width: 8),
+          Expanded(flex: 1, child: _buildUnitDropdown(index, item['unit'])),
           const SizedBox(width: 8),
           Expanded(flex: 1, child: _buildPriceInput(index, item['price'])),
           const SizedBox(width: 8),
@@ -718,8 +750,6 @@ class _BookOrderScreenState extends State<BookOrderScreen> {
               Text('₹${item['prevRate']}', textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.bold, color: NexusTheme.indigo600, fontSize: 11)),
             ],
           )),
-          const SizedBox(width: 8),
-          Expanded(flex: 1, child: _buildQtyInput(index, item['quantity'])),
           const SizedBox(width: 8),
           Expanded(flex: 2, child: _buildFinalRateDisplay((item['price'] as num) * (item['quantity'] as num))),
           const SizedBox(width: 16),
@@ -1017,6 +1047,91 @@ class _BookOrderScreenState extends State<BookOrderScreen> {
           contentPadding: EdgeInsets.symmetric(vertical: 12),
           prefixText: '₹',
           prefixStyle: TextStyle(color: NexusTheme.slate400, fontSize: 10),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBoxInput(int index, int boxes) {
+    return Container(
+      height: 40,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: NexusTheme.slate200),
+      ),
+      child: TextFormField(
+        initialValue: boxes.toString(),
+        keyboardType: TextInputType.number,
+        textAlign: TextAlign.center,
+        onChanged: (val) {
+          setState(() {
+            cartItems[index]['boxCount'] = int.tryParse(val) ?? 1;
+          });
+        },
+        style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: NexusTheme.slate900),
+        decoration: const InputDecoration(
+          border: InputBorder.none,
+          isDense: true,
+          contentPadding: EdgeInsets.symmetric(vertical: 11),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildUnitDropdown(int index, String currentUnit) {
+    return Container(
+      height: 40,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: NexusTheme.indigo600, width: 1.5),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton2<String>(
+          isExpanded: true,
+          items: ['PCS', 'KG', 'PKT']
+              .map((String item) => DropdownMenuItem<String>(
+                    value: item,
+                    child: Center(
+                      child: Text(
+                        item,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w900,
+                          color: NexusTheme.slate900,
+                        ),
+                      ),
+                    ),
+                  ))
+              .toList(),
+          value: currentUnit,
+          onChanged: (value) {
+            setState(() {
+              cartItems[index]['unit'] = value;
+            });
+          },
+          buttonStyleData: ButtonStyleData(
+            height: 40,
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            decoration: BoxDecoration(borderRadius: BorderRadius.circular(8)),
+          ),
+          dropdownStyleData: DropdownStyleData(
+            width: 80,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              color: Colors.white,
+              border: Border.all(color: NexusTheme.slate200),
+            ),
+            offset: const Offset(-10, -4),
+          ),
+          iconStyleData: const IconStyleData(
+            icon: Icon(Icons.keyboard_arrow_down_rounded, color: NexusTheme.slate900, size: 14),
+          ),
+          menuItemStyleData: const MenuItemStyleData(
+            height: 36,
+            padding: EdgeInsets.symmetric(horizontal: 8),
+          ),
         ),
       ),
     );
