@@ -14,7 +14,7 @@ class InventoryService {
 
         for (const item of items) {
             const productSku = item.skuCode || item.name;
-            const requiredQty = item.qty;
+            const requiredQty = item.quantity || item.qty || 0;
 
             // Find all batches for this product
             let inventoryItem = warehouse.inventory.find(inv => 

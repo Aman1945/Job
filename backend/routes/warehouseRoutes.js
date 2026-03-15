@@ -50,18 +50,18 @@ router.post('/add-stock', async (req, res) => {
 
             const batch = {
                 batchNumber: item.batchNumber || `BATCH-${Date.now()}`,
-                qty: item.qty,
+                qty: item.quantity || item.qty || 0,
                 expiry: item.expiry || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days default
             };
             invItem.batches.push(batch);
-            invItem.qty += item.qty;
+            invItem.qty += (item.quantity || item.qty || 0);
 
             // Log movement
             await new StockLedger({
                 productId: item.skuCode || item.name,
                 warehouseId,
                 type: 'ADD',
-                qty: item.qty,
+                qty: item.quantity || item.qty || 0,
                 details: `Stock entry: ${batch.batchNumber}`
             }).save({ session });
         }
