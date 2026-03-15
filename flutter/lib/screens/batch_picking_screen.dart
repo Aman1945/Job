@@ -210,20 +210,26 @@ class _BatchPickingScreenState extends State<BatchPickingScreen> {
   }
 
   Widget _buildModeToggle() {
-    return Container(
-      height: 48,
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withOpacity(0.1)),
-      ),
-      child: Row(
-        children: [
-          _buildToggleButton('AUTO-SCAN', LucideIcons.scan, isAutoScan, () => setState(() => isAutoScan = true)),
-          _buildToggleButton('MANUAL', LucideIcons.send, !isAutoScan, () => setState(() => isAutoScan = false)),
-        ],
-      ),
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          height: 48,
+          padding: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            color: Colors.black.withOpacity(0.2),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.white.withOpacity(0.1)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildToggleButton('AUTO-SCAN', LucideIcons.scan, isAutoScan, () => setState(() => isAutoScan = true)),
+              _buildToggleButton('MANUAL', LucideIcons.send, !isAutoScan, () => setState(() => isAutoScan = false)),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -255,24 +261,29 @@ class _BatchPickingScreenState extends State<BatchPickingScreen> {
   }
 
   Widget _buildLoadUnitsCounter() {
-    return Container(
-      height: 48,
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withOpacity(0.1)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(LucideIcons.box, color: Color(0xFF10B981), size: 16),
-          const SizedBox(width: 12),
-          const Text('13', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900)),
-          const SizedBox(width: 12),
-          const Text('LOAD UNITS', style: TextStyle(color: Color(0xFF10B981), fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
-        ],
-      ),
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          height: 48,
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          decoration: BoxDecoration(
+            color: Colors.black.withOpacity(0.2),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.white.withOpacity(0.1)),
+          ),
+          child: const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(LucideIcons.box, color: Color(0xFF10B981), size: 16),
+              SizedBox(width: 12),
+              Text('13', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900)),
+              SizedBox(width: 12),
+              Text('LOAD UNITS', style: TextStyle(color: Color(0xFF10B981), fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
