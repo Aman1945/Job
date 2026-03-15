@@ -3,10 +3,9 @@ import 'package:provider/provider.dart';
 import '../providers/nexus_provider.dart';
 import '../providers/auth_provider.dart';
 import '../models/models.dart';
-import '../widgets/nexus_components.dart';
+import '../utils/theme.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:intl/intl.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 class WarehouseSelectionScreen extends StatefulWidget {
   const WarehouseSelectionScreen({super.key});
@@ -17,19 +16,29 @@ class WarehouseSelectionScreen extends StatefulWidget {
 
 class _WarehouseSelectionScreenState extends State<WarehouseSelectionScreen> {
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final provider = Provider.of<NexusProvider>(context, listen: false);
+      provider.fetchWarehouses();
+      provider.fetchOrders();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final provider = Provider.of<NexusProvider>(context);
     final orders = provider.orders.where((o) => o.status == 'Pending WH Selection').toList();
     final warehouses = provider.warehouses;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A), // Dark background matching screenshots
+      backgroundColor: NexusTheme.slate50,
       appBar: AppBar(
         title: const Text('Warehouse Selection', 
-          style: TextStyle(fontWeight: FontWeight.w900, fontSize: 20, color: Colors.white, fontFamily: 'Montserrat')),
-        backgroundColor: Colors.transparent,
+          style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: NexusTheme.slate900)),
+        backgroundColor: Colors.white,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.white),
+        iconTheme: const IconThemeData(color: NexusTheme.slate900),
         actions: [
           IconButton(icon: const Icon(LucideIcons.refreshCw), onPressed: () => provider.refreshData()),
         ],
@@ -40,12 +49,12 @@ class _WarehouseSelectionScreenState extends State<WarehouseSelectionScreen> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
             child: Text('${orders.length} orders awaiting warehouse assignment', 
-              style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 13, fontWeight: FontWeight.w600)),
+              style: const TextStyle(color: NexusTheme.slate500, fontSize: 13, fontWeight: FontWeight.w600)),
           ),
           
           // --- WAREHOUSE STATUS CARDS (HORIZONTAL) ---
           const SizedBox(height: 16),
-          _buildWarehouseScroll(warehouses),
+          _buildWarehouseScroll(warehouses, orders),
           
           const SizedBox(height: 24),
           
@@ -53,9 +62,9 @@ class _WarehouseSelectionScreenState extends State<WarehouseSelectionScreen> {
           Expanded(
             child: Container(
               width: double.infinity,
-              decoration: BoxDecoration(
-                color: const Color(0xFF1E293B).withValues(alpha: 0.5),
-                borderRadius: const BorderRadius.only(topLeft: Radius.circular(32), topRight: Radius.circular(32)),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.only(topLeft: Radius.circular(32), topRight: Radius.circular(32)),
               ),
               child: ClipRRect(
                 borderRadius: const BorderRadius.only(topLeft: Radius.circular(32), topRight: Radius.circular(32)),
@@ -72,7 +81,7 @@ class _WarehouseSelectionScreenState extends State<WarehouseSelectionScreen> {
     );
   }
 
-  Widget _buildWarehouseScroll(List<Warehouse> warehouses) {
+  Widget _buildWarehouseScroll(List<Warehouse> warehouses, List<Order> orders) {
     return SizedBox(
       height: 160,
       child: ListView.builder(
@@ -84,69 +93,80 @@ class _WarehouseSelectionScreenState extends State<WarehouseSelectionScreen> {
             // Mock data if empty
             return _buildWarehouseCard(
               Warehouse(
-                id: 'W1', name: index == 0 ? 'Kurla Cold Storage' : 'DP World Nhava Sheva',
+                id: index == 0 ? 'W1' : 'W2', 
+                name: index == 0 ? 'Kurla Cold Storage' : 'DP World Nhava Sheva',
                 location: index == 0 ? 'Mumbai' : 'Navi Mumbai',
                 tempRange: index == 0 ? '-18°C to 4°C' : '-22°C to -18°C',
                 capacityUsed: index == 0 ? 38 : 52,
                 capacityMax: index == 0 ? 50 : 80,
                 manager: index == 0 ? 'Deepak More' : 'Sanjay Bhat'
-              )
+              ),
+              orders.isNotEmpty ? orders.first : null
             );
           }
-          return _buildWarehouseCard(warehouses[index]);
+          return _buildWarehouseCard(warehouses[index], orders.isNotEmpty ? orders.first : null);
         },
       ),
     );
   }
 
-  Widget _buildWarehouseCard(Warehouse wh) {
+  Widget _buildWarehouseCard(Warehouse wh, Order? pendingOrder) {
     final progress = wh.capacityUsed / wh.capacityMax;
-    final color = progress > 0.8 ? Colors.orangeAccent : const Color(0xFF1ABFA1);
+    final color = progress > 0.8 ? NexusTheme.rose600 : NexusTheme.emerald500;
 
-    return Container(
-      width: 280,
-      margin: const EdgeInsets.only(right: 20),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1E293B),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 10, offset: const Offset(0, 4))],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(LucideIcons.factory, color: Colors.orangeAccent, size: 18),
-              const SizedBox(width: 8),
-              Expanded(child: Text(wh.name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Colors.white))),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text('${wh.location} • ${wh.tempRange}', style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 11, fontWeight: FontWeight.w600)),
-          const Spacer(),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text('Capacity', style: TextStyle(color: Colors.grey, fontSize: 11, fontWeight: FontWeight.bold)),
-              Text('${wh.capacityUsed.toInt()} Ton / ${wh.capacityMax.toInt()} Ton', 
-                style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w900)),
-            ],
-          ),
-          const SizedBox(height: 8),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(
-              value: progress,
-              backgroundColor: Colors.white.withValues(alpha: 0.05),
-              color: color,
-              minHeight: 6,
+    return InkWell(
+      onTap: pendingOrder != null ? () {
+        debugPrint('Tapped Warehouse: ${wh.name} for Order: ${pendingOrder.id}');
+        _assignFacility(pendingOrder, wh);
+      } : null,
+      borderRadius: BorderRadius.circular(24),
+      child: Container(
+        width: 280,
+        margin: const EdgeInsets.only(right: 20),
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: NexusTheme.slate200),
+          boxShadow: [
+            BoxShadow(color: NexusTheme.slate900.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4))
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(LucideIcons.factory, color: NexusTheme.emerald600, size: 18),
+                const SizedBox(width: 8),
+                Expanded(child: Text(wh.name, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: NexusTheme.slate900))),
+              ],
             ),
-          ),
-          const SizedBox(height: 12),
-          Text('Manager: ${wh.manager}', style: TextStyle(color: Colors.white.withValues(alpha: 0.3), fontSize: 10, fontWeight: FontWeight.w600)),
-        ],
+            const SizedBox(height: 4),
+            Text('${wh.location} • ${wh.tempRange}', style: const TextStyle(color: NexusTheme.slate500, fontSize: 11, fontWeight: FontWeight.w600)),
+            const Spacer(),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Capacity', style: TextStyle(color: NexusTheme.slate400, fontSize: 11, fontWeight: FontWeight.bold)),
+                Text('${wh.capacityUsed.toInt()} Ton / ${wh.capacityMax.toInt()} Ton', 
+                  style: TextStyle(color: NexusTheme.slate900, fontSize: 11, fontWeight: FontWeight.w900)),
+              ],
+            ),
+            const SizedBox(height: 8),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: progress,
+                backgroundColor: NexusTheme.slate100,
+                color: color,
+                minHeight: 6,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text('Manager: ${wh.manager}', style: const TextStyle(color: NexusTheme.slate400, fontSize: 10, fontWeight: FontWeight.w600)),
+          ],
+        ),
       ),
     );
   }
@@ -156,9 +176,12 @@ class _WarehouseSelectionScreenState extends State<WarehouseSelectionScreen> {
       margin: const EdgeInsets.only(bottom: 24),
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: const Color(0xFF1E293B),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+        border: Border.all(color: NexusTheme.slate200),
+        boxShadow: [
+          BoxShadow(color: NexusTheme.slate900.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4))
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -166,43 +189,50 @@ class _WarehouseSelectionScreenState extends State<WarehouseSelectionScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(order.id, style: const TextStyle(color: Color(0xFF1ABFA1), fontWeight: FontWeight.w900, letterSpacing: 1, fontSize: 12)),
-                  const SizedBox(height: 4),
-                  Text(order.customerName, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900)),
-                  Text('${order.items.length} items • ₹${NumberFormat('#,###').format(order.total)}', 
-                    style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 12, fontWeight: FontWeight.w600)),
-                ],
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                decoration: BoxDecoration(
-                  color: Colors.blueAccent.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.blueAccent.withValues(alpha: 0.2)),
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(LucideIcons.clock, color: Colors.blueAccent, size: 14),
-                    SizedBox(width: 8),
-                    Text('Pending WH Selection', style: TextStyle(color: Colors.blueAccent, fontSize: 10, fontWeight: FontWeight.w900)),
+                    Text(order.id, style: TextStyle(color: NexusTheme.emerald600, fontWeight: FontWeight.w900, letterSpacing: 1, fontSize: 12)),
+                    const SizedBox(height: 4),
+                    Text(order.customerName, 
+                      style: TextStyle(color: NexusTheme.slate900, fontSize: 18, fontWeight: FontWeight.w900, height: 1.2),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text('${order.items.length} items • ₹${NumberFormat('#,###').format(order.total)}', 
+                      style: TextStyle(color: NexusTheme.slate500, fontSize: 12, fontWeight: FontWeight.w600)),
                   ],
                 ),
               ),
             ],
           ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.blueAccent.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.blueAccent.withValues(alpha: 0.2)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(LucideIcons.clock, size: 12, color: Colors.blueAccent),
+                const SizedBox(width: 8),
+                Text(order.status.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 10, letterSpacing: 1, color: Colors.blueAccent)),
+              ],
+            ),
+          ),
           const SizedBox(height: 24),
-          const Text('SELECT WAREHOUSE', style: TextStyle(color: Colors.white24, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1)),
+          const Text('SELECT WAREHOUSE', style: TextStyle(color: NexusTheme.slate400, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1)),
           const SizedBox(height: 12),
           Wrap(
             spacing: 12,
             runSpacing: 12,
             children: (warehouses.isNotEmpty ? warehouses : [
-              Warehouse(id: 'WH001', name: 'Kurla Cold Storage', location: 'Mumbai', tempRange: '-18°C', capacityUsed: 38, capacityMax: 50, manager: ''),
-              Warehouse(id: 'WH002', name: 'DP World Nhava Sheva', location: 'Navi Mumbai', tempRange: '-22°C', capacityUsed: 52, capacityMax: 80, manager: ''),
+              Warehouse(id: 'W1', name: 'Kurla Cold Storage', location: 'Mumbai', tempRange: '-18°C', capacityUsed: 38, capacityMax: 50, manager: ''),
+              Warehouse(id: 'W2', name: 'DP World Nhava Sheva', location: 'Navi Mumbai', tempRange: '-22°C', capacityUsed: 52, capacityMax: 80, manager: ''),
             ]).map((wh) => _buildSelectionButton(order, wh)).toList(),
           ),
         ],
@@ -217,9 +247,9 @@ class _WarehouseSelectionScreenState extends State<WarehouseSelectionScreen> {
         width: 320,
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         decoration: BoxDecoration(
-          color: const Color(0xFF1ABFA1).withValues(alpha: 0.05),
+          color: NexusTheme.emerald50,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFF1ABFA1).withValues(alpha: 0.2)),
+          border: Border.all(color: NexusTheme.emerald200),
         ),
         child: Row(
           children: [
@@ -229,9 +259,9 @@ class _WarehouseSelectionScreenState extends State<WarehouseSelectionScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(wh.name, style: const TextStyle(color: Color(0xFF1ABFA1), fontSize: 11, fontWeight: FontWeight.w900)),
+                  Text(wh.name, style: const TextStyle(color: NexusTheme.emerald700, fontSize: 11, fontWeight: FontWeight.w900)),
                   Text('${wh.capacityUsed.toInt()} Ton/${wh.capacityMax.toInt()} Ton', 
-                    style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 10, fontWeight: FontWeight.w600)),
+                    style: const TextStyle(color: NexusTheme.slate500, fontSize: 10, fontWeight: FontWeight.w600)),
                 ],
               ),
             ),
@@ -248,13 +278,21 @@ class _WarehouseSelectionScreenState extends State<WarehouseSelectionScreen> {
     // Call the dedicated assignment API which handles FIFO batch allocation
     final success = await provider.assignWarehouseToOrder(order.id, wh.id, token: auth.token); 
     
-    if (success && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Order ${order.id} assigned to ${wh.name} via FIFO'),
-        backgroundColor: const Color(0xFF1ABFA1),
-        behavior: SnackBarBehavior.floating,
-      ));
-      setState(() {});
+    if (mounted) {
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Order ${order.id} assigned to ${wh.name} via FIFO'),
+          backgroundColor: NexusTheme.emerald600,
+          behavior: SnackBarBehavior.floating,
+        ));
+        setState(() {});
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Assignment Failed: Check warehouse stock or connection.'),
+          backgroundColor: NexusTheme.rose600,
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
     }
   }
 }

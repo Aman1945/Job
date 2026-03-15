@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/nexus_provider.dart';
 import '../providers/auth_provider.dart';
 import '../models/models.dart';
-import '../widgets/nexus_components.dart';
+import '../utils/theme.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:intl/intl.dart';
 
@@ -15,6 +15,14 @@ class WarehousePackingScreen extends StatefulWidget {
 }
 
 class _WarehousePackingScreenState extends State<WarehousePackingScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<NexusProvider>(context, listen: false).fetchOrders();
+    });
+  }
+
   // Map to track checked items: { orderId: [checkedIndex1, checkedIndex2, ...] }
   final Map<String, Set<int>> _checkedItems = {};
 
@@ -24,13 +32,13 @@ class _WarehousePackingScreenState extends State<WarehousePackingScreen> {
     final orders = provider.orders.where((o) => o.status == 'Pending Packing').toList();
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A), // Dark background
+      backgroundColor: NexusTheme.slate50,
       appBar: AppBar(
         title: const Text('Packing & Fulfillment', 
-          style: TextStyle(fontWeight: FontWeight.w900, fontSize: 20, color: Colors.white, fontFamily: 'Montserrat')),
-        backgroundColor: Colors.transparent,
+          style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: NexusTheme.slate900)),
+        backgroundColor: Colors.white,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.white),
+        iconTheme: const IconThemeData(color: NexusTheme.slate900),
         actions: [
           IconButton(icon: const Icon(LucideIcons.refreshCw), onPressed: () => provider.refreshData()),
         ],
@@ -44,13 +52,13 @@ class _WarehousePackingScreenState extends State<WarehousePackingScreen> {
               children: [
                 Container(
                   width: 8, height: 8,
-                  decoration: const BoxDecoration(color: Color(0xFF1ABFA1), shape: BoxShape.circle),
+                  decoration: const BoxDecoration(color: NexusTheme.emerald500, shape: BoxShape.circle),
                 ),
                 const SizedBox(width: 8),
-                Text('LIVE', style: TextStyle(color: const Color(0xFF1ABFA1), fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1.5)),
+                const Text('LIVE', style: TextStyle(color: NexusTheme.emerald600, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1.5)),
                 const SizedBox(width: 12),
                 Text('${orders.length} orders ready for packing', 
-                  style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 13, fontWeight: FontWeight.w600)),
+                  style: const TextStyle(color: NexusTheme.slate500, fontSize: 13, fontWeight: FontWeight.w600)),
               ],
             ),
           ),
@@ -75,9 +83,12 @@ class _WarehousePackingScreenState extends State<WarehousePackingScreen> {
     return Container(
       margin: const EdgeInsets.only(bottom: 24),
       decoration: BoxDecoration(
-        color: const Color(0xFF1E293B),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+        border: Border.all(color: NexusTheme.slate200),
+        boxShadow: [
+          BoxShadow(color: NexusTheme.slate900.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4))
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -91,31 +102,31 @@ class _WarehousePackingScreenState extends State<WarehousePackingScreen> {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(order.id, style: const TextStyle(color: Color(0xFF1ABFA1), fontWeight: FontWeight.w900, letterSpacing: 1, fontSize: 12)),
+                    Text(order.id, style: const TextStyle(color: NexusTheme.emerald600, fontWeight: FontWeight.w900, letterSpacing: 1, fontSize: 12)),
                     const SizedBox(height: 4),
-                    Text(order.customerName, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900)),
+                    Text(order.customerName, style: const TextStyle(color: NexusTheme.slate900, fontSize: 18, fontWeight: FontWeight.w900)),
                   ],
                 ),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.05),
+                    color: NexusTheme.slate100,
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Text('WH: WH001', style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 10, fontWeight: FontWeight.w900)),
+                  child: const Text('WH: WH001', style: TextStyle(color: NexusTheme.slate500, fontSize: 10, fontWeight: FontWeight.w900)),
                 ),
               ],
             ),
           ),
           
-          const Divider(color: Colors.white10, height: 1),
+          const Divider(color: NexusTheme.slate100, height: 1),
           
           // Items List
           ListView.separated(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             itemCount: order.items.length,
-            separatorBuilder: (context, index) => const Divider(color: Colors.white10, height: 1),
+            separatorBuilder: (context, index) => const Divider(color: NexusTheme.slate100, height: 1),
             itemBuilder: (context, idx) {
               final item = order.items[idx];
               final isChecked = checkedSet.contains(idx);
@@ -140,21 +151,21 @@ class _WarehousePackingScreenState extends State<WarehousePackingScreen> {
                       Container(
                         width: 20, height: 20,
                         decoration: BoxDecoration(
-                          color: isChecked ? const Color(0xFF1ABFA1) : Colors.transparent,
+                          color: isChecked ? NexusTheme.emerald500 : Colors.transparent,
                           borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: isChecked ? const Color(0xFF1ABFA1) : Colors.white24, width: 1.5),
+                          border: Border.all(color: isChecked ? NexusTheme.emerald500 : NexusTheme.slate300, width: 1.5),
                         ),
-                        child: isChecked ? const Icon(LucideIcons.check, size: 12, color: Color(0xFF0F172A)) : null,
+                        child: isChecked ? const Icon(LucideIcons.check, size: 12, color: Colors.white) : null,
                       ),
                       const SizedBox(width: 16),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(item.name, style: TextStyle(color: isChecked ? Colors.white38 : Colors.white, fontSize: 14, fontWeight: FontWeight.bold, decoration: isChecked ? TextDecoration.lineThrough : null)),
+                            Text(item.name, style: TextStyle(color: isChecked ? NexusTheme.slate400 : NexusTheme.slate900, fontSize: 14, fontWeight: FontWeight.bold, decoration: isChecked ? TextDecoration.lineThrough : null)),
                             const SizedBox(height: 4),
                             Text('${item.quantity} KG • Batch: $batch • Exp: $expiry', 
-                              style: TextStyle(color: Colors.white.withValues(alpha: 0.3), fontSize: 11, fontWeight: FontWeight.w600)),
+                              style: TextStyle(color: NexusTheme.slate500, fontSize: 11, fontWeight: FontWeight.w600)),
                           ],
                         ),
                       ),
@@ -173,22 +184,22 @@ class _WarehousePackingScreenState extends State<WarehousePackingScreen> {
               child: ElevatedButton(
                 onPressed: allChecked ? () => _pushToQC(order) : null,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF1ABFA1),
-                  foregroundColor: const Color(0xFF0F172A),
-                  disabledBackgroundColor: Colors.white.withValues(alpha: 0.05),
-                  disabledForegroundColor: Colors.white10,
+                  backgroundColor: NexusTheme.emerald600,
+                  foregroundColor: Colors.white,
+                  disabledBackgroundColor: NexusTheme.slate100,
+                  disabledForegroundColor: NexusTheme.slate300,
                   padding: const EdgeInsets.symmetric(vertical: 20),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   elevation: 0,
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
+                  children: const [
                     Text('PACKING COMPLETE', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 0.5)),
-                    const SizedBox(width: 8),
-                    const Icon(LucideIcons.arrowRight, size: 16),
-                    const SizedBox(width: 8),
-                    const Text('SEND TO QC', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 11)),
+                    SizedBox(width: 8),
+                    Icon(LucideIcons.arrowRight, size: 16),
+                    SizedBox(width: 8),
+                    Text('SEND TO QC', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 11)),
                   ],
                 ),
               ),
@@ -208,7 +219,7 @@ class _WarehousePackingScreenState extends State<WarehousePackingScreen> {
     if (success && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text('Order ${order.id} sent to Quality Control'),
-        backgroundColor: const Color(0xFF1ABFA1),
+        backgroundColor: NexusTheme.emerald600,
         behavior: SnackBarBehavior.floating,
       ));
       setState(() {
