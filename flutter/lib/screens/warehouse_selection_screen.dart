@@ -198,12 +198,13 @@ class _WarehouseSelectionScreenState extends State<WarehouseSelectionScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(order.id, style: TextStyle(color: NexusTheme.emerald600, fontWeight: FontWeight.w900, letterSpacing: 1, fontSize: 12)),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 8), // Increased space "niche lele thoda"
                     Text(order.customerName, 
                       style: TextStyle(color: NexusTheme.slate900, fontSize: 18, fontWeight: FontWeight.w900, height: 1.2),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
+                    const SizedBox(height: 4),
                     Text('${order.items.length} items • ₹${NumberFormat('#,###').format(order.total)}', 
                       style: TextStyle(color: NexusTheme.slate500, fontSize: 12, fontWeight: FontWeight.w600)),
                   ],
