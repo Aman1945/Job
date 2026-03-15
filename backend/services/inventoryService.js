@@ -13,12 +13,13 @@ class InventoryService {
         const allocatedItems = [];
 
         for (const item of items) {
-            const productSku = item.skuCode || item.name;
+            const productSku = item.skuCode || item.productName || item.name;
             const requiredQty = item.quantity || item.qty || 0;
+            console.log(`🔍 Processing Item: ${productSku}, Required Qty: ${requiredQty}`);
 
             // Find all batches for this product
             let inventoryItem = warehouse.inventory.find(inv => 
-                inv.skuCode === productSku || inv.name === productSku
+                (productSku && inv.skuCode === productSku) || (productSku && inv.name === productSku)
             );
 
             if (!inventoryItem || inventoryItem.qty < requiredQty) {
@@ -71,10 +72,12 @@ class InventoryService {
             // Deduct total qty from inventory item
             inventoryItem.qty -= requiredQty;
 
+            const itemToSave = item.toObject ? item.toObject() : item;
             allocatedItems.push({
-                ...item,
+                ...itemToSave,
                 allocatedBatches
             });
+            console.log(`✅ Allocated ${allocatedBatches.length} batches for ${productSku}`);
 
             // Log movement
             await new StockLedger({

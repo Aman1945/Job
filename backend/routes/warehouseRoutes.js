@@ -90,8 +90,9 @@ router.post('/assign-to-order', async (req, res) => {
         const order = await Order.findOne({ id: orderId }).session(session);
         if (!order) {
             console.error(`❌ Order not found: ${orderId}`);
-            throw new Error('Order not found');
+            throw new Error(`Order ${orderId} not found`);
         }
+        console.log(`📦 Order found: ${order.id}, items: ${order.items?.length}`);
 
         // Handle Mock IDs or search by ID field
         let warehouse;
