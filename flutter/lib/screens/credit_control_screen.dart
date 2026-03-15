@@ -520,6 +520,7 @@ class _EditOrderDialogState extends State<_EditOrderDialog> {
       'skuCode': i.skuCode,
       'name': i.productName,
       'quantity': i.quantity,
+      'boxCount': (i.boxCount == null || i.boxCount == 0) ? 1 : i.boxCount,
       'price': i.price,
       'prevRate': i.prevRate, // Added prevRate from existing order item
       'unit': i.unit ?? 'KG',
@@ -541,7 +542,16 @@ class _EditOrderDialogState extends State<_EditOrderDialog> {
   }
 
   double get _revisedTotal {
-    return items.fold(0, (sum, item) => sum + ((item['price'] as num) * (item['quantity'] as num)) * 1.18);
+    double total = 0;
+    for (int i = 0; i < items.length; i++) {
+      final item = items[i];
+      final qty = int.tryParse(qtyControllers[i].text) ?? (item['quantity'] as num);
+      final rate = double.tryParse(rateControllers[i].text) ?? (item['price'] as num).toDouble();
+      final box = (item['boxCount'] as num? ?? 1);
+      final boxMultiplier = box == 0 ? 1 : box;
+      total += rate * qty * boxMultiplier * 1.18;
+    }
+    return total;
   }
 
   void _addNewLine() {
@@ -564,37 +574,56 @@ class _EditOrderDialogState extends State<_EditOrderDialog> {
     final products = provider.products;
 
     return Dialog(
-      insetPadding: const EdgeInsets.all(20),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(32)),
       child: LayoutBuilder(
         builder: (context, constraints) {
           return Container(
             width: 1000,
-            padding: const EdgeInsets.all(32),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8FAFF),
+              borderRadius: BorderRadius.circular(32),
+            ),
             child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Top app-bar style row
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Row(
-                        children: [
-                          Icon(LucideIcons.edit3, color: NexusTheme.indigo600, size: 20),
-                          SizedBox(width: 12),
-                          Text('EDIT SUPPLY MISSION', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: NexusTheme.slate800)),
-                        ],
-                      ),
                       IconButton(
                         onPressed: () => Navigator.pop(context),
-                        icon: const Icon(Icons.close, color: NexusTheme.slate400),
+                        icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18, color: NexusTheme.slate900),
+                      ),
+                      const SizedBox(width: 4),
+                      const Expanded(
+                        child: Text(
+                          'EDIT SUPPLY MISSION',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 14,
+                            letterSpacing: 0.5,
+                            color: NexusTheme.slate900,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        width: 4,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          color: NexusTheme.amber500,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 32),
-                  const Divider(),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 16),
+                  const Divider(thickness: 0.6, color: Color(0xFFE2E8F0)),
+                  const SizedBox(height: 20),
                   // Header (Only show if not cramped)
                   if (constraints.maxWidth > 600)
                     Padding(
@@ -615,64 +644,108 @@ class _EditOrderDialogState extends State<_EditOrderDialog> {
                   Column(
                     children: items.asMap().entries.map((entry) => _buildItemRow(entry.key, entry.value, products, constraints.maxWidth)).toList(),
                   ),
-                  const SizedBox(height: 24),
-                  // Add New Item Button
-                  Center(
-                    child: GestureDetector(
-                      onTap: _addNewLine,
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: NexusTheme.slate200, style: BorderStyle.solid),
+                  const SizedBox(height: 18),
+                  // Add New Item Button — soft dashed-style block
+                  GestureDetector(
+                    onTap: _addNewLine,
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: const Color(0xFFE2E8F0),
+                          width: 1.2,
                         ),
-                        child: const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.add, size: 16, color: NexusTheme.slate400),
-                            SizedBox(width: 8),
-                            Text('ADD NEW ITEM LINE', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 10, color: NexusTheme.slate400, letterSpacing: 1)),
-                          ],
+                      ),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.add, size: 16, color: NexusTheme.slate400),
+                          SizedBox(width: 8),
+                          Text(
+                            'ADD NEW ITEM LINE',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w900,
+                              fontSize: 10,
+                              color: NexusTheme.slate400,
+                              letterSpacing: 1,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  // Reject / Cancel inline action
+                  Center(
+                    child: TextButton(
+                      onPressed: isSaving ? null : () => Navigator.pop(context),
+                      child: const Text(
+                        'REJECT / CANCEL MISSION',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w900,
+                          fontSize: 11,
+                          letterSpacing: 0.5,
+                          color: NexusTheme.rose600,
                         ),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 32),
-                  const Divider(),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 16),
+                  const Divider(thickness: 0.6, color: Color(0xFFE2E8F0)),
+                  const SizedBox(height: 20),
                   // Footer
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('REVISED VALUATION', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 10, color: NexusTheme.slate400, letterSpacing: 1)),
-                          Text('₹${NumberFormat('#,##,###').format(_revisedTotal)}', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: NexusTheme.slate800)),
-                        ],
-                      ),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          if (constraints.maxWidth > 500) ...[
-                            TextButton(
-                              onPressed: () => Navigator.pop(context),
-                              child: const Text('DISCARD', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 11, color: NexusTheme.slate400)),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'REVISED VALUATION',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w900,
+                                fontSize: 10,
+                                color: NexusTheme.slate400,
+                                letterSpacing: 1,
+                              ),
                             ),
-                            const SizedBox(width: 12),
+                            const SizedBox(height: 4),
+                            Text(
+                              '₹${NumberFormat('#,##,###').format(_revisedTotal)}',
+                              style: const TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.w900,
+                                color: NexusTheme.slate900,
+                                letterSpacing: -0.5,
+                              ),
+                            ),
                           ],
-                          ElevatedButton(
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: SizedBox(
+                          height: 48,
+                          child: ElevatedButton(
                             onPressed: isSaving ? null : _saveChanges,
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: NexusTheme.indigo600,
+                              backgroundColor: const Color(0xFF635BFF),
                               foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
                             ),
-                            child: Text(isSaving ? '...' : 'COMMIT & APPROVE', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 10)),
+                            child: Text(
+                              isSaving ? '...' : 'COMMIT & APPROVE',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w900,
+                                fontSize: 11,
+                                letterSpacing: 0.8,
+                              ),
+                            ),
                           ),
-                        ],
+                        ),
                       ),
                     ],
                   ),
@@ -745,6 +818,27 @@ class _EditOrderDialogState extends State<_EditOrderDialog> {
                           ),
                         ),
                       ),
+                      const SizedBox(height: 10),
+                      // Read-only chip showing package quantity (boxes) selected by sales
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFE0F2FE),
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: Text(
+                              'PKG QTY: ${ (item['boxCount'] == null || item['boxCount'] == 0) ? 1 : item['boxCount'] }',
+                              style: const TextStyle(
+                                fontSize: 9,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF0369A1),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ],
                   ),
                 ),
@@ -795,8 +889,23 @@ class _EditOrderDialogState extends State<_EditOrderDialog> {
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       const Text('LINE TOTAL', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: NexusTheme.slate400)),
-                      Text('₹${((item['price'] as num) * (item['quantity'] as num)).toStringAsFixed(2)}', 
-                        style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: NexusTheme.indigo600)),
+                      Builder(
+                        builder: (_) {
+                          final qty = int.tryParse(qtyControllers[index].text) ?? (item['quantity'] as num);
+                          final rate = double.tryParse(rateControllers[index].text) ?? (item['price'] as num).toDouble();
+                          final box = (item['boxCount'] as num? ?? 1);
+                          final boxMultiplier = box == 0 ? 1 : box;
+                          final lineTotal = rate * qty * boxMultiplier;
+                          return Text(
+                            '₹${lineTotal.toStringAsFixed(2)}',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w900,
+                              fontSize: 15,
+                              color: NexusTheme.indigo600,
+                            ),
+                          );
+                        },
+                      ),
                     ],
                   ),
                 ),
@@ -826,7 +935,11 @@ class _EditOrderDialogState extends State<_EditOrderDialog> {
             ),
             style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 12),
             controller: controller,
-            onChanged: onChanged,
+            onChanged: (val) {
+              // Update backing map then force UI to refresh totals
+              onChanged(val);
+              setState(() {});
+            },
           ),
         ],
       ),
@@ -844,12 +957,13 @@ class _EditOrderDialogState extends State<_EditOrderDialog> {
       skuCode: i['skuCode'],
       productName: i['name'],
       quantity: i['quantity'],
+      boxCount: (i['boxCount'] == null || i['boxCount'] == 0) ? 1 : i['boxCount'],
       price: i['price'].toDouble(),
       prevRate: (i['prevRate'] ?? 0.0).toDouble(),
       unit: i['unit'],
     )).toList();
 
-    double subTotal = orderItems.fold(0, (sum, item) => sum + (item.price * item.quantity));
+    double subTotal = orderItems.fold(0, (sum, item) => sum + (item.price * item.quantity * (item.boxCount ?? 1)));
     double gst = subTotal * 0.18;
     double total = subTotal + gst;
 

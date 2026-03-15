@@ -477,6 +477,7 @@ class OrderItem {
   final String skuCode;
   final String productName; // Use productName for backend consistency
   final int quantity;
+  final int? boxCount;
   final double price;
   final double prevRate;
   final String? imageUrl;
@@ -492,6 +493,7 @@ class OrderItem {
     required this.skuCode,
     required this.productName,
     required this.quantity,
+    this.boxCount,
     required this.price,
     this.prevRate = 0,
     this.imageUrl,
@@ -512,6 +514,7 @@ class OrderItem {
       skuCode: json['skuCode'] ?? '',
       productName: json['productName'] ?? json['name'] ?? '',
       quantity: json['quantity'] ?? 0,
+      boxCount: json['boxCount'],
       price: (json['price'] ?? 0).toDouble(),
       prevRate: (json['prevRate'] ?? 0).toDouble(),
       imageUrl: json['imageUrl'],
@@ -531,6 +534,7 @@ class OrderItem {
       'productName': productName,
       'name': productName, // Include both for compatibility
       'quantity': quantity,
+      if (boxCount != null) 'boxCount': boxCount,
       'price': price,
       'prevRate': prevRate,
       if (imageUrl != null) 'imageUrl': imageUrl,

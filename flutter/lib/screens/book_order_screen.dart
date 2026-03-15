@@ -60,14 +60,21 @@ class _BookOrderScreenState extends State<BookOrderScreen> {
   }
 
   void _updateLineItem(int index, Product product) async {
-    final rate = product.price > 0 ? product.price : (product.mrp ?? 0.0);
+    final baseRate = product.price > 0 ? product.price : (product.mrp ?? 0.0);
     final provider = Provider.of<NexusProvider>(context, listen: false);
     final auth = Provider.of<AuthProvider>(context, listen: false);
 
     double prevRate = 0.0;
     if (selectedCustomer != null) {
-      prevRate = await provider.fetchLastRate(selectedCustomer!.id, product.skuCode, token: auth.token);
+      prevRate = await provider.fetchLastRate(
+        selectedCustomer!.id,
+        product.skuCode,
+        token: auth.token,
+      );
     }
+
+    // Applied rate: use customer's last rate if available, otherwise fall back to product/base rate
+    final appliedRate = prevRate > 0 ? prevRate : baseRate;
 
     setState(() {
       cartItems[index] = {
@@ -77,10 +84,10 @@ class _BookOrderScreenState extends State<BookOrderScreen> {
         'quantity': 1,
         'boxCount': 1,
         'unit': 'KG',
-        'price': rate,
+        'price': appliedRate,
         'prevRate': prevRate,
         'imageUrl': product.imageUrl ?? '',
-        'mrp': product.mrp ?? rate,
+        'mrp': product.mrp ?? baseRate,
         'gst': product.gst ?? 18.0,
       };
     });
@@ -93,7 +100,7 @@ class _BookOrderScreenState extends State<BookOrderScreen> {
   }
 
   double get _cartSubTotal {
-    return cartItems.fold(0, (sum, item) => sum + ((item['price'] as num) * (item['quantity'] as num)));
+    return cartItems.fold(0, (sum, item) => sum + ((item['price'] as num) * (item['quantity'] as num) * (item['boxCount'] as num? ?? 1)));
   }
 
   double get _gstTotal => _cartSubTotal * 0.18;
@@ -708,9 +715,18 @@ class _BookOrderScreenState extends State<BookOrderScreen> {
             const SizedBox(height: 12),
             Row(
               children: [
-                Expanded(child: _buildValueBox('RATE', item['price'].toString(), controller: true, onChanged: (val) {
-                  setState(() => cartItems[index]['price'] = double.tryParse(val) ?? 0.0);
-                })),
+                Expanded(
+                  child: _buildValueBox(
+                    'RATE',
+                    item['price'].toString(),
+                    controller: true,
+                    onChanged: (val) {
+                      setState(() => cartItems[index]['price'] = double.tryParse(val) ?? 0.0);
+                    },
+                    // Force TextFormField to rebuild when price changes so value reflects SKU rate
+                    fieldKey: ValueKey('rate-$index-${item['price']}'),
+                  ),
+                ),
                 const SizedBox(width: 12),
                 Expanded(child: _buildValueBox('PREV. RATE', '₹${item['prevRate']}', color: NexusTheme.indigo600)),
                 const SizedBox(width: 12),
@@ -751,7 +767,7 @@ class _BookOrderScreenState extends State<BookOrderScreen> {
             ],
           )),
           const SizedBox(width: 8),
-          Expanded(flex: 2, child: _buildFinalRateDisplay((item['price'] as num) * (item['quantity'] as num))),
+          Expanded(flex: 2, child: _buildFinalRateDisplay((item['price'] as num) * (item['quantity'] as num) * (item['boxCount'] as num? ?? 1))),
           const SizedBox(width: 16),
           IconButton(onPressed: () => _removeLineItem(index), icon: const Icon(LucideIcons.trash2, color: NexusTheme.slate200, size: 18)),
         ],
@@ -998,7 +1014,14 @@ class _BookOrderScreenState extends State<BookOrderScreen> {
     );
   }
 
-  Widget _buildValueBox(String label, String value, {bool controller = false, Function(String)? onChanged, Color? color}) {
+  Widget _buildValueBox(
+    String label,
+    String value, {
+    bool controller = false,
+    Function(String)? onChanged,
+    Color? color,
+    Key? fieldKey,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1011,6 +1034,7 @@ class _BookOrderScreenState extends State<BookOrderScreen> {
           alignment: Alignment.centerLeft,
           child: controller 
               ? TextFormField(
+                  key: fieldKey,
                   initialValue: value.replaceAll('₹', ''),
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   onChanged: onChanged,
@@ -1032,6 +1056,7 @@ class _BookOrderScreenState extends State<BookOrderScreen> {
         border: Border.all(color: NexusTheme.indigo600.withOpacity(0.3)),
       ),
       child: TextFormField(
+        key: ValueKey('${index}_${item['productId']}_${item['price']}'),
         initialValue: price.toString(),
         keyboardType: const TextInputType.numberWithOptions(decimal: true),
         textAlign: TextAlign.center,
@@ -1061,6 +1086,7 @@ class _BookOrderScreenState extends State<BookOrderScreen> {
         border: Border.all(color: NexusTheme.slate200),
       ),
       child: TextFormField(
+        key: ValueKey('${index}_${item['productId']}_${item['boxCount']}'),
         initialValue: boxes.toString(),
         keyboardType: TextInputType.number,
         textAlign: TextAlign.center,
