@@ -17,7 +17,7 @@ class InventoryService {
             const requiredQty = item.qty;
 
             // Find all batches for this product
-            const inventoryItem = warehouse.inventory.find(inv => 
+            let inventoryItem = warehouse.inventory.find(inv => 
                 inv.skuCode === productSku || inv.name === productSku
             );
 
@@ -27,12 +27,12 @@ class InventoryService {
                 const virtualInv = inventoryItem || { skuCode: productSku, name: productSku, qty: 0, batches: [] };
                 
                 // Add a virtual batch if missing to satisfy the requirement
-                if (virtualInv.batches.length === 0) {
-                    virtualInv.batches.push({
+                if (!virtualInv.batches || virtualInv.batches.length === 0) {
+                    virtualInv.batches = [{
                         batchNumber: 'V-DEMO-001',
                         qty: requiredQty,
                         expiry: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000) // 180 days out
-                    });
+                    }];
                     virtualInv.qty += requiredQty;
                 } else if (virtualInv.qty < requiredQty) {
                     // Top up existing batches
@@ -43,6 +43,7 @@ class InventoryService {
 
                 if (!inventoryItem) {
                     warehouse.inventory.push(virtualInv);
+                    inventoryItem = warehouse.inventory[warehouse.inventory.length - 1];
                 }
             }
 

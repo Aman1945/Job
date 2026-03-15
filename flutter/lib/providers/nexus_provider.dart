@@ -1047,7 +1047,7 @@ class NexusProvider with ChangeNotifier {
       );
 
       if (response.statusCode == 200) {
-        await fetchOrders(); // Refresh orders to get updated status and allocated batches
+        await fetchOrders(token: token); // Refresh orders to get updated status and allocated batches
         return true;
       } else {
         debugPrint('Failed to assign warehouse: ${response.statusCode}');
