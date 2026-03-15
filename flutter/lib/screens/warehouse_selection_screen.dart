@@ -87,19 +87,23 @@ class _WarehouseSelectionScreenState extends State<WarehouseSelectionScreen> {
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 24),
-        itemCount: warehouses.isNotEmpty ? warehouses.length : 2, // Fallback for preview
+        itemCount: warehouses.isNotEmpty ? warehouses.length : 4, // Fallback for preview
         itemBuilder: (context, index) {
           if (warehouses.isEmpty) {
             // Mock data if empty
+            final mockNames = ['Kurla Cold Storage', 'DP World Nhava Sheva', 'Arihant Delhi', 'Jolly BNG'];
+            final mockLocs = ['Mumbai', 'Navi Mumbai', 'Delhi', 'Bangalore'];
+            final mockTemps = ['-18°C to 4°C', '-22°C to -18°C', '-19°C to -5°C', '-18°C to -4°C'];
+            
             return _buildWarehouseCard(
               Warehouse(
-                id: index == 0 ? 'W1' : 'W2', 
-                name: index == 0 ? 'Kurla Cold Storage' : 'DP World Nhava Sheva',
-                location: index == 0 ? 'Mumbai' : 'Navi Mumbai',
-                tempRange: index == 0 ? '-18°C to 4°C' : '-22°C to -18°C',
-                capacityUsed: index == 0 ? 38 : 52,
-                capacityMax: index == 0 ? 50 : 80,
-                manager: index == 0 ? 'Deepak More' : 'Sanjay Bhat'
+                id: 'W${index + 1}', 
+                name: mockNames[index],
+                location: mockLocs[index],
+                tempRange: mockTemps[index],
+                capacityUsed: index == 0 ? 38.0 : index == 1 ? 52.0 : index == 2 ? 15.0 : 22.0,
+                capacityMax: index == 0 ? 50.0 : index == 1 ? 80.0 : index == 2 ? 60.0 : 45.0,
+                manager: index == 0 ? 'Deepak More' : index == 1 ? 'Sanjay Bhat' : index == 2 ? 'Amit Kumar' : 'Rajesh Reddy'
               ),
               orders.isNotEmpty ? orders.first : null
             );
@@ -233,6 +237,8 @@ class _WarehouseSelectionScreenState extends State<WarehouseSelectionScreen> {
             children: (warehouses.isNotEmpty ? warehouses : [
               Warehouse(id: 'W1', name: 'Kurla Cold Storage', location: 'Mumbai', tempRange: '-18°C', capacityUsed: 38, capacityMax: 50, manager: ''),
               Warehouse(id: 'W2', name: 'DP World Nhava Sheva', location: 'Navi Mumbai', tempRange: '-22°C', capacityUsed: 52, capacityMax: 80, manager: ''),
+              Warehouse(id: 'W3', name: 'Arihant Delhi', location: 'Delhi', tempRange: '-19°C', capacityUsed: 15, capacityMax: 60, manager: ''),
+              Warehouse(id: 'W4', name: 'Jolly BNG', location: 'Bangalore', tempRange: '-18°C', capacityUsed: 22, capacityMax: 45, manager: ''),
             ]).map((wh) => _buildSelectionButton(order, wh)).toList(),
           ),
         ],

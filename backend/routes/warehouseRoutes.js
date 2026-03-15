@@ -96,20 +96,43 @@ router.post('/assign-to-order', async (req, res) => {
 
         // Handle Mock IDs or search by ID field
         let warehouse;
-        if (warehouseId === 'W1' || warehouseId === 'W2') {
-            warehouse = await Warehouse.findOne({ name: warehouseId === 'W1' ? /Kurla/ : /DP World/ }).session(session);
+        if (warehouseId === 'W1' || warehouseId === 'W2' || warehouseId === 'W3' || warehouseId === 'W4') {
+            const queryMap = {
+                'W1': /Kurla/,
+                'W2': /DP World/,
+                'W3': /Arihant/,
+                'W4': /Jolly/
+            };
+            warehouse = await Warehouse.findOne({ name: queryMap[warehouseId] }).session(session);
         } else if (mongoose.Types.ObjectId.isValid(warehouseId)) {
             warehouse = await Warehouse.findById(warehouseId).session(session);
         }
 
         if (!warehouse) {
-            // Fallback: Just pick any warehouse if mock was used or ID invalid
-            warehouse = await Warehouse.findOne().session(session);
-            if (!warehouse) {
-                console.error('❌ No warehouses found in database');
-                throw new Error('No warehouses available in database');
+            // Auto-provision if mock ID was used and warehouse missing
+            if (warehouseId === 'W1' || warehouseId === 'W2' || warehouseId === 'W3' || warehouseId === 'W4') {
+                const whData = {
+                    'W1': { name: 'Kurla Cold Storage', location: 'Mumbai' },
+                    'W2': { name: 'DP World Nhava Sheva', location: 'Navi Mumbai' },
+                    'W3': { name: 'Arihant Delhi', location: 'Delhi' },
+                    'W4': { name: 'Jolly BNG', location: 'Bangalore' }
+                };
+                warehouse = new Warehouse({
+                    ...whData[warehouseId],
+                    capacityTotal: 100000,
+                    inventory: []
+                });
+                await warehouse.save({ session });
+                console.log(`✅ Auto-provisioned missing warehouse: ${warehouse.name}`);
+            } else {
+                // Fallback: Just pick any warehouse if mock was used or ID invalid
+                warehouse = await Warehouse.findOne().session(session);
+                if (!warehouse) {
+                    console.error('❌ No warehouses found in database');
+                    throw new Error('No warehouses available in database. Please run seeding script.');
+                }
+                console.warn(`⚠️  Original ID ${warehouseId} not found, using fallback: ${warehouse.name}`);
             }
-            console.warn(`⚠️  Original ID ${warehouseId} not found, using fallback: ${warehouse.name}`);
         }
 
         // Check for double allocation or status change
