@@ -6,6 +6,7 @@ import '../models/models.dart';
 import '../utils/theme.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:intl/intl.dart';
+import 'mission_audit_detail_screen.dart';
 
 class WarehouseSelectionScreen extends StatefulWidget {
   const WarehouseSelectionScreen({super.key});
@@ -212,6 +213,28 @@ class _WarehouseSelectionScreenState extends State<WarehouseSelectionScreen> {
                     Text('${order.items.length} items • ₹${NumberFormat('#,###').format(order.total)}', 
                       style: TextStyle(color: NexusTheme.slate500, fontSize: 12, fontWeight: FontWeight.w600)),
                   ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              SizedBox(
+                height: 44,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    final provider = Provider.of<NexusProvider>(context, listen: false);
+                    final auth = Provider.of<AuthProvider>(context, listen: false);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => MissionAuditDetailScreen(order: order)),
+                    ).then((_) => provider.fetchOrders(token: auth.token));
+                  },
+                  icon: const Icon(LucideIcons.arrowRight, size: 14, color: Colors.white),
+                  label: const Text('FULL AUDIT', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 10, letterSpacing: 1, color: Colors.white)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF0F172A),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                  ),
                 ),
               ),
             ],

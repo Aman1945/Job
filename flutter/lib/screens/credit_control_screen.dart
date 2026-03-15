@@ -4,10 +4,8 @@ import 'package:nexus_oms_mobile/widgets/nexus_components.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../providers/auth_provider.dart';
-import '../utils/theme.dart';
-import '../models/models.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-import 'mission_audit_detail_screen.dart';
+import '../models/models.dart';
 
 class CreditControlScreen extends StatefulWidget {
   const CreditControlScreen({super.key});
@@ -153,26 +151,6 @@ class _CreditControlScreenState extends State<CreditControlScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                 ),
                 child: const Text('QUICK VIEW', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 10, letterSpacing: 1)),
-              ),
-            ),
-            const SizedBox(width: 12),
-            SizedBox(
-              height: 48,
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => MissionAuditDetailScreen(order: order)),
-                  ).then((_) => Provider.of<NexusProvider>(context, listen: false).fetchOrders(token: Provider.of<AuthProvider>(context, listen: false).token));
-                },
-                icon: const Icon(LucideIcons.arrowRight, size: 14, color: Colors.white),
-                label: const Text('FULL AUDIT', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 10, letterSpacing: 1, color: Colors.white)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF0F172A),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                ),
               ),
             ),
           ],
