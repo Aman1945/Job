@@ -1056,7 +1056,7 @@ class _BookOrderScreenState extends State<BookOrderScreen> {
         border: Border.all(color: NexusTheme.indigo600.withOpacity(0.3)),
       ),
       child: TextFormField(
-        key: ValueKey('${index}_${item['productId']}_${item['price']}'),
+        key: ValueKey('${index}_${cartItems[index]['productId']}_${cartItems[index]['price']}'),
         initialValue: price.toString(),
         keyboardType: const TextInputType.numberWithOptions(decimal: true),
         textAlign: TextAlign.center,
@@ -1086,7 +1086,7 @@ class _BookOrderScreenState extends State<BookOrderScreen> {
         border: Border.all(color: NexusTheme.slate200),
       ),
       child: TextFormField(
-        key: ValueKey('${index}_${item['productId']}_${item['boxCount']}'),
+        key: ValueKey('${index}_${cartItems[index]['productId']}_${cartItems[index]['boxCount']}'),
         initialValue: boxes.toString(),
         keyboardType: TextInputType.number,
         textAlign: TextAlign.center,
